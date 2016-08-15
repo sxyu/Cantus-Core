@@ -34,7 +34,7 @@
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>ayu.pfx</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>ayu_spc.pfx</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -57,7 +57,7 @@
     <Compile Include="StatementRegistar.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ayu.pfx" />
+    <None Include="ayu_spc.pfx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -81,6 +81,7 @@
     PostBuildMacros;
   </PostBuildEventDependsOn>
     <PostBuildEvent>echo @(VersionNumber) &gt; $(ProjectDir)meta\ver
-sed -i.bak s/;\{#VER\}/"@(VersionNumber)"/g "$(SolutionDir)\Setup\cantus.iss"</PostBuildEvent>
+sed -i.bak s/;\{#VER\}/"@(VersionNumber)"/g "$(SolutionDir)\Setup\cantus.iss"
+"C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe" sign /f "E:\Programming\DotNet\ayu_spc.pfx" "$(TargetPath)"</PostBuildEvent>
   </PropertyGroup>
 </Project>

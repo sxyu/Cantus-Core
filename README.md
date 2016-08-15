@@ -1,7 +1,11 @@
-﻿# Cantus Core 2.0
+﻿# Cantus Core 2.4
 *Cantus* is a lightweight yet powerful mathematical language.
-This repo contains a free and open-source .NET library for running expressions and scripts written in the Cantus language.
-It is designed to be **directly usable as a mathematical expression evaluator** and to be usable with minimal set up.
+This repo (Cantus Core) contains a free and open-source .NET library for running expressions and scripts written in the Cantus language.
+
+This is designed to be **directly usable as a mathematical expression evaluator library** and to be usable with minimal set up.
+
+For the full Cantus suite including an editor and a console, download and install the installer: 
+[From here](https://github.com/sxyu/Cantus-Core/blob/master/setup/setup.exe)
 
 ### Quickstart
 First, add `cantus.core.dll` as a reference in your project.
@@ -15,7 +19,8 @@ Now you can add this to your main method (or wherever you want to use Cantus):
 ```cs
 CantusEvaluator eval = new CantusEvaluator();
 
-// Set evaluation modes: These settings (Radian, Math, etc.) are the defaults, 
+// Set evaluation modes.
+// These specific settings (Radian, Math, etc.) are already the defaults, 
 // so you don't really need to set them, but I'm writing them here for demo purposes
 
 // Angle representation: Radian, Degree, or Gradian
@@ -42,10 +47,11 @@ string myScript = @"
 Console.WriteLine(eval.Eval(myScript)); // output: 1/8 
 Console.WriteLine(eval.EvalRaw(myScript)); // output: 0.125
 
-// Evaluate one-line expressions
+// Evaluate one-line mathematical expressions
 Console.WriteLine(eval.EvalExpr("3.5!")); // output: 58/5
 Console.WriteLine(eval.EvalExprRaw("3.5!")); // output: 11.6
 ```
+
 All of the above methods have asynchronous alternate versions.
 For example, you can use `EvalAsync()` instead of `Eval()` to evaluate a full script asynchronously.
 These methods raise the EvalComplete event when done.
@@ -54,9 +60,9 @@ These methods raise the EvalComplete event when done.
 By default the CantusEvaluator will try to print to the standard output and read from the standard input.
 However, this can sometimes be undesirable, and when multi-threaded, these operations can become unstable.
 
-To handle IO yourself, you may handle the `ReadInput` and `WriteOutput` events. The `ReadInput` event has several message types that you should handle separately. Return the result by setting the @return parameter.
+To handle IO yourself, you may handle the `ReadInput` and `WriteOutput` events. The `ReadInput` event has several message types that you should handle separately. Return the result by setting the `@return` parameter.
 
-There is also a `ClearConsole` event that you can handle normally called when the console needs clearing.
+There is also a `ClearConsole` event that you can handle, normally raised when the console needs clearing.
 
 ## ScriptFeeder
 This library also includes a ScriptFeeder class for running scripts line-by-line in real time.
@@ -125,12 +131,16 @@ The following section is adapted from the README of the editor project, with irr
 
 * Basic settings of the evaluator:
     *  AngleRepr: Angle Representation: 
-    	*  Deg, Rad, Grad
+        *  Deg, Rad, Grad
     *  Output format:
-        *  MathO: Output fractions, roots, and multiples of PI
-        *  LineO: Output numbers
-        *  SciO: Output scientic notation
-	*  Explicit: Force explicit variable declarations
+        *  Math: Output fractions, roots, and multiples of PI
+        *  Scientific: Output scientic notation
+        *  Raw: Output numbers
+    * Explicit: Force explicit variable declarations
+    * SigFigs/Significant: Track sigfigs in numbers during computations
+        * Use Raw or Scientific mode with SigFigs mode to see output rounded to the correct significant figure.
+        * Rounding on 5's: up if odd, down if even.
+        * Warning: sig fig tracking may behave unexpectedly with 0, 0.0, due to the fact that 0 has no sig figs.
     * You can also use functions to change these modes (discuss that later)
     * Click the version number to see the update log
     * To change settings, click the gear button the on the right or press `Alt`+`S`
@@ -164,12 +174,12 @@ The following section is adapted from the README of the editor project, with irr
 This is the easiest (and usually best) way, but if a variable is already declared, this will assign to it in its original scope as opposed to declaring a new one.
 
 ```python
-	let foo = 1
-	run
-	    let foo = 2
-	    run
-	        foo = 3
-	    return foo
+    let foo = 1
+    run
+        let foo = 2
+        run
+            foo = 3
+        return foo
 ```
 This will return 3.
 
@@ -215,15 +225,15 @@ You can use [operator]= (e.g. `+=` `*=`) for most basic operators as a shorthand
 Comparison operators `=` and `==` were discussed in the above section. Other comparison operators include `<`, `>`, `<=` (less than or equal to), `>=` (greater than or equal to), `<>`, and `!=` (not equal to)
 
 **Notes on (Sort of) Unusual Operators:**  
-* `!` is the factorial operatOrElse 	* The logical not operator is just `not` 
-	* The bitwise not operator is `~` 
-* `|` is the absolute value operatOrElse 	* The logical or operator is just `or`  
-	* The bitwise or operator is `||`  
+* `!` is the factorial operatOrElse     * The logical not operator is just `not` 
+    * The bitwise not operator is `~` 
+* `|` is the absolute value operatOrElse    * The logical or operator is just `or`  
+    * The bitwise or operator is `||`  
 * `&` is the string concatenation operator (try `123 & "456"`)
-	* The logical and operator is just `and`  
-	* The bitwise and operator is `&&`  
-* `^` is the exponentiation operatOrElse 	* The logical xor operator is just `xor`  
-	* The bitwise xor operator is `^^`  
+    * The logical and operator is just `and`  
+    * The bitwise and operator is `&&`  
+* `^` is the exponentiation operatOrElse    * The logical xor operator is just `xor`  
+    * The bitwise xor operator is `^^`  
 * `%` is the percentage operator, and the modulo operator is just `mod`
 
 **Indexing and Slicing**
@@ -237,7 +247,7 @@ Python-like slicing is also supported: `[1,2,3,4,5,6][1:4]` or `"abc"[1:]` etc.
 
 #### Functions
 
-In all, Cantus has over 350 internal functions available for use, including aome for networking and filesystem access. Functions may be called by writing 	
+In all, Cantus has over 350 internal functions available for use, including aome for networking and filesystem access. Functions may be called by writing   
 `functionname(param 1, param2, ...)`. Functions with no parameters may be called like `foo()` or `foo()`
 
 **'Insert Function' Window**
@@ -255,8 +265,10 @@ Note that you can also do things like `(a,b).min()`. By using a tuple as the cal
 **Sorting**  
 Sorting is done with the `sort(lst)` function. You can use `reverse(lst)` after to reverse the sorting. When sorting multiple lists in a list (matrix), lists are compared from the first item to the last item. Note that different object types are allowed in the same list, and the result be separated by type.
 
-**Regular Expressions**		
-`contains()` `startswith()` `endswith()` `replace()` `find()` `findend()` `regexismatch()` `regexmatch()` `regexmatchall()`		
+You can pass a function to the sort function as the second parameter. This function should accept two arguments and return -1 if the first item should come before (is smaller), 1 if it should come after (is larger), or 0 if the items are equal.
+
+**Regular Expressions**     
+`contains()` `startswith()` `endswith()` `replace()` `find()` `findend()` `regexismatch()` `regexmatch()` `regexmatchall()`     
 All use regular expressions to match text.
 
 If you are not familiar with Regex, [here's a good Tutorial](http://code.tutsplus.com/tutorials/you-dont-know-anything-about-regular-expressions-a-complete-guide--net-7869)
@@ -264,17 +276,18 @@ If you are not familiar with Regex, [here's a good Tutorial](http://code.tutsplu
 **Define A Function**  
 A very standard basic function declaration:
 ```python
-	function DestroyThisUniverse(param1, param2)
-    	if param2 = 0:
-			return param1 / param2
+    function DestroyThisUniverse(param1, param2)
+        if param2 = 0:
+            return param1 / param2
         else:
-        	param2 = 0 # sorry
-        	return param1 / param2
+            param2 = 0 # sorry
+            return param1 / param2
 ```
 (See the section below about blocks for more details on how the `if` `else` `return` etc. work.)
 
 Now you can use `myFunction()` in the evaluator. This function should also appear at the top of the explore window mentioned above.
 
+#### Basic functional programming
 **Lambda Functions and Function Pointers**
 Another way to define a function is using backticks like this:
 `foo=\`1\`` or `foo=\`x=>x+1\``
@@ -282,20 +295,36 @@ This is called a lambda expression. With this you can use functions like sigma:
 `sigma(`i=>i^2`,1,5)`
 
 You can write a multiline lambda expression like this:
-```myFunction=\`x=>
-	if x>0
-		return x+1
-	\`
+```python
+    myFunction=\`x=>
+    if x>0
+        return x+1
+    \`
 ```
 
 All normal functions can also be used in this way. When no arguments are supplied,
 they act as function pointers and can be assigned.
 
 For example: 
-```b=sind(x)
+```python
+   b=sind(x)
    return b(30) # returns 0.5
 ```
 *Tip: You can also do cool things like dydx(sin). Try drawing this in the graphing window.*
+
+**Iteration and modification of collections using functional programming**
+* `.each(func)` performs an action to each item in a collection, where the item is passed as the first argument
+* `.filter(func)` returns a new collection with the items for which the function given returns true, where the item is passed as the first argument
+* `.exclude(func)` returns a new collection with the items for which the function given returns false, where the item is passed as the first argument
+* `.get(func)` returns the first item for which the function given returns true, where the item is passed as the first argument
+* `.filterindex(func)` returns a new collection with the items for which the function given returns true, where the **index** is passed as the first argument
+* `.every(interval)` loops through the collection, starting from index 0, incrementing by the specified interval and adding the item to the new collection each time. 
+
+Example usage:
+```python
+   printline([1,2,3,4,5].filter(`x=>x mod 2 = 1`));
+```
+This will print [1, 3, 5].
 
 #### Writing a Full Script: Statements and Blocks
 You have seen an example of a script with blocks in the variable declaration section. The function declaration above is also really a block.
@@ -304,11 +333,11 @@ As in Python, blocks are formatted using indentation. However, unlike Python, bl
 
 **Example Block Structure:**
 ```python
-	let a=1
-	while true
- 		if a > 15
-        	break
-    	a += 1
+    let a=1
+    while true
+        if a > 15
+            break
+        a += 1
     return a # returns 16
 ```
 
@@ -335,8 +364,8 @@ As in Python, blocks are formatted using indentation. However, unlike Python, bl
 **Infinite Loops**
 * Try not to write loops like
 ```python
-	while 1=1
-    	1=1
+    while 1=1
+        1=1
 ```
 * This will create a infinite loop. Try it (trust me, your computer won't explode). No answer will be displayed.
 * Fortunately for you Cantus runs these expressions on separate threads so the main program won't crash. However, this will take a lot of CPU resources for nothing and also if you do this several time the program may end up getting very slow / freezing / failing to close.
@@ -346,13 +375,13 @@ As in Python, blocks are formatted using indentation. However, unlike Python, bl
 After writing a script, save it as a .can (Cantus Script) file.
 
 To run the script later, you can do one of the following:
-* Go in command prompt (cmd) and type (without quotes or angle brackets) 	
+* Go in command prompt (cmd) and type (without quotes or angle brackets)    
 *"can &lt;filename&gt;.can"* (result written to console)
 * Double click the file and select to open with the Cantus program (result not shown)
 * Press `F5` in the editor ([/sxyu/Cantus-2]) and select the file (result written to label)
 * Use the run(path) function (async) or runwait(path) function (single threaded)
 
-**Run another program**		
+**Run another program**     
 The `start(path)` and `startwait(path)` functions facilitate adding new functionality by allowing you to call other programs from within Cantus. For `start(path)`, the output from the program is saved to the variable called "result" by default. For `startwait(path)`, the output is returned.
 
 ### Object-Oriented Programming
@@ -361,19 +390,19 @@ Cantus also supports basic OOP: you can create classes and use inheritance.
 Example of some classes:
 ```python
 class pet
-	name = ""
-	function init(name)
-		this.name = name
-	function text()
-		return "Pet name: " + name
+    name = ""
+    function init(name)
+        this.name = name
+    function text()
+        return "Pet name: " + name
 
 class cat : pet
-	function init(name)
-		this.name = name
-	function speak()
-		return "Meow!"
-	function text()
-		return "Cat name: " + name
+    function init(name)
+        this.name = name
+    function speak()
+        return "Meow!"
+    function text()
+        return "Cat name: " + name
 
 myCat = cat("Alex")
 print(myCat) # prints Cat name: Alex
