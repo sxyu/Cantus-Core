@@ -1209,34 +1209,45 @@ namespace Cantus.Core
                     textRepr += sep;
 
                 int sigCt = 0;
+                int trailingZeroCt = 0;
                 bool metDP = false;
-                int start = 0;
-                while (start < textRepr.Length && (textRepr[start] == '-' || textRepr[start] == '0'))
+                bool started = false;
+                for (int i =0; i<textRepr.Count(); i += 1)
                 {
-                    start += 1;
-                }
-                for (int i = start; i <= textRepr.Length - 1; i++)
-                {
-                    char c = textRepr[i];
+                   char c = textRepr[i];
                     if (char.IsDigit(c))
                     {
-                        if (metDP || c != '0')
-                            sigCt += 1;
-                        // decimal point
+                        if (started)
+                        {
+                            if (c == '0' && !metDP)
+                            {
+                                trailingZeroCt++; 
+                            }
+                            else
+                            {
+                                sigCt += trailingZeroCt;
+                                trailingZeroCt = 0;
+                                sigCt ++;
+                            }
+                        }
+                        else if (c != '0')
+                        {
+                            started = true;
+                            sigCt = 1;
+                        }
                     }
                     else if (c.ToString() == sep)
                     {
-                        if (metDP)
-                            throw new MathException("More than one decimal point found");
-                        sigCt = i - start + (start == i ? 1 : 0);
+                        sigCt += trailingZeroCt;
+                        trailingZeroCt = 0;
                         metDP = true;
-                    }
-                    else
-                    {
-                        throw new SyntaxException("Invalid number: numbers may contain only digits and at most one decimal point");
                     }
                 }
 
+                if (textRepr.StartsWith("0" + sep))
+                {
+                    sigCt ++;
+                }
                 return sigCt;
             }
 
