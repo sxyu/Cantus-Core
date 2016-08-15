@@ -4,8 +4,8 @@ This repo (Cantus Core) contains a free and open-source .NET library for running
 
 This is designed to be **directly usable as a mathematical expression evaluator library** and to be usable with minimal set up.
 
-For the full Cantus suite including an editor and a console, download and install the installer: 
-[From here](https://github.com/sxyu/Cantus-Core/blob/master/setup/setup.exe)
+For the full Cantus suite including an editor and a console, download and run the installer: 
+[From here](https://raw.githubusercontent.com/sxyu/Cantus-Core/master/setup/cantus-latest.exe)
 
 ### Quickstart
 First, add `cantus.core.dll` as a reference in your project.
