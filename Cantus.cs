@@ -231,7 +231,7 @@ namespace Cantus.Core
         }
 
         /// <summary>
-        /// End the execution of the script after the script becomes empty
+        /// End the execution of the script after no more lines are available for execution.
         /// </summary>
         public void EndAfterQueueDone()
         {

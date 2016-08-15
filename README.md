@@ -1,16 +1,17 @@
 ﻿# Cantus Core 2.0
-*Cantus Core* is a free and open-source .NET library for running expressions and scripts written in the Cantus language.
-It is designed to be very easy to set up and to be **directly usable as a mathematical expression evaluator**.
+*Cantus* is a lightweight yet powerful mathematical language.
+This repo contains a free and open-source .NET library for running expressions and scripts written in the Cantus language.
+It is designed to be **directly usable as a mathematical expression evaluator** and to be usable with minimal set up.
 
 ### Quickstart
 First, add `cantus.core.dll` as a reference in your project.
 
-Then, in your imports:
+Then, import the Cantus.Core namespace for convenience:
 ```cs
 using Cantus.Core;
 ```
 
-Inside your main method (or where you want to do evaluations):
+Now you can add this to your main method (or wherever you want to use Cantus):
 ```cs
 CantusEvaluator eval = new CantusEvaluator();
 
@@ -45,14 +46,53 @@ Console.WriteLine(eval.EvalRaw(myScript)); // output: 0.125
 Console.WriteLine(eval.EvalExpr("3.5!")); // output: 58/5
 Console.WriteLine(eval.EvalExprRaw("3.5!")); // output: 11.6
 ```
-All of the above methods also have asynchroneous counterparts. 
+All of the above methods have asynchronous alternate versions.
 For example, you can use `EvalAsync()` instead of `Eval()` to evaluate a full script asynchronously.
+These methods raise the EvalComplete event when done.
+
+## IO Handling
+By default the CantusEvaluator will try to print to the standard output and read from the standard input.
+However, this can sometimes be undesirable, and when multi-threaded, these operations can become unstable.
+
+To handle IO yourself, you may handle the `ReadInput` and `WriteOutput` events. The `ReadInput` event has several message types that you should handle separately. Return the result by setting the @return parameter.
+
+There is also a `ClearConsole` event that you can handle normally called when the console needs clearing.
+
+## ScriptFeeder
+This library also includes a ScriptFeeder class for running scripts line-by-line in real time.
+The ScriptFeeder class is always associated with a CantusEvaluator. You may specify the evaluator
+when constructing a ScriptFeeder. If you don't specify one, a new CantusEvaluator will be created.
+
+### Basic Usage
+```cs
+// Another random script
+string myScript = @"
+    print("Hello ");
+    print("World! ");
+";
+ScriptFeeder foo = new ScriptFeeder();
+foo.Append(myScript); // add to the current script
+foo.BeginExecution(); // starts the script
+
+foo.SendNextLine(); // evaluate a line
+// Console says: Hello 
+foo.SendAllLines();
+// Console says: Hello World!
+
+string myScript2 = @"
+    print("Today is ");
+    print(today().dayofweekname());
+";
+foo.Append(myScript2, True); // true as the second argument will directly execute the newly appended script.
+// Console says: Hello World! Today is Sunday (or whatever day it is)
+
+foo.EndAfterQueueDone(); // Safely stops execution when everything is done
+```
 
 ## Customization
-Cantus is licenced under the MIT licence, and you are welcome to customize/recompile it for any purposes.
-I will not force you but I would greatly appreciate it if you can give credit to this project.
+You are welcome to customize/recompile it for any purposes. Credits would be greatly appreciated.
 
-### Tips:
+### Tips on Customization
 If you want to add your own internal functions, you can easily do so by adding new public methods inside `InternalFunctions.cs`.
 
 You can also add new operators inside `OperatorRegistar.cs` or new statements inside `StatementRegistar.cs`.
@@ -60,8 +100,12 @@ You can also add new operators inside `OperatorRegistar.cs` or new statements in
 You can even modify `ObjectTypes.cs` to define extra types, though you'll then need to add methods inside
 `InternalFunctions.cs` to create the type.
 
+Note: The setup file and some info files have been included here to ease deployment (yes, I use some very lazy deployment methods). They are not strictly part of the source code.
+
+The following section is adapted from the README of the editor project, with irrelevant information removed.
+
 # Cantus Language
-*Cantus* is a lightweight yet powerful mathematical language.
+*Cantus* is a lightweight yet powerful mathematical language. 
 
 ### What you can do with Cantus:
   - Create and do calculations with **matrices**, **sets**, **dictionaries** and **tuples**
@@ -70,46 +114,26 @@ You can even modify `ObjectTypes.cs` to define extra types, though you'll then n
   - Use various built-in functions and operators
   - Use **flow control statements** like in a procedural language (If, For, While, Until, Repeat, Switch, etc.)
   - Use variable and function **scoping**
+  - Automatically track significant figures in calculations
   - Customize
     - Declare and use **variables**
     - Declare **functions**
     - Run other .can scripts
     - Add initialization scripts to customize the calculatOrElse   - Graph **cartesian**, **inverse**, **polar**, or **parametric** functions as well as **slope fields**
 
-### Installation
-**Cantus needs .Net Framework 4.0 or above to work.**  
-.Net framework is already included in the latest versions of Windows such as Windows 10 and 8.1.  
-
-You can download .Net [Here](https://www.microsoft.com/en-us/download/confirmation.aspx?id=17851). If you aren't sure if you have it installed, it is fine to try downloading Cantus and see if it runs first before trying to install.
-
-You can run Cantus on Mac or Linux with Wine and Mono.
-Note that Cantus as a language can really be implemented elsewhere, but since this is done using .Net unfortunately cross-platform support is poor at this time.
-
-**Now go ahead and download *Cantus***  
-[**Download Cantus Here**](https://drive.google.com/uc?export=download&id=0B314tJw3ioySQnhfUjdVTVZ1RWs)  
-No real installation required. Just run, read over the update log if you wish, and start using the evaluator.	
-
-**Important: I have not yet obtained a codes signing certificate to sign the executable, so your computer will probably either block it or display a warning. If smartscreen blocks it, please click "more" and "run anyway".**	
-These certificates just cost [so much](https://www.symantec.com/popup.jsp?popupid=csc_ms_authenticode_buy&footer=0&inid=us_symc_buy_pdp_next-steps_cod-sign-msft) (Symantec lists $499/yr per person)!
-
 ### Basic Usage
 
-Run the downloaded program, and type in the expression in the main textbox to see the result. Play around as much as you like.  
-*Sidenote: The evaluation is done asynchroneously, so you can keep working while it evaluates*
-
-* To change settings, click the gear button the on the right
-    *  AngleRepr: Angle Representation (`Ctrl`+`Alt`+`P`): 
-    	*  Deg (`Ctrl`+`Alt`+`D`), Rad (`Ctrl`+`Alt`+`R`), Grad (`Ctrl`+`Alt`+`G`)
-    *  Output format: (`Ctrl`+`Alt`+`O`)
-        *  MathO (`Ctrl`+`Alt`+`M`): Output fractions, roots, and multiples of PI
-        *  LineO (`Ctrl`+`Alt`+`L`): Output numbers
-        *  SciO (`Ctrl`+`Alt`+`S`): Output scientic notation
-	*  Explicit (`Ctrl`+`Alt`+`T`): Force explicit variable declarations
+* Basic settings of the evaluator:
+    *  AngleRepr: Angle Representation: 
+    	*  Deg, Rad, Grad
+    *  Output format:
+        *  MathO: Output fractions, roots, and multiples of PI
+        *  LineO: Output numbers
+        *  SciO: Output scientic notation
+	*  Explicit: Force explicit variable declarations
     * You can also use functions to change these modes (discuss that later)
     * Click the version number to see the update log
     * To change settings, click the gear button the on the right or press `Alt`+`S`
-* To graph functions, click the graph button (below the gear button) on the right or press `Alt` + `G`
-* To change mode
 
 #### Creating things
 * `1.5` Define a number
@@ -319,49 +343,14 @@ As in Python, blocks are formatted using indentation. However, unlike Python, bl
 * Use the `_stopall()` Function` to stop these threads and recover resouces. You may (rarely, but occasionally) need to call this more than once if some threads aren't responding.
 
 #### Running Scripts
-After writing a script, save it as a .can (Cantus Script) file. You can do this by pressing `Ctrl` + `S` in the editor.
+After writing a script, save it as a .can (Cantus Script) file.
 
 To run the script later, you can do one of the following:
 * Go in command prompt (cmd) and type (without quotes or angle brackets) 	
-*"cantus &lt;filename&gt;.can"* (result written to console)
+*"can &lt;filename&gt;.can"* (result written to console)
 * Double click the file and select to open with the Cantus program (result not shown)
-* Press `F5` in the editor and select the file (result written to label)
+* Press `F5` in the editor ([/sxyu/Cantus-2]) and select the file (result written to label)
 * Use the run(path) function (async) or runwait(path) function (single threaded)
-
-To open the script for editing later, press `Ctrl` + `O` in the editor and select the file. Line endings CR LF, CR, etc. will automatically standardized based on the platform.
-
-#### Extending Cantus
-
-**The Main Initialization Script**	
-The main initialization script is located at "init.can" at the base directory (the directory where the cantus program is located).
-
-Normally, this file contains some auto-generated code storing the variables, functions, and configuration that you defined as well as the default constants like e and pi. You can add your own startup configuration (function definitions, variables/constants, etc.) below where the comment says you can.
-
-Be careful **never** to change the end comment (that might mess up the file when the editor re-generates the settings).
-
-**The plugin Directory**	
-The plugin/ directory is used for storing plugins, as the name implies.
-All .can files under the init directory (and all subdirectories) under the base directory will be loaded at startup, but
-are not imported.
-
-**Importing and loading**
-Loading a file with the `load` statement makes it available to the evaluator. Functions and variables declared in the scope will become
-visible their original namespace.
-
-Importing a file with the `import` statement makes the contents of the file directly accessible in the evaluatOrElse 
-Both of these statements can either be supplied with a full path, a relative path from the executing directory 
-(using . as separator), or a path inside the include directory.
-
-**The include Directory**	
-Files in this directory are not loaded on startup. However, all .can files in the include directory may be
-easily imported into the evaluator with an import statement.
-
-For example,
-`import a.b` will import the file at include/a/b.can if available
-
-**The init Directory**	
-The init directory is for placing additional initialization scripts. They are run after the main initialization file and override
-items declared in the main evaluation file.
 
 **Run another program**		
 The `start(path)` and `startwait(path)` functions facilitate adding new functionality by allowing you to call other programs from within Cantus. For `start(path)`, the output from the program is saved to the variable called "result" by default. For `startwait(path)`, the output is returned.
