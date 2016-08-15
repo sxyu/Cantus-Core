@@ -1212,6 +1212,8 @@ namespace Cantus.Core
                 int trailingZeroCt = 0;
                 bool metDP = false;
                 bool started = false;
+                int zeroCt = 0;
+
                 for (int i =0; i<textRepr.Count(); i += 1)
                 {
                    char c = textRepr[i];
@@ -1235,6 +1237,10 @@ namespace Cantus.Core
                             started = true;
                             sigCt = 1;
                         }
+                        else
+                        {
+                            zeroCt += 1;
+                        }
                     }
                     else if (c.ToString() == sep)
                     {
@@ -1244,10 +1250,7 @@ namespace Cantus.Core
                     }
                 }
 
-                if (textRepr.StartsWith("0" + sep))
-                {
-                    sigCt ++;
-                }
+                if (sigCt == 0) return zeroCt;
                 return sigCt;
             }
 
