@@ -1,20 +1,15 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Data;
-using System.Diagnostics;
 using System.Collections.ObjectModel;
-using System.Linq.Expressions;
 using System.Numerics;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Text;
 using Cantus.Core.CommonTypes;
 using System.Linq;
-using static Cantus.Core.CantusEvaluator.ObjectTypes;
-using static Cantus.Core.CantusEvaluator;
 
+using static Cantus.Core.CantusEvaluator.ObjectTypes;
 using static Cantus.Core.Scoping;
 using Cantus.Core.Exceptions;
 
@@ -284,11 +279,11 @@ namespace Cantus.Core
                     {
                         this._value = BigDecimal.Undefined;
                     }
-                    else if (str.StartsWith("0x") && str.Length > 2)
+                    else if (str.StartsWith("0x") && str.Length > 2 && !str.Contains(DecimalSep))
                     {
                         this._value = (double)long.Parse(str.Substring(2), System.Globalization.NumberStyles.HexNumber);
                     }
-                    else if (str.StartsWith("00") && str.Length > 2)
+                    else if (str.StartsWith("00") && str.Length > 2 && !str.Contains(DecimalSep))
                     {
                         this._value = (double)Convert.ToInt64(str.Substring(2), 8);
                     }

@@ -4599,7 +4599,7 @@ namespace Cantus.Core
         /// <returns></returns>
         public object ExecInternalFunction(string name, List<object> args)
         {
-            System.Reflection.MethodInfo info = null;
+            MethodInfo info = null;
 
             name = RemoveRedundantScope(name, ROOT_NAMESPACE);
             info = typeof(InternalFunctions).GetMethod(name.ToLowerInvariant(), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
@@ -4612,7 +4612,7 @@ namespace Cantus.Core
 
                 int outputSigFigs = int.MaxValue;
 
-                foreach (System.Reflection.ParameterInfo paraminfo in info.GetParameters())
+                foreach (ParameterInfo paraminfo in info.GetParameters())
                 {
                     if (!paraminfo.IsOptional)
                         minParamCt += 1;
@@ -4631,8 +4631,9 @@ namespace Cantus.Core
                     {
                         // maintain support for legacy functions where bigdecimals are not supported
                         // list of exceptions
-                        string[] exceptions = { "Log", "Log10", "Print", "PrintLine", "ReadLine", "Read", "ReadChar" };
-                        if (!(paraminfo.ParameterType == typeof(BigDecimal)) && args[maxParamCt].GetType() == typeof(BigDecimal) && !exceptions.Contains(info.Name))
+                        string[] exceptions = { "Log", "Log10", "Print", "PrintLine", "ReadLine", "Read", "ReadChar", "Max", "Min" };
+                        if (!(paraminfo.ParameterType == typeof(BigDecimal)) &&
+                            args[maxParamCt].GetType() == typeof(BigDecimal) && !exceptions.Contains(info.Name))
                         {
                             outputSigFigs = ((BigDecimal)args[maxParamCt]).SigFigs;
                             args[maxParamCt] = (double)((BigDecimal)args[maxParamCt]);

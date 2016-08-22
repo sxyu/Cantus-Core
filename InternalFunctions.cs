@@ -1345,8 +1345,10 @@ namespace Cantus.Core
             public object Log(object value, object @base = null)
             {
                 if (@base == null) @base = 10;
-                if (@base is BigDecimal)
-                    @base = (double)((BigDecimal)@base);
+
+                if (@base is BigDecimal) @base = (double)((BigDecimal)@base);
+                if (@base is int) @base = (double)((int)@base);
+
                 if (value is double)
                 {
                     return Math.Log((double)(value), (double)(@base));
@@ -1356,7 +1358,7 @@ namespace Cantus.Core
                     BigDecimal orig = (BigDecimal)value;
                     if (orig < 0)
                         throw new MathException("Logarithms for non-positive numbers are undefined.");
-                    if ((double)(@base) == 10)
+                    if ((double)(@base) == 10 && _eval.SignificantMode)
                     {
                         BigDecimal bn = new BigDecimal(Math.Round(Math.Log((double)((BigDecimal)value), (double)(@base)), orig.SigFigs));
                         bn.SigFigs = bn.HighestDigit() + orig.SigFigs + 1;
@@ -1426,10 +1428,10 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="value1"></param>
             /// <returns></returns>
-            public double Average(object value1)
+            public BigDecimal Average(object value1)
             {
                 int ct = 1;
-                double res = RecursiveComputeLst(new object[] { value1 }, new Func<double, double, double>((double a, double b) =>
+                BigDecimal res = RecursiveComputeLst(new object[] { value1 }, new Func<BigDecimal, BigDecimal, BigDecimal>((BigDecimal a, BigDecimal b) =>
                  {
                      ct += 1;
                      return a + b;
@@ -1442,7 +1444,7 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="value1"></param>
             /// <returns></returns>
-            public double Mean(object value1)
+            public BigDecimal Mean(object value1)
             {
                 return Average(value1);
             }
@@ -1561,23 +1563,37 @@ namespace Cantus.Core
                 }
             }
 
-            public double Min(object value1, double value2 = double.PositiveInfinity)
+            public BigDecimal Min(object value1, BigDecimal? value2 = null)
             {
+                if (value1 == null) value1 = BigDecimal.Undefined;
+                if (value2 == null) value2 = BigDecimal.Undefined;
                 return RecursiveComputeLst(new object[]{
                 value1,
-                value2
-            }, Math.Min);
+                (BigDecimal)value2
+            }, (BigDecimal a, BigDecimal b) => {
+                if (a.IsUndefined) return b;
+                if (b.IsUndefined) return a;
+                return a < b ? a : b;
+            });
             }
 
-            public double Max(object value1, double value2 = double.NegativeInfinity)
+            public BigDecimal Max(object value1, BigDecimal? value2 = null)
             {
-                return RecursiveComputeLst(new[]{
+                if (value1 == null) value1 = BigDecimal.Undefined;
+                if (value2 == null) value2 = BigDecimal.Undefined;
+                return RecursiveComputeLst(new object[]{
                 value1,
-                value2
-            }, Math.Max);
+                (BigDecimal)value2
+            }, (BigDecimal a , BigDecimal b) =>
+            {
+                if (a.IsUndefined) return b;
+                if (b.IsUndefined) return a;
+                return a > b ? a : b;
+            }
+            );
             }
 
-            private double RecursiveComputeLst(object[] list, Func<double, double, double> func)
+            private BigDecimal RecursiveComputeLst(object[] list, Func<BigDecimal, BigDecimal, BigDecimal> func)
             {
                 if (list.Length == 0)
                     return double.NaN;
@@ -1594,10 +1610,14 @@ namespace Cantus.Core
                 {
                     list[0] = ((Reference)list[0]).GetValue();
                 }
-                if (!(list[0] is double))
+                if (!(list[0] is double || list[0] is BigDecimal))
                     return double.NaN;
 
-                double result = (double)(list[0]);
+                BigDecimal result;
+                if (list[0] is double) 
+                    result =  (double)(list[0]);
+                else
+                    result  = (BigDecimal)(list[0]);
                 for (int i = 1; i <= list.Length - 1; i++)
                 {
                     object obj = list[i];
@@ -1613,7 +1633,12 @@ namespace Cantus.Core
                     {
                         obj = ((Reference)obj).GetValue();
                     }
-                    if (obj is BigDecimal || obj is double)
+                    if (obj is BigDecimal)
+                    {
+                        if (((BigDecimal)obj).IsUndefined) continue;
+                        result = func(result, (BigDecimal)(obj));
+                    }
+                    else if (obj is double)
                     {
                         if ((double)(obj) == double.NaN)
                             continue;
