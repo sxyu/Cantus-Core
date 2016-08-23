@@ -1830,7 +1830,7 @@ namespace Cantus.Core
 
                 public static new bool IsType(object obj)
                 {
-                    return obj is Matrix | obj is System.Collections.Generic.List<Reference>;
+                    return obj is Matrix || obj is System.Collections.Generic.IList<object> || obj is System.Collections.Generic.IList<Reference>;
                 }
 
                 public static new bool StrIsType(string str)

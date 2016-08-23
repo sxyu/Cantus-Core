@@ -1962,8 +1962,7 @@ namespace Cantus.Core
                     this.ReloadDefault();
                 }
             }
-            catch (Exception)
-            {
+            catch (Exception) { // do nothing 
             }
         }
         #endregion
@@ -4590,7 +4589,7 @@ namespace Cantus.Core
                     var arglst = args.ToList();
                     for (int i = 0; i < args.Count(); i++)
                     {
-                        tmpEval.SetVariable(argnames[i], arglst);
+                        tmpEval.SetVariable(argnames[i], arglst[i]);
                     }
 
                     // named/optional args

@@ -16,6 +16,7 @@ using System.Linq;
 
 using static Cantus.Core.CantusEvaluator.ObjectTypes;
 using static Cantus.Core.CantusEvaluator.IOEventArgs;
+using System.Reflection;
 
 namespace Cantus.Core
 {
@@ -7021,15 +7022,57 @@ namespace Cantus.Core
             /// </summary>
             public string GetFileName(string path)
             {
-                return System.IO.Path.GetFileName(path);
+                return Path.GetFileName(path);
             }
 
             /// <summary>
-            /// Given the full path, gets the directory name 
+            /// Given the full path, gets the file extension 
             /// </summary>
-            public string GetDirName(string path)
+            public string GetFileExt(string path)
             {
-                return System.IO.Path.GetDirectoryName(path);
+                return Path.GetExtension(path);
+            }
+
+            /// <summary>
+            /// Given the full path of a file and a new extension, 
+            /// returns a file name with the new extension
+            /// </summary>
+            public string ChangeFileExt(string path, string extension)
+            {
+                return Path.ChangeExtension(path, extension);
+            }
+
+            /// <summary>
+            /// Given the full path, gets the file name without the extension 
+            /// </summary>
+            public string GetFileNameNoExt(string path)
+            {
+                return Path.GetFileNameWithoutExtension(path);
+            }
+
+
+            /// <summary>
+            /// Given the partial path of a file, returns the absolute path
+            /// </summary>
+            public string GetFullPath(string path)
+            {
+                return Path.GetFullPath(path);
+            }
+
+            /// <summary>
+            /// Get a random file name
+            /// </summary>
+            public string GetRandomFileName()
+            {
+                return Path.GetRandomFileName();
+            }
+
+            /// <summary>
+            /// Given the full path, gets the directory name of the file
+            /// </summary>
+            public string GetDirPath(string path)
+            {
+                return Path.GetDirectoryName(path);
             }
 
             /// <summary>
@@ -7037,7 +7080,7 @@ namespace Cantus.Core
             /// </summary>
             public string JoinPath(string path1, string path2)
             {
-                return System.IO.Path.Combine(path1, path2);
+                return Path.Combine(path1, path2);
             }
 
             /// <summary>
@@ -7105,11 +7148,19 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the path of the cantus executable
+            /// Get the path of the Cantus executable
             /// </summary>
             public string CantusPath()
             {
                 return Environment.GetCommandLineArgs()[0];
+            }
+
+            /// <summary>
+            /// Get the directory where the Cantus executable resides in
+            /// </summary>
+            public string CantusDir()
+            {
+                return Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]);
             }
 
             /// <summary>
@@ -7128,7 +7179,7 @@ namespace Cantus.Core
 
             private Dictionary<int, Thread> asyncThreads = new Dictionary<int, Thread>();
             /// <summary>
-            /// Start an asynchroneous task.
+            /// Start an asynchronous task.
             /// </summary>
             /// <returns>The id of the thread started</returns>
             public int Async(Lambda func, List<Reference> args = null, Lambda callback = null, string runAfter = "")
@@ -7397,8 +7448,7 @@ namespace Cantus.Core
 
             public string Ver()
             {
-                FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(CantusPath());
-                return versionInfo.ProductVersion;
+                return Assembly.GetAssembly(typeof(InternalFunctions)).GetName().Version.ToString();
             }
 
             private string HKLM_GetString(string path, string key)
