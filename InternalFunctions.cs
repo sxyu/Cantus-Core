@@ -11,13 +11,11 @@ using System.Security.Cryptography;
 using System.IO;
 using System.Threading;
 using System.Text.RegularExpressions;
-using System.Numerics;
 using System.Windows.Forms;
 using System.Linq;
 
-using static Cantus.Core.CantusEvaluator;
 using static Cantus.Core.CantusEvaluator.ObjectTypes;
-using static Cantus.Core.CantusEvaluator.CantusIOEventArgs;
+using static Cantus.Core.CantusEvaluator.IOEventArgs;
 
 namespace Cantus.Core
 {
@@ -30,6 +28,13 @@ namespace Cantus.Core
         public sealed class InternalFunctions
         {
 
+            /// <summary>
+            /// A collection of publicly available internal functions
+            /// </summary>
+            public static readonly IEnumerable<System.Reflection.MethodInfo> Methods = typeof(InternalFunctions).GetMethods(
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.DeclaredOnly).Where((System.Reflection.MethodInfo inf) => !inf.IsSpecialName);
+
             // Define functions here (name is case insensitive)
             // All public functions are directly accessible when evaluating an expression` (though may be overridden by user functions)
             // All private and friend functions are hidden
@@ -38,7 +43,7 @@ namespace Cantus.Core
             /// <summary>
             /// Raised when Cantus needs to read input input from the console. Handle to use I/O in GUI applications
             /// </summary>
-            public delegate void ReadInputDelegate(object sender, CantusIOEventArgs e, out object @return);
+            public delegate void ReadInputDelegate(object sender, IOEventArgs e, out object @return);
             /// <summary>
             /// Raised when Cantus needs to read input input from the console. Handle to use I/O in GUI applications
             /// </summary>
@@ -47,7 +52,7 @@ namespace Cantus.Core
             /// <summary>
             /// Raised when Cantus needs to write output to the console. Handle to use I/O in GUI applications
             /// </summary>
-            public delegate void WriteOutputDelegate(object sender, CantusIOEventArgs e);
+            public delegate void WriteOutputDelegate(object sender, IOEventArgs e);
             /// <summary>
             /// Raised when Cantus needs to read input input from the console. Handle to use I/O in GUI applications
             /// </summary>
@@ -76,7 +81,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Kill all subthreads (except this one) spawned from the evaluator
+            /// Kill all sub-threads (except this one) spawned from the evaluator
             /// </summary>
             public void _StopAll()
             {
@@ -84,7 +89,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Reload all constants, clears all variables and userfunctions, and clears imports
+            /// Reload all constants, clears all variables and UserFunctions, and clears imports
             /// </summary>
             public void _AllClear()
             {
@@ -231,7 +236,7 @@ namespace Cantus.Core
                 }
                 catch
                 {
-                    return "Function ''" + name + "'' is undefined";
+                    return "Function \"" + name + "\" is undefined";
                 }
             }
 
@@ -246,7 +251,7 @@ namespace Cantus.Core
                 }
                 catch
                 {
-                    return "Function ''" + name + "''is undefined";
+                    return "Function \"" + name + "\"is undefined";
                 }
             }
 
@@ -885,7 +890,7 @@ namespace Cantus.Core
             /// </summary>
             public BigDecimal Factorial(double value)
             {
-                return RoundSF(Gamma(value + 1),3);
+                return RoundSF(Gamma(value + 1), 3);
             }
 
             /// Gamma function (Use Lanczos approximation)
@@ -1121,35 +1126,52 @@ namespace Cantus.Core
 
             // rounding
             /// <summary>
-            /// Round the number to the nearest integer
+            /// Round the number to the nearest integer (or to the specified number of digits)
             /// </summary>
-            public double Round(double value, double digits = 0)
+            public BigDecimal Round(BigDecimal value, BigDecimal? digits = null)
             {
-                return Math.Round(value, Int(digits));
+                try {
+                    int dgts;
+                    if (digits == null) dgts = 0;
+                    else dgts = Int((double)(BigDecimal)digits);
+
+                    return (value * new BigDecimal(1, exponent: dgts)).Round() / new BigDecimal(1, exponent: dgts);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                    return 0.0;
+                }
             }
 
             /// <summary>
             /// Round the number to the integer above
             /// </summary>
-            public double Ceil(double value)
+            public BigDecimal Ceil(BigDecimal value)
             {
-                return Math.Ceiling(value);
+                int modify = 0;
+                if (value > 0) modify = 1;
+                BigDecimal trunc = Truncate(value);
+                return trunc + modify;
             }
 
             /// <summary>
             /// Round the number to the integer below
             /// </summary>
-            public double Floor(double value)
+            public BigDecimal Floor(BigDecimal value)
             {
-                return Math.Floor(value);
+                int modify = 0;
+                if (value < 0) modify = 1;
+                BigDecimal trunc = Truncate(value);
+                return trunc + modify;
             }
 
             /// <summary>
-            /// Round the number to the nearest integer to 0
+            /// Round the number to the adjacent integer nearest to 0
             /// </summary>
-            public double Truncate(double value)
+            public BigDecimal Truncate(BigDecimal value)
             {
-                return Math.Truncate(value);
+                return value.TruncateInt();
             }
 
             /// <summary>
@@ -1214,22 +1236,22 @@ namespace Cantus.Core
                 bool started = false;
                 int zeroCt = 0;
 
-                for (int i =0; i<textRepr.Count(); i += 1)
+                for (int i = 0; i < textRepr.Count(); i += 1)
                 {
-                   char c = textRepr[i];
+                    char c = textRepr[i];
                     if (char.IsDigit(c))
                     {
                         if (started)
                         {
                             if (c == '0' && !metDP)
                             {
-                                trailingZeroCt++; 
+                                trailingZeroCt++;
                             }
                             else
                             {
                                 sigCt += trailingZeroCt;
                                 trailingZeroCt = 0;
-                                sigCt ++;
+                                sigCt++;
                             }
                         }
                         else if (c != '0')
@@ -1400,16 +1422,7 @@ namespace Cantus.Core
             /// </summary>
             public BigDecimal Modulo(BigDecimal value1, BigDecimal value2)
             {
-                if (value2 < 0)
-                    return -Modulo(-value1, -value2);
-                if (value1 < 0)
-                {
-                    return (value2 + value1 % value2) % value2;
-                }
-                else
-                {
-                    return value1 % value2;
-                }
+                return (value1 % value2 + value2) % value2;
             }
 
             /// <summary>
@@ -1431,7 +1444,8 @@ namespace Cantus.Core
             public BigDecimal Average(object value1)
             {
                 int ct = 1;
-                BigDecimal res = RecursiveComputeLst(new object[] { value1 }, new Func<BigDecimal, BigDecimal, BigDecimal>((BigDecimal a, BigDecimal b) =>
+                BigDecimal res = RecursiveComputeLst(new Reference[] { new Reference(value1) },
+                    new Func<BigDecimal, BigDecimal, BigDecimal>((BigDecimal a, BigDecimal b) =>
                  {
                      ct += 1;
                      return a + b;
@@ -1447,6 +1461,22 @@ namespace Cantus.Core
             public BigDecimal Mean(object value1)
             {
                 return Average(value1);
+            }
+
+            /// <summary>
+            /// Returns the sum of all items in a set/matrix (real only)
+            /// </summary>
+            /// <param name="value1"></param>
+            /// <returns></returns>
+            public BigDecimal Sum(object value1)
+            {
+                BigDecimal res = RecursiveComputeLst(new Reference[] { new Reference(value1) },
+                    new Func<BigDecimal, BigDecimal, BigDecimal>((BigDecimal a, BigDecimal b) =>
+                 {
+                     return a + b;
+                 }));
+
+                return res;
             }
 
             /// <summary>
@@ -1567,9 +1597,9 @@ namespace Cantus.Core
             {
                 if (value1 == null) value1 = BigDecimal.Undefined;
                 if (value2 == null) value2 = BigDecimal.Undefined;
-                return RecursiveComputeLst(new object[]{
-                value1,
-                (BigDecimal)value2
+                return RecursiveComputeLst(new Reference[]{
+                new Reference(value1),
+                new Reference((BigDecimal)value2)
             }, (BigDecimal a, BigDecimal b) => {
                 if (a.IsUndefined) return b;
                 if (b.IsUndefined) return a;
@@ -1579,76 +1609,80 @@ namespace Cantus.Core
 
             public BigDecimal Max(object value1, BigDecimal? value2 = null)
             {
-                if (value1 == null) value1 = BigDecimal.Undefined;
-                if (value2 == null) value2 = BigDecimal.Undefined;
-                return RecursiveComputeLst(new object[]{
-                value1,
-                (BigDecimal)value2
-            }, (BigDecimal a , BigDecimal b) =>
+                    if (value1 == null) value1 = BigDecimal.Undefined;
+                    if (value2 == null) value2 = BigDecimal.Undefined;
+                    return RecursiveComputeLst(new Reference[]{
+                   new Reference( value1),
+                   new Reference((BigDecimal)value2)
+                }, (BigDecimal a, BigDecimal b) =>
+                {
+                    if (a.IsUndefined) return b;
+                    if (b.IsUndefined) return a;
+                    return a > b ? a : b;
+                }
+                );
+            }
+
+            private BigDecimal RecursiveComputeLst(Reference[] list, Func<BigDecimal, BigDecimal, BigDecimal> func)
             {
-                if (a.IsUndefined) return b;
-                if (b.IsUndefined) return a;
-                return a > b ? a : b;
+                try {
+                    if (list.Length == 0)
+                        return double.NaN;
+
+                    object first = list[0].Resolve();
+                    if (first is IEnumerable<Reference> || first is IList<Reference> || first is List<Reference>)
+                    {
+                        first = RecursiveComputeLst(new List<Reference>((IEnumerable<Reference>)first).ToArray(), func);
+                    }
+                    else if (first is Reference[])
+                    {
+                        first = RecursiveComputeLst(new List<Reference>((Reference[])first).ToArray(), func);
+                    }
+                    while (first is Reference) first = ((Reference)first).GetValue();
+
+                    if (!(first is double || first is BigDecimal))
+                        return double.NaN;
+
+                    BigDecimal result;
+                    if (first is double)
+                        result = (double)(first);
+                    else
+                        result = (BigDecimal)(first);
+                    for (int i = 1; i <= list.Length - 1; i++)
+                    {
+                        object obj = list[i].Resolve();
+
+                        if (obj is IEnumerable<Reference> || obj is IList<Reference>)
+                        {
+                            obj = RecursiveComputeLst(((IEnumerable<Reference>)obj).ToArray(), func);
+                        }
+                        else if (obj is Reference[])
+                        {
+                            obj = RecursiveComputeLst((Reference[])obj, func);
+                        }
+
+                        while (obj is Reference) obj = ((Reference)obj).GetValue();
+
+                        if (obj is BigDecimal)
+                        {
+                            if (((BigDecimal)obj).IsUndefined) continue;
+                            result = func(result, (BigDecimal)(obj));
+                        }
+                        else if (obj is double)
+                        {
+                            if (double.IsNaN((double)obj))
+                                continue;
+                            result = func(result, (double)(obj));
+                        }
+                    }
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                    return 1;
+                }
             }
-            );
-            }
-
-            private BigDecimal RecursiveComputeLst(object[] list, Func<BigDecimal, BigDecimal, BigDecimal> func)
-            {
-                if (list.Length == 0)
-                    return double.NaN;
-
-                if (list[0] is IEnumerable<Reference>)
-                {
-                    list[0] = RecursiveComputeLst(new List<object>((IEnumerable<Reference>)list[0]).ToArray(), func);
-                }
-                else if (list[0] is Reference[])
-                {
-                    list[0] = RecursiveComputeLst(new List<object>((Reference[])list[0]).ToArray(), func);
-                }
-                while (list[0] is Reference)
-                {
-                    list[0] = ((Reference)list[0]).GetValue();
-                }
-                if (!(list[0] is double || list[0] is BigDecimal))
-                    return double.NaN;
-
-                BigDecimal result;
-                if (list[0] is double) 
-                    result =  (double)(list[0]);
-                else
-                    result  = (BigDecimal)(list[0]);
-                for (int i = 1; i <= list.Length - 1; i++)
-                {
-                    object obj = list[i];
-                    if (list[0] is IEnumerable<Reference>)
-                    {
-                        obj = RecursiveComputeLst(((IEnumerable<Reference>)obj).ToArray(), func);
-                    }
-                    else if (list[0] is Reference[])
-                    {
-                        obj = RecursiveComputeLst((Reference[])obj, func);
-                    }
-                    while (obj is Reference)
-                    {
-                        obj = ((Reference)obj).GetValue();
-                    }
-                    if (obj is BigDecimal)
-                    {
-                        if (((BigDecimal)obj).IsUndefined) continue;
-                        result = func(result, (BigDecimal)(obj));
-                    }
-                    else if (obj is double)
-                    {
-                        if ((double)(obj) == double.NaN)
-                            continue;
-                        result = func(result, (double)(obj));
-                    }
-                }
-                return result;
-            }
-
-
 
             // calculus
             public double Dydx(Lambda func, double x = double.NaN)
@@ -1680,7 +1714,7 @@ namespace Cantus.Core
                             {
                                 newFn = newFn + "()";
                             }
-                            func = new Lambda("`derivative(" + '"' + newFn + '"' + ")`");
+                            func = new Lambda("`derivative(" + '\'' + newFn + '\'' + ")`");
                         }
                     }
                     return Derivative(func, x);
@@ -1840,15 +1874,6 @@ namespace Cantus.Core
                 {
                     return double.NaN;
                 }
-            }
-
-            /// <summary>
-            /// Summation: takes the sum of expression over the range between a and b, inclusive
-            /// Alias for sigma()
-            /// </summary>
-            public BigDecimal Sum(Lambda func, double a, double b, double step = 1)
-            {
-                return Sigma(func, a, b, step);
             }
 
             /// <summary>
@@ -3499,7 +3524,7 @@ namespace Cantus.Core
                 }
                 else if (value is string)
                 {
-                    return '"' + Convert.ToString(value) + '"';
+                    return '\'' + Convert.ToString(value) + '\'';
                     // put quotes around textings
 
                     // numbers: process (detect fractions, etc.)
@@ -5516,7 +5541,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Multiply two matrices
+            /// Multiply two matrices. If we're unable to do so, we try to take the inner product.
             /// </summary>
             /// <returns></returns>
             public object Multiply(List<Reference> A, List<Reference> B)
@@ -5527,14 +5552,20 @@ namespace Cantus.Core
                 {
                     return ma.Multiply(mb).GetValue();
                 }
-                catch (MathException)
+                catch (MathException ex)
                 {
-                    return Dot(A, B);
+                    try {
+                        return Inner(A, B);
+                    }
+                    catch (MathException)
+                    {
+                        throw ex;
+                    }
                 }
             }
 
             /// <summary>
-            /// Get the dot product of two column vectors
+            /// Compute the dot product of two column vectors
             /// </summary>
             /// <returns></returns>
             public object Dot(List<Reference> a, List<Reference> b)
@@ -5543,7 +5574,16 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the cross product of two column vectors
+            /// Compute the inner product of two column vectors
+            /// </summary>
+            /// <returns></returns>
+            public List<Reference> Inner(List<Reference> a, List<Reference> b)
+            {
+                return (List<Reference>)new Matrix(a).Inner(new Matrix(b)).GetValue();
+            }
+
+            /// <summary>
+            /// Compute the cross product of two column vectors
             /// </summary>
             /// <returns></returns>
             public List<Reference> Cross(List<Reference> a, List<Reference> b)
@@ -6501,7 +6541,7 @@ namespace Cantus.Core
                 {
                     if (WriteOutput != null)
                     {
-                        WriteOutput(_eval, new CantusIOEventArgs(eMessage.writeText, text.ToString()));
+                        WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString()));
                     }
                 }
                 else
@@ -6520,7 +6560,7 @@ namespace Cantus.Core
                 {
                     if (WriteOutput != null)
                     {
-                        WriteOutput(_eval, new CantusIOEventArgs(eMessage.writeText, text.ToString() + Environment.NewLine));
+                        WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString() + Environment.NewLine));
                     }
                 }
                 else
@@ -6541,7 +6581,7 @@ namespace Cantus.Core
                     object userInput = "";
                     if (ReadInput != null)
                     {
-                        ReadInput(_eval, new CantusIOEventArgs(eMessage.readLine, message), out userInput);
+                        ReadInput(_eval, new IOEventArgs(IOMessage.readLine, message), out userInput);
                     }
                     if ((userInput != null))
                     {
@@ -6561,7 +6601,7 @@ namespace Cantus.Core
                 if (ReadInput != null)
                 {
                     object userInput = "";
-                    ReadInput(_eval, new CantusIOEventArgs(eMessage.readWord, message), out userInput);
+                    ReadInput(_eval, new IOEventArgs(IOMessage.readWord, message), out userInput);
                     userInput = userInput.ToString().TrimStart();
                     if ((userInput != null))
                     {
@@ -6600,7 +6640,7 @@ namespace Cantus.Core
                     object userInput = "";
                     if (ReadInput != null)
                     {
-                        ReadInput(_eval, new CantusIOEventArgs(eMessage.readChar, message), out userInput);
+                        ReadInput(_eval, new IOEventArgs(IOMessage.readChar, message), out userInput);
                     }
                     if ((userInput != null) && userInput.ToString().Length > 0)
                     {
@@ -6623,7 +6663,7 @@ namespace Cantus.Core
                     object userInput = false;
                     if (ReadInput != null)
                     {
-                        ReadInput(_eval, new CantusIOEventArgs(eMessage.confirm, message.ToString(), new Dictionary<string, object> {
+                        ReadInput(_eval, new IOEventArgs(IOMessage.confirm, message.ToString(), new Dictionary<string, object> {
                         {
                             "yes",
                             yesMessage
@@ -6649,7 +6689,7 @@ namespace Cantus.Core
                 noMessage = noMessage.ToLowerInvariant();
                 while (true)
                 {
-                    PrintLine(string.Format("Please enter ''{0}'' or ''{1}'':", yesMessage, noMessage));
+                    PrintLine(string.Format("Please enter \"{0}\" or \"{1}\":", yesMessage, noMessage));
                     result = Console.ReadLine().ToLowerInvariant();
                     if (result == yesMessage || result == "Y")
                     {
@@ -7211,8 +7251,8 @@ namespace Cantus.Core
             public string Run(string path, string runAfter = "", string var = "result")
             {
                 CantusEvaluator tmp = _eval.DeepCopy();
-                tmp.EvalComplete += (object sender, object result) => { RunCallBack(tmp, result, var, runAfter); };
-                tmp.EvalRawAsync(File.ReadAllText(path));
+                tmp.EvalComplete += (object sender, AnswerEventArgs e) => { RunCallBack(tmp, e.Result, var, runAfter); };
+                tmp.EvalAsync(File.ReadAllText(path));
                 return "";
             }
 
@@ -7224,7 +7264,7 @@ namespace Cantus.Core
                     if (string.IsNullOrEmpty(runAfter))
                     {
                         // if no callback is defined then return the variable
-                        _eval.EvalRawAsync(var);
+                        _eval.EvalAsync(var);
                     }
                     else
                     {

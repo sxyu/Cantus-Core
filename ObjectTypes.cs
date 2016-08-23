@@ -273,7 +273,7 @@ namespace Cantus.Core
 
                 public Number(string str, bool numberPreserveSigFigs = false)
                 {
-                    str = str.ToLowerInvariant();
+                    str = str.ToLowerInvariant().Replace(" ", "").Replace("\n", "").Replace("\r", "");
 
                     if (str == "undefined" || str == "null")
                     {
@@ -540,8 +540,8 @@ namespace Cantus.Core
                             {
                                 switch (char.ToLowerInvariant(_value[i]))
                                 {
-                                    case '"':
                                     case '\'':
+                                    case '"':
                                         SetOrAppend(ref newstr, _value[i], idx);
                                         break;
                                     default:
@@ -632,8 +632,8 @@ namespace Cantus.Core
                                         SetOrAppend(ref newstr, char.ConvertFromUtf32(id)[0], idx);
                                         break;
                                     case '\\':
-                                    case '"':
                                     case '\'':
+                                    case '\"':
                                     case '?':
                                         SetOrAppend(ref newstr, _value[i], idx);
                                         break;
@@ -662,7 +662,7 @@ namespace Cantus.Core
 
                 public override string ToString()
                 {
-                    return '"' + _value + '"';
+                    return '\'' + _value + '\'';
                 }
 
                 public override bool Equals(EvalObjectBase other)
@@ -1251,11 +1251,16 @@ namespace Cantus.Core
                             List<Reference> currow = new List<Reference>();
                             for (int col = 0; col <= mb.Width - 1; col++)
                             {
-                                object curitm = 0.0;
+                                object curitm = new BigDecimal(0.0);
                                 for (int i = 0; i <= Width - 1; i++)
                                 {
                                     object i1 = GetCoord(row, i);
                                     object i2 = mb.GetCoord(i, col);
+
+                                    if (i1 is double) i1 = (BigDecimal)(double)i1;
+                                    if (i2 is double) i2 = (BigDecimal)(double)i2;
+                                    if (curitm is double) i2 = (BigDecimal)(double)i2;
+
                                     if (curitm is System.Numerics.Complex || i1 is System.Numerics.Complex || i2 is System.Numerics.Complex)
                                     {
                                         if (!(curitm is System.Numerics.Complex))
@@ -1265,10 +1270,6 @@ namespace Cantus.Core
                                         if (!(i2 is System.Numerics.Complex))
                                             i2 = new System.Numerics.Complex((double)(i2), 0);
                                         curitm = (System.Numerics.Complex)curitm + (System.Numerics.Complex)i1 * (System.Numerics.Complex)i2;
-                                    }
-                                    else if (i1 is double && i2 is double)
-                                    {
-                                        curitm = (double)(curitm) + (double)(i1) * (double)(i2);
                                     }
                                     else if (i1 is BigDecimal && i2 is BigDecimal)
                                     {
@@ -1333,6 +1334,54 @@ namespace Cantus.Core
                     return this;
                 }
 
+                /// <summary>
+                /// Compute the inner product of two vectors
+                /// </summary>
+                public Matrix Inner(Matrix other)
+                {
+                    try
+                    {
+                        if (Width != 1 || other.Width != 1)
+                        {
+                            throw new MathException("Can only calculate dot product of two column vectors");
+                        }
+                        List<Reference> valueR = (List<Reference>)other.GetValue();
+                        Matrix result = (Matrix)DeepCopy();
+
+                        for (int i = 0; i <= Math.Min(Height, other.Height) - 1; i++)
+                        {
+                            object a = _value[i].Resolve();
+                            object b = valueR[i].Resolve();
+
+                            if (a is System.Numerics.Complex || b is System.Numerics.Complex)
+                            {
+                                if (a is double || a is BigDecimal)
+                                    a = new System.Numerics.Complex((double)(a), 0);
+                                if (b is double || b is BigDecimal)
+                                    b = new System.Numerics.Complex((double)(b), 0);
+                                result._value[i] = new Reference((System.Numerics.Complex)a * (System.Numerics.Complex)b);
+                            }
+                            else if ((a is BigDecimal || a is double) && (b is BigDecimal || b is double))
+                            {
+                                if (a is double) a = (BigDecimal)(double)a;
+                                if (b is double) b = (BigDecimal)(double)b;
+
+                                result._value[i] = new Reference((BigDecimal)a * (BigDecimal)b);
+                            }
+                        }
+                        return result;
+                    }
+                    catch 
+                    {
+                        return null;
+                    }
+                }
+
+                /// <summary>
+                /// Compute the dot product of two vectors
+                /// </summary>
+                /// <param name="other"></param>
+                /// <returns></returns>
                 public object Dot(Matrix other)
                 {
                     if (Width != 1 || other.Width != 1)
@@ -1340,12 +1389,13 @@ namespace Cantus.Core
                         throw new MathException("Can only calculate dot product of two column vectors");
                     }
                     List<Reference> valueR = (List<Reference>)other.GetValue();
-                    object ans = 0;
+                    object ans = 0.0;
 
                     for (int i = 0; i <= Math.Min(Height, other.Height) - 1; i++)
                     {
                         object a = _value[i].Resolve();
                         object b = valueR[i].Resolve();
+
                         if (a is System.Numerics.Complex || b is System.Numerics.Complex || ans is System.Numerics.Complex)
                         {
                             if (a is double || a is BigDecimal)
@@ -1356,12 +1406,12 @@ namespace Cantus.Core
                                 ans = new System.Numerics.Complex((double)(ans), 0);
                             ans = (System.Numerics.Complex)ans + (System.Numerics.Complex)a * (System.Numerics.Complex)b;
                         }
-                        else if (a is double && b is double)
+                        else if ((a is BigDecimal || a is double) && (b is BigDecimal || b is double))
                         {
-                            ans = (double)(ans) + (double)(a) * (double)(b);
-                        }
-                        else if (a is BigDecimal && b is BigDecimal)
-                        {
+                            if (ans is double) ans = (BigDecimal)(double)ans;
+                            if (a is double) a = (BigDecimal)(double)a;
+                            if (b is double) b = (BigDecimal)(double)b;
+
                             ans = (BigDecimal)ans + (BigDecimal)a * (BigDecimal)b;
                         }
                     }
@@ -2960,8 +3010,9 @@ namespace Cantus.Core
                         tmpEval.SetVariable(_args.ElementAt(i), args.ElementAt(i));
                     }
 
-                    tmpEval.EvalComplete += (object sender, object result) =>
+                    tmpEval.EvalComplete += (object sender, AnswerEventArgs e) =>
                     {
+                        object result = e.Result;
                         if ((callBack != null))
                         {
                             if (result is Reference && !(((Reference)result).GetRefObject() is Reference))
@@ -2975,7 +3026,7 @@ namespace Cantus.Core
                             }
                         }
                     };
-                    return tmpEval.EvalRawAsync(_value, noSaveAns: true);
+                    return tmpEval.EvalAsync(_value, noSaveAns: true);
                 }
 
                 /// <summary>
@@ -3215,39 +3266,39 @@ namespace Cantus.Core
                         ci.UserClass.RegisterInstance(this);
 
                         _fields = new Dictionary<string, Reference>();
-                            this.UserClass.Evaluator.SubScope("__instance_" + this.UserClass.Name + "_" + RandomInstanceId());
+                        this.UserClass.Evaluator.SubScope("__instance_" + this.UserClass.Name + "_" + RandomInstanceId());
 
-                            bool imported = this.UserClass.Evaluator.Imported.Contains(UserClass.InnerScope);
-                            if (!imported)
-                                this.UserClass.Evaluator.Import(UserClass.InnerScope);
+                        bool imported = this.UserClass.Evaluator.Imported.Contains(UserClass.InnerScope);
+                        if (!imported)
+                            this.UserClass.Evaluator.Import(UserClass.InnerScope);
 
-                            try
+                        try
+                        {
+                            this._innerScope = this.UserClass.Evaluator.Scope;
+
+                            foreach (KeyValuePair<string, Reference> f in ci.Fields)
                             {
-                                this._innerScope = this.UserClass.Evaluator.Scope;
-
-                                foreach (KeyValuePair<string, Reference> f in ci.Fields)
+                                Reference newVal = null;
+                                if (UserClass.AllFields[f.Key].Modifiers.Contains("static"))
                                 {
-                                    Reference newVal = null;
-                                    if (UserClass.AllFields[f.Key].Modifiers.Contains("static"))
-                                    {
-                                        newVal = (Reference)f.Value;
-                                    }
-                                    else
-                                    {
-                                        newVal = (Reference)f.Value.GetDeepCopy();
-                                    }
-                                    this.UserClass.Evaluator.SetVariable(this.InnerScope + SCOPE_SEP + f.Key, newVal, modifiers: new[] { "internal" });
-                                    this._fields[f.Key] = this.UserClass.Evaluator.GetVariableRef(this.InnerScope + SCOPE_SEP + f.Key);
+                                    newVal = (Reference)f.Value;
                                 }
+                                else
+                                {
+                                    newVal = (Reference)f.Value.GetDeepCopy();
+                                }
+                                this.UserClass.Evaluator.SetVariable(this.InnerScope + SCOPE_SEP + f.Key, newVal, modifiers: new[] { "internal" });
+                                this._fields[f.Key] = this.UserClass.Evaluator.GetVariableRef(this.InnerScope + SCOPE_SEP + f.Key);
                             }
-                            catch
-                            {
-                            }
+                        }
+                        catch
+                        {
+                        }
 
-                            if (!imported)
-                                this.UserClass.Evaluator.Unimport(UserClass.InnerScope);
+                        if (!imported)
+                            this.UserClass.Evaluator.Unimport(UserClass.InnerScope);
 
-                            this.UserClass.Evaluator.ParentScope();
+                        this.UserClass.Evaluator.ParentScope();
                         InitInstanceId();
                     }
 
@@ -3337,7 +3388,7 @@ namespace Cantus.Core
                     else
                     {
                         // default instance info
-                        return "<instance of ''" + this.UserClass.Name + "'' with id " + this.InnerScope + ">";
+                        return "<instance of \"" + this.UserClass.Name + "\" with id " + this.InnerScope + ">";
                     }
                 }
 
@@ -3352,7 +3403,7 @@ namespace Cantus.Core
                 private void InitInstanceId()
                 {
                     // add 'instaneid' function
-                    UserFunction iidFn = new UserFunction("type", string.Format("return " + '"' + this.InnerScope + '"', CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), this.InnerScope);
+                    UserFunction iidFn = new UserFunction("type", string.Format("return " + '\'' + this.InnerScope + '\'', CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), this.InnerScope);
                     iidFn.Modifiers.Add("internal");
                     this.Fields[iidFn.Name] = new Reference(new Lambda(iidFn, true));
                 }
@@ -3419,7 +3470,7 @@ namespace Cantus.Core
                     // run constructor
                     if (constructor.Args.Count() != args.Count())
                     {
-                        throw new EvaluatorException(string.Format("{0} parameters expected For ''{1}'' constructor", constructor.Args.Count(), uc.Name));
+                        throw new EvaluatorException(string.Format("{0} parameters expected For \"{1}\" constructor", constructor.Args.Count(), uc.Name));
                     }
 
                     tmpEval.SubScope();

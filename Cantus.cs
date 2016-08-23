@@ -438,7 +438,7 @@ namespace Cantus.Core
             /// Gets or sets a reference to the value of the variable
             /// </summary>
             /// <returns></returns>
-            public ObjectTypes.Reference Reference { get; set; }
+            public Reference Reference { get; set; }
 
             /// <summary>
             /// Gets or sets a hashset of modifiers for the variable
@@ -447,7 +447,7 @@ namespace Cantus.Core
             public HashSet<string> Modifiers { get; set; }
 
             /// <summary>
-            /// Gets or sets the value of the variable without changing refernce
+            /// Gets or sets the value of the variable without changing reference
             /// </summary>
             /// <returns></returns>
             public object Value
@@ -493,21 +493,21 @@ namespace Cantus.Core
             /// </summary>
             public Variable(string name, object value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
             {
-                this.Reference = new ObjectTypes.Reference(value);
+                this.Reference = new Reference(value);
             }
 
             /// <summary>
             /// Create a new variable from an evaluator object
             /// </summary>
-            public Variable(string name, ObjectTypes.EvalObjectBase value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
+            public Variable(string name, EvalObjectBase value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
             {
-                this.Reference = new ObjectTypes.Reference(value);
+                this.Reference = new Reference(value);
             }
 
             /// <summary>
             /// Create a new variable from an existing reference
             /// </summary>
-            public Variable(string name, ObjectTypes.Reference @ref, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
+            public Variable(string name, Reference @ref, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
             {
                 this.Reference = @ref;
             }
@@ -886,9 +886,9 @@ namespace Cantus.Core
         /// </summary>
         private struct Token
         {
-            public ObjectTypes.EvalObjectBase Object;
+            public EvalObjectBase Object;
             public OperatorRegistar.Operator Operator;
-            public Token(ObjectTypes.EvalObjectBase evalObject, OperatorRegistar.Operator operatorBefore)
+            public Token(EvalObjectBase evalObject, OperatorRegistar.Operator operatorBefore)
             {
                 this.Object = evalObject;
                 this.Operator = operatorBefore;
@@ -904,7 +904,7 @@ namespace Cantus.Core
             /// <summary>
             /// A list of objects used with operators to store tokens
             /// </summary>
-            private List<ObjectTypes.EvalObjectBase> _objects = new List<ObjectTypes.EvalObjectBase>();
+            private List<EvalObjectBase> _objects = new List<EvalObjectBase>();
             /// <summary>
             /// A list of operators used with objects to store tokens
             /// </summary>
@@ -1197,7 +1197,7 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="idx">The index</param>
             /// <returns></returns>
-            public ObjectTypes.EvalObjectBase ObjectAt(int idx)
+            public EvalObjectBase ObjectAt(int idx)
             {
                 return _objects[Resolve(idx)];
             }
@@ -1207,7 +1207,7 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="idx">The index at which to set the object</param>
             /// <param name="obj">The object</param>
-            public void SetObject(int idx, ObjectTypes.EvalObjectBase obj)
+            public void SetObject(int idx, EvalObjectBase obj)
             {
                 _objects[Resolve(idx)] = obj;
             }
@@ -1216,7 +1216,7 @@ namespace Cantus.Core
             /// Set the object at the specified index
             /// </summary>
             /// <param name="obj">The object</param>
-            public void AddObject(ObjectTypes.EvalObjectBase obj)
+            public void AddObject(EvalObjectBase obj)
             {
                 _objects.Add(obj);
                 while (_pointers.Count < _objects.Count)
@@ -1231,13 +1231,13 @@ namespace Cantus.Core
         /// <summary>
         /// Event data for Cantus threading events
         /// </summary>
-        public class CantusThreadEventArgs : EventArgs
+        public class ThreadEventArgs : EventArgs
         {
             public int ThreadId { get; }
             /// <summary>
             /// Create a new CantusThreadEventArgs class, containing the id of the thread that was started or terminated
             /// </summary>
-            public CantusThreadEventArgs(int threadId)
+            public ThreadEventArgs(int threadId)
             {
                 this.ThreadId = threadId;
             }
@@ -1246,9 +1246,9 @@ namespace Cantus.Core
         /// <summary>
         /// Event data for Cantus IO events
         /// </summary>
-        public sealed class CantusIOEventArgs : EventArgs
+        public sealed class IOEventArgs : EventArgs
         {
-            public enum eMessage
+            public enum IOMessage
             {
                 writeText = 0,
                 readChar,
@@ -1260,7 +1260,7 @@ namespace Cantus.Core
             /// <summary>
             /// The type of I/O operation
             /// </summary>
-            public eMessage Message { get; }
+            public IOMessage Message { get; }
 
             /// <summary>
             /// The text to read or write
@@ -1275,7 +1275,7 @@ namespace Cantus.Core
             /// <summary>
             /// Create a new I/O message
             /// </summary>
-            public CantusIOEventArgs(eMessage message, string content, IDictionary<string, object> args = null)
+            public IOEventArgs(IOMessage message, string content, IDictionary<string, object> args = null)
             {
                 this.Message = message;
                 this.Content = content;
@@ -1289,6 +1289,101 @@ namespace Cantus.Core
                 }
             }
         }
+
+        /// <summary>
+        /// Data for EvalComplete event
+        /// </summary>
+        public sealed class AnswerEventArgs : EventArgs{
+
+            private string _expression = null;
+            /// <summary>
+            /// The expression we evaluated
+            /// </summary>
+            public string Expression { get { return _expression; } }
+
+            private bool _noSaveAns = false;
+            /// <summary>
+            /// False if this result was saved to answers
+            /// </summary>
+            public bool NoSaveAns { get { return _noSaveAns;  } }
+
+            private object _result = null;
+            /// <summary>
+            /// The result of the evaluation
+            /// </summary>
+            public object Result { get { return _result; } }
+
+            /// <summary>
+            /// The result as a double (or NaN if not convertible)
+            /// </summary>
+            public double ResultDouble {
+                get
+                {
+                    if (Result is BigDecimal)
+                        return (double)(BigDecimal)Result;
+                    else if (Result is double)
+                        return (double)Result;
+                    else if (Result is int)
+                        return (double)(int)Result;
+                    else
+                        return double.NaN;
+                }
+            }
+
+            /// <summary>
+            /// The result converted to a string
+            /// </summary>
+            public string ResultString {
+                get
+                {
+                    if (Result is Exception) return ((Exception)Result).Message;
+                    return _evaluator.Internals.O(Result);
+                }
+            }
+
+            /// <summary>
+            /// The result converted to a formatted string (with human-readable matrices)
+            /// </summary>
+            public string FormattedString
+            {
+                get
+                {
+                    string res = ResultString;
+                    if (res.StartsWith("[") && res.EndsWith("]")) // format a matrix
+                    {
+                        if (! res.Contains("], [")) // column vector
+                            res = res.Replace(", ", "]\n[");
+                        else // matrix
+                            res = res.Replace("], [", "]\n[");
+                        res = res.Replace("[[", "[").Replace("]]", "]");
+                    }
+                    return res;
+                }
+            }
+
+            private CantusEvaluator _evaluator;
+            /// <summary>
+            /// The evaluator used to evaluate this expression
+            /// </summary>
+            public CantusEvaluator Evaluator { get { return _evaluator; } }
+            
+            /// <summary>
+            /// Create a new object representing the result of an evaluation.
+            /// </summary>
+            public AnswerEventArgs(CantusEvaluator eval, object result, string expr, bool noSaveAns=true)
+            {
+                _evaluator = eval;
+                _result = result;
+                _expression = expr;
+                _noSaveAns = noSaveAns;
+            } 
+
+            public override string ToString()
+            {
+                return ResultString;
+            }
+        }
+
         #endregion
         #region "Thread management"
         public sealed class ThreadManager
@@ -1482,15 +1577,43 @@ namespace Cantus.Core
         /// </summary>
         public bool ExplicitMode { get; set; }
 
+        private bool _significantMode;
         /// <summary>
         /// If true, try to preserve sig figs whenever possible.
         /// </summary>
-        public bool SignificantMode { get; set; }
+        public bool SignificantMode {
+            get { return _significantMode; }
+            set {
+                _significantMode = value;
+                if (_significantMode)
+                {
+                    foreach (string n in Variables.Keys.ToArray())
+                    {
+                        Reference r = Variables[n].Reference;
+                        if (r.ResolveObj() is Number)
+                            Variables[n].Value = new Number((((Number)r.ResolveObj()).BigDecValue()).FullDecimalRepr(), true).BigDecValue();
+                    }
+                }
+                else
+                {
+                    foreach (string n in Variables.Keys.ToArray())
+                    {
+                        Reference r = Variables[n].Reference;
+                        if (r.ResolveObj() is Number)
+                        {
+                            BigDecimal b = ((Number)r.ResolveObj()).BigDecValue();
+                            b.SigFigs = int.MaxValue;
+                            Variables[n].Value = new Number(b);
+                        }
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// A list of previous answers (last item is the last answer)
         /// </summary>
-        public List<ObjectTypes.EvalObjectBase> PrevAns { get; } = new List<EvalObjectBase>();
+        public List<EvalObjectBase> PrevAns { get; } = new List<EvalObjectBase>();
 
         // composition
         /// <summary>
@@ -1598,12 +1721,12 @@ namespace Cantus.Core
 
         #region "Events"
         /// <summary>
-        /// Delegate for event raised when any async evauation is complete.
+        /// Delegate for event raised when any async evaluation is complete.
         /// </summary>
-        public delegate void EvalCompleteDelegate(object sender, object result);
+        public delegate void EvalCompleteDelegate(object sender, AnswerEventArgs e);
 
         /// <summary>
-        /// Event raised when any async evauation is complete.
+        /// Event raised when any async evaluation is complete.
         /// </summary>
         /// <param name="sender">The evaluator that sent this result.</param>
         /// <param name="result">The value of the result</param>
@@ -1612,7 +1735,7 @@ namespace Cantus.Core
         /// <summary>
         /// Delegate for thread events
         /// </summary>
-        public delegate void ThreadDelegate(object sender, CantusThreadEventArgs e);
+        public delegate void ThreadDelegate(object sender, ThreadEventArgs e);
 
         /// <summary>
         /// Event raised when a new thread is started
@@ -1666,15 +1789,31 @@ namespace Cantus.Core
         }
 
         #region "Evaluator Constants"
+
+        /// <summary>
+        /// Accurate value of PI (300 DP), stored in a string
+        /// </summary>
+        private const string PI =  "3.1415926535897932384626433832795028841971693993751058209749445923078" +
+                                   "164062862089986280348253421170679821480865132823066470938446095505822" + 
+                                   "317253594081284811174502841027019385211055596446229489549303819644288" +
+                                   "10975665933446128475648233786783165271201909145648566923460348610454326648213393607260249141273";
+        /// <summary>
+        /// Accurate value of E (300 DP), stored in a string
+        /// </summary>
+        private const string E = "2.718281828459045235360287471352662497757247093699959574966967627724076" +
+                                 "63035354759457138217852516642742746639193200305992181741359662904357290" + 
+                                 "03342952605956307381323286279434907632338298807531952510190115738341879" + 
+                                 "30702154089149934884167509244761460668082264800168477411853742345442437107539077744992069";
+
         /// <summary>
         /// List of predefined constants, as a dictionary
         /// By default this includes some often used math, physics, and chemistry constants. 
         /// </summary>
         /// <returns></returns>
         private static Dictionary<string, object> _default { get; } = new Dictionary<string, object>{
-            {"e", Math.E},
-            {"pi", Math.PI},
-            {"π", Math.PI},
+            {"e", new Number(E).BigDecValue()},
+            {"pi", new Number(PI).BigDecValue()},
+            {"π", new Number(PI).BigDecValue()},
             {"phi", 1.61803398875},
             {"φ", 1.61803398875},
             {"avogadro", 6.0221409E+23},
@@ -1692,8 +1831,8 @@ namespace Cantus.Core
             {"planckreduced", 1.05457266E-34},
             {"e0", 0.000000000008854187817},
             {"permittivity", 0.000000000008854187817},
-            {"mu0", 4.0 * Math.PI * 0.0000001},
-            {"permeability", 4.0 * Math.PI * 0.0000001},
+            {"mu0", 4.0 * new Number(PI).BigDecValue() * 0.0000001},
+            {"permeability", 4.0 * new Number(PI).BigDecValue() * 0.0000001},
             {"F", 96485.3329},
             {"faraday", 96485.3329},
             {"me", 9.10938356E-31},
@@ -1774,7 +1913,7 @@ namespace Cantus.Core
         /// <param name="significant">Whether to keep track of sig figs in this evaluator</param>
         /// <param name="prevAns">List of previous answers</param>
         /// <param name="vars">Variable definitions to start</param>
-        /// <param name="userFunctions">Dictioanry of user function definitions</param>
+        /// <param name="userFunctions">Dictionary of user function definitions</param>
         /// <param name="baseLine">The line number that this evaluator started at, used for error reporting</param>
         /// <param name="scope">The name of the scope of this evaluator</param>
         public CantusEvaluator(eOutputFormat outputFormat = eOutputFormat.Math,
@@ -1782,7 +1921,7 @@ namespace Cantus.Core
             int spacesPerTab = 4,
             bool @explicit = false,
             bool significant = false,
-            List<ObjectTypes.EvalObjectBase> prevAns = null,
+            List<EvalObjectBase> prevAns = null,
             Dictionary<string, Variable> vars = null,
             Dictionary<string, UserFunction> userFunctions = null,
             Dictionary<string, UserClass> userClasses = null,
@@ -1867,7 +2006,7 @@ namespace Cantus.Core
         /// The extension .can can be ignored
         /// </summary>
         /// <param name="path">Path of the script to evaluate</param>
-        /// <param name="asInternal">If true, the script is exceuted in the current scope</param>
+        /// <param name="asInternal">If true, the script is executed in the current scope</param>
         /// <param name="import">If true, imports the package into the evaluator after loading</param>
         public void Load(string path, bool asInternal = false, bool import = false)
         {
@@ -2041,12 +2180,12 @@ namespace Cantus.Core
         }
 
         /// <summary>
-        /// Evauate a multi-line script asynchroneously and raises the EvalComplete event when done
+        /// Evaluate a multi-line script asynchronously and raises the EvalComplete event when done
         /// </summary>
         /// <param name="script">The script to evaluate</param>
         /// <param name="noSaveAns">If true, evaluates without saving answers</param>
         /// <param name="declarative">If true, disallows all expressions other than declarations</param>
-        /// <param name="internal">If true, returns a internal statementresult object with information on return code</param>
+        /// <param name="internal">If true, returns a internal StatementResult object with information on return code</param>
         public int EvalAsync(string script, bool noSaveAns = false, bool declarative = false, bool @internal = false)
         {
             Thread th = new Thread(() =>
@@ -2055,7 +2194,7 @@ namespace Cantus.Core
                 {
                     if (EvalComplete != null)
                     {
-                        EvalComplete(this, Eval(script, noSaveAns, declarative, @internal));
+                        EvalComplete(this, new AnswerEventArgs(this, EvalRaw(script, noSaveAns, declarative, @internal), script, noSaveAns));
                     }
                     // do not return, do nothing
                 }
@@ -2066,7 +2205,7 @@ namespace Cantus.Core
                 {
                     if (EvalComplete != null)
                     {
-                        EvalComplete(this, ex.Message.Trim());
+                        EvalComplete(this, new AnswerEventArgs(this, ex, script, noSaveAns));
                     }
                 }
                 this.ThreadController.RemoveThreadById(Thread.CurrentThread.ManagedThreadId);
@@ -2076,7 +2215,7 @@ namespace Cantus.Core
             th.Start();
             if (ThreadStarted != null)
             {
-                ThreadStarted(this, new CantusThreadEventArgs(th.ManagedThreadId));
+                ThreadStarted(this, new ThreadEventArgs(th.ManagedThreadId));
             }
             return id;
         }
@@ -2087,7 +2226,7 @@ namespace Cantus.Core
         /// <param name="script">The script to evaluate</param>
         /// <param name="noSaveAns">If true, evaluates without saving answers</param>
         /// <param name="declarative">If true, disallows all expressions other than declarations</param>
-        /// <param name="internal">If true, returns a internal statementresult object with information on return code</param>
+        /// <param name="internal">If true, returns a internal statement result object with information on return code</param>
         /// <param name="feederScript">A ScriptFeeder object to get lines when no more lines are available</param>
         public object EvalRaw(string script, bool noSaveAns = false, bool declarative = false, bool @internal = false, ScriptFeeder feederScript = null)
         {
@@ -2156,7 +2295,7 @@ namespace Cantus.Core
                         for (int i = 0; i <= fullLine.Count() - 1; i++)
                         {
                             char c = fullLine[i];
-                            if (c == '"')
+                            if (c == '\'')
                             {
                                 dqCount = !dqCount;
                             }
@@ -2400,7 +2539,7 @@ namespace Cantus.Core
                             // check if we have an argument that we are not supposed to have
                             if (curSM.ArgumentExpected.ContainsKey(kwd) && !curSM.ArgumentExpected[kwd] && !string.IsNullOrWhiteSpace(l) && !l.TrimStart().ToLowerInvariant().StartsWith("then "))
                             {
-                                throw new EvaluatorException("''" + curSM.MainKeywords[0] + "'' statement does not accept any arguments");
+                                throw new EvaluatorException("\"" + curSM.MainKeywords[0] + "\"" + " statement does not accept any arguments");
                             }
 
                             curBlock = new Block(kwd, l, "");
@@ -2499,48 +2638,6 @@ namespace Cantus.Core
         }
 
         /// <summary>
-        /// Evauate a multi-line script asynchroneously and raises the EvalComplete event when done
-        /// returning the result as a system object
-        /// </summary>
-        /// <param name="script">The script to evaluate</param>
-        /// <param name="noSaveAns">If true, evaluates without saving answers</param>
-        /// <param name="declarative">If true, disallows all expressions other than declarations</param>
-        /// <param name="internal">If true, returns a internal statementresult object with information on return code</param>
-        public int EvalRawAsync(string script, bool noSaveAns = false, bool declarative = false, bool @internal = false)
-        {
-            Thread th = new Thread(() =>
-            {
-                try
-                {
-                    if (EvalComplete != null)
-                    {
-                        EvalComplete(this, EvalRaw(script, noSaveAns, declarative, @internal));
-                    }
-                    // do nothing
-                }
-                catch (ThreadAbortException)
-                {
-                }
-                catch (Exception ex)
-                {
-                    if (EvalComplete != null)
-                    {
-                        EvalComplete(this, ex.Message.Trim());
-                    }
-                }
-                this.ThreadController.RemoveThreadById(Thread.CurrentThread.ManagedThreadId);
-            });
-            this.ThreadController.AddThread(th);
-            th.IsBackground = true;
-            th.Start();
-            if (ThreadStarted != null)
-            {
-                ThreadStarted(this, new CantusThreadEventArgs(th.ManagedThreadId));
-            }
-            return th.ManagedThreadId;
-        }
-
-        /// <summary>
         /// Given a line of text, finds the level of indentation. 
         /// </summary>
         /// <returns></returns>
@@ -2592,7 +2689,7 @@ namespace Cantus.Core
                 {
                     if (EvalComplete != null)
                     {
-                        EvalComplete(this, EvalExpr(expr, noSaveAns, conditionMode));
+                        EvalComplete(this, new AnswerEventArgs(this,EvalExprRaw(expr, noSaveAns, conditionMode), expr, noSaveAns));
                     }
                     // do nothing
                 }
@@ -2603,7 +2700,7 @@ namespace Cantus.Core
                 {
                     if (EvalComplete != null)
                     {
-                        EvalComplete(this, ex.Message.Trim());
+                        EvalComplete(this, new AnswerEventArgs(this, ex, expr, noSaveAns));
                     }
                 }
                 this.ThreadController.RemoveThreadById(Thread.CurrentThread.ManagedThreadId);
@@ -2613,7 +2710,7 @@ namespace Cantus.Core
             th.Start();
             if (ThreadStarted != null)
             {
-                ThreadStarted(this, new CantusThreadEventArgs(th.ManagedThreadId));
+                ThreadStarted(this, new ThreadEventArgs(th.ManagedThreadId));
             }
             return id;
         }
@@ -2629,7 +2726,7 @@ namespace Cantus.Core
         {
             bool oldmode = OperatorRegistar.ConditionMode;
             OperatorRegistar.ConditionMode = conditionMode;
-            ObjectTypes.EvalObjectBase resultObj = ResolveOperators(Tokenize(expr));
+            EvalObjectBase resultObj = ResolveOperators(Tokenize(expr));
             OperatorRegistar.ConditionMode = oldmode;
 
             object result = BigDecimal.Undefined;
@@ -2637,16 +2734,16 @@ namespace Cantus.Core
 
             if ((resultObj != null))
             {
-                if (resultObj is ObjectTypes.Reference && !(((ObjectTypes.Reference)resultObj).GetRefObject() is ObjectTypes.Reference))
+                if (resultObj is Reference && !(((Reference)resultObj).GetRefObject() is Reference))
                 {
-                    resultObj = ((ObjectTypes.Reference)resultObj).GetRefObject();
+                    resultObj = ((Reference)resultObj).GetRefObject();
                 }
 
                 if (resultObj is ObjectTypes.Number)
                 {
                     result = ((ObjectTypes.Number)resultObj).BigDecValue();
                 }
-                else if (resultObj is ObjectTypes.Reference)
+                else if (resultObj is Reference)
                 {
                     result = resultObj;
                 }
@@ -2670,53 +2767,11 @@ namespace Cantus.Core
         }
 
         /// <summary>
-        /// Evauate a mathematical expression asynchroneously and raises the EvalComplete event when done,
-        /// returning the result as a system object
-        /// </summary>
-        /// <param name="expr">The expression to evaluate</param>
-        /// <param name="noSaveAns">If true, evaluates without saving answers</param>
-        /// <param name="conditionMode">If true, the = operator is always used for comparison 
-        /// (otherwise both assignment and comparison)</param>
-        public int EvalExprRawAsync(string expr, bool noSaveAns, bool conditionMode)
-        {
-            Thread th = new Thread(() =>
-            {
-                try
-                {
-                    if (EvalComplete != null)
-                    {
-                        EvalComplete(this, EvalExprRaw(expr, noSaveAns, conditionMode));
-                    }
-                    // do nothing
-                }
-                catch (ThreadAbortException)
-                {
-                }
-                catch (Exception ex)
-                {
-                    if (EvalComplete != null)
-                    {
-                        EvalComplete(this, ex.Message.Trim());
-                    }
-                }
-                this.ThreadController.RemoveThreadById(Thread.CurrentThread.ManagedThreadId);
-            });
-            int id = this.ThreadController.AddThread(th);
-            th.IsBackground = true;
-            th.Start();
-            if (ThreadStarted != null)
-            {
-                ThreadStarted(this, new CantusThreadEventArgs(th.ManagedThreadId));
-            }
-            return id;
-        }
-
-        /// <summary>
         /// Goes through a list of tokens and evaluates all operators by precedence
         /// </summary>
         /// <param name="tokens">The list of tokens to evaluate</param>
         /// <returns></returns>
-        private ObjectTypes.EvalObjectBase ResolveOperators(TokenList tokens)
+        private EvalObjectBase ResolveOperators(TokenList tokens)
         {
             // start from operators with highest precedence, skipping the brackets (already evaluated when tokenizing)
             for (int i = Enum.GetValues(typeof(OperatorRegistar.ePrecedence)).Length - 1; i >= 0; i += -1)
@@ -2743,7 +2798,7 @@ namespace Cantus.Core
 
                         Token prevtoken = opid > 0 ? tokens[opid - 1] : new Token(null, null);
                         Token curtoken = tokens[opid];
-                        ObjectTypes.EvalObjectBase result = default(ObjectTypes.EvalObjectBase);
+                        EvalObjectBase result = default(EvalObjectBase);
                         // operators like x!
                         if (curtoken.Operator is OperatorRegistar.UnaryOperatorBefore)
                         {
@@ -2753,9 +2808,9 @@ namespace Cantus.Core
                             if (!op.ByReference && (prevtoken.Object != null))
                             {
                                 prevtoken.Object = prevtoken.Object.GetDeepCopy();
-                                if (prevtoken.Object is ObjectTypes.Reference)
+                                if (prevtoken.Object is Reference)
                                 {
-                                    prevtoken.Object = ((ObjectTypes.Reference)prevtoken.Object).ResolveObj();
+                                    prevtoken.Object = ((Reference)prevtoken.Object).ResolveObj();
                                 }
                             }
 
@@ -2797,9 +2852,9 @@ namespace Cantus.Core
                             if (!op.ByReference && (prevtoken.Object != null))
                             {
                                 prevtoken.Object = prevtoken.Object.GetDeepCopy();
-                                if (prevtoken.Object is ObjectTypes.Reference)
+                                if (prevtoken.Object is Reference)
                                 {
-                                    prevtoken.Object = ((ObjectTypes.Reference)prevtoken.Object).ResolveObj();
+                                    prevtoken.Object = ((Reference)prevtoken.Object).ResolveObj();
                                 }
                             }
 
@@ -2919,7 +2974,7 @@ namespace Cantus.Core
                     {
                         OperatorRegistar.Operator op = OperatorRegistar.OperatorWithSign(valueL);
                         string objstr = expr.Substring(idx, i - idx).Trim();
-                        ObjectTypes.EvalObjectBase eo = null;
+                        EvalObjectBase eo = null;
 
                         // if the object is not empty we try to detect its type
                         if (!string.IsNullOrEmpty(objstr))
@@ -2936,8 +2991,8 @@ namespace Cantus.Core
 
                             if (ObjectTypes.Identifier.IsType(eo))
                             {
-                                List<ObjectTypes.EvalObjectBase> varlist = null;
-                                ObjectTypes.EvalObjectBase left = null;
+                                List<EvalObjectBase> varlist = null;
+                                EvalObjectBase left = null;
 
                                 // this ends with a function, so try resolving the function
                                 if (valueL == "(")
@@ -2974,7 +3029,7 @@ namespace Cantus.Core
                                     if (op.AssignmentOperator)
                                     {
                                         // for assignment operators, do not resolve the variables
-                                        varlist = new List<ObjectTypes.EvalObjectBase>(new[] { GetVariableRef(eo.ToString()) });
+                                        varlist = new List<EvalObjectBase>(new[] { GetVariableRef(eo.ToString()) });
                                     }
                                     else
                                     {
@@ -2991,7 +3046,7 @@ namespace Cantus.Core
                                             varlist.Clear();
                                             if (fn.StartsWith(ROOT_NAMESPACE))
                                                 fn = fn.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
-                                            MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+                                            MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
                                             varlist.Add(new ObjectTypes.Lambda(fn, (from param in info.GetParameters() select param.Name), true));
                                         }
                                         else
@@ -3093,8 +3148,8 @@ namespace Cantus.Core
                                     inner = inner.Remove(endIdx);
 
                                 OperatorRegistar.Bracket brkt = (OperatorRegistar.Bracket)op;
-                                ObjectTypes.EvalObjectBase left = null;
-                                ObjectTypes.EvalObjectBase orig = null;
+                                EvalObjectBase left = null;
+                                EvalObjectBase orig = null;
 
                                 if (lst.ObjectCount > 0)
                                 {
@@ -3103,14 +3158,14 @@ namespace Cantus.Core
                                     if (!brkt.ByReference && (left != null))
                                     {
                                         left = left.GetDeepCopy();
-                                        if (left is ObjectTypes.Reference)
+                                        if (left is Reference)
                                         {
-                                            left = ((ObjectTypes.Reference)left).GetRefObject();
+                                            left = ((Reference)left).GetRefObject();
                                         }
                                     }
                                     orig = left;
                                 }
-                                ObjectTypes.EvalObjectBase result = brkt.Execute(inner, ref left);
+                                EvalObjectBase result = brkt.Execute(inner, ref left);
 
                                 if (left == null)
                                 {
@@ -3156,12 +3211,12 @@ namespace Cantus.Core
             // add remaining bit at the end
             if (idx < expr.Length && !string.IsNullOrEmpty(expr.Substring(idx, expr.Length - idx).Trim()))
             {
-                ObjectTypes.EvalObjectBase eo = ObjectTypes.StrDetectType(expr.Substring(idx, expr.Length - idx).Trim(), numberPreserveSigFigs: SignificantMode);
+                EvalObjectBase eo = ObjectTypes.StrDetectType(expr.Substring(idx, expr.Length - idx).Trim(), numberPreserveSigFigs: SignificantMode);
 
                 // if the object we get is an identifier, we try to break it into variables which are resolved using ResolveVariables
                 if (ObjectTypes.Identifier.IsType(eo))
                 {
-                    List<ObjectTypes.EvalObjectBase> varlist = new List<ObjectTypes.EvalObjectBase>();
+                    List<EvalObjectBase> varlist = new List<EvalObjectBase>();
 
                     // try resolving a function pointer
 
@@ -3176,7 +3231,7 @@ namespace Cantus.Core
                         varlist.Clear();
                         if (fn.StartsWith(ROOT_NAMESPACE))
                             fn = fn.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
-                        MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+                        MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
                         varlist.Add(new ObjectTypes.Lambda(fn, (from param in info.GetParameters() select param.Name), true));
                     }
@@ -3237,12 +3292,12 @@ namespace Cantus.Core
         /// <param name="args">The string containing the function arguments</param>
         /// <param name="left">The object to the left of the function, needed to resolve self-referring function calls</param>
         /// <returns></returns>
-        private List<ObjectTypes.EvalObjectBase> ResolveFunctions(string str, string args, ref ObjectTypes.EvalObjectBase left)
+        private List<EvalObjectBase> ResolveFunctions(string str, string args, ref EvalObjectBase left)
         {
             int min = 0;
             int max = str.Length - 1;
 
-            ObjectTypes.EvalObjectBase baseObj = null;
+            EvalObjectBase baseObj = null;
 
             // deal with self-referring (.) notation
             if (str.Contains(SCOPE_SEP) && !HasFunction(str))
@@ -3262,9 +3317,8 @@ namespace Cantus.Core
                     }
                     catch
                     {
-                        Console.Write("AaAAAAAAAAAAAAA");
                     }
-                    Reference br = (ObjectTypes.Reference)baseObj;
+                    Reference br = (Reference)baseObj;
                     try
                     {
                         if (baseObj == null || (br.Resolve() is double && double.IsNaN((double)(br.Resolve())) || br.Resolve() is BigDecimal && ((BigDecimal)br.Resolve()).IsUndefined))
@@ -3327,7 +3381,7 @@ namespace Cantus.Core
                 {
                     foreach (Reference r in (Reference[])((ObjectTypes.Tuple)baseObj).GetValue())
                     {
-                        if (((Reference)r).GetRefObject() is Reference)
+                        if (r.GetRefObject() is Reference)
                         {
                             argLst.Add(r);
                         }
@@ -3567,9 +3621,9 @@ namespace Cantus.Core
         /// </summary>
         /// <param name="str">The string to parse</param>
         /// <returns></returns>
-        private List<ObjectTypes.EvalObjectBase> ResolveVariables(string str)
+        private List<EvalObjectBase> ResolveVariables(string str)
         {
-            List<ObjectTypes.EvalObjectBase> ret = new List<ObjectTypes.EvalObjectBase>();
+            List<EvalObjectBase> ret = new List<EvalObjectBase>();
 
             int i = 0;
 
@@ -3658,8 +3712,8 @@ namespace Cantus.Core
                 serialized.AppendLine("# Use caution when modifying manually").Append(Environment.NewLine);
                 serialized.AppendLine("# Modes");
 
-                serialized.Append("_output(").Append('"').Append(OutputFormat.ToString()).Append('"').Append(")").Append(Environment.NewLine);
-                serialized.Append("_anglerepr(").Append('"').Append(AngleMode.ToString()).Append('"').Append(")").Append(Environment.NewLine);
+                serialized.Append("_output(").Append('\'').Append(OutputFormat.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
+                serialized.Append("_anglerepr(").Append('\'').Append(AngleMode.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
                 serialized.Append("_spacespertab(").Append(SpacesPerTab.ToString()).Append(")").Append(Environment.NewLine);
                 serialized.Append("_sigfigs(").Append(SignificantMode.ToString()).Append(")").Append(Environment.NewLine);
 
@@ -3690,11 +3744,11 @@ namespace Cantus.Core
                 //
                 foreach (KeyValuePair<string, Variable> var in Variables.ToArray())
                 {
-                    ObjectTypes.EvalObjectBase def = var.Value.Reference.ResolveObj();
+                    EvalObjectBase def = var.Value.Reference.ResolveObj();
 
 
                     if ((def != null) && (!(def is Number) ||
-                        !double.IsNaN((double)(def.GetValue()))) && !(def is ObjectTypes.Reference) &&
+                        !double.IsNaN((double)(def.GetValue()))) && !(def is Reference) &&
                         !var.Value.Modifiers.Contains("internal") && !(var.Key == DEFAULT_VAR_NAME) &&
                         !(IsExternalScope(var.Value.DeclaringScope, _scope)))
                     {
@@ -3759,27 +3813,27 @@ namespace Cantus.Core
             {
                 return "Number";
             }
-            if (type == typeof(SortedDictionary<ObjectTypes.Reference, ObjectTypes.Reference>))
+            if (type == typeof(SortedDictionary<Reference, Reference>))
             {
                 return "Set";
             }
-            if (type == typeof(Dictionary<ObjectTypes.Reference, ObjectTypes.Reference>))
+            if (type == typeof(Dictionary<Reference, Reference>))
             {
                 return "HashSet";
             }
-            if (type == typeof(List<ObjectTypes.Reference>))
+            if (type == typeof(List<Reference>))
             {
                 return "Matrix";
             }
-            if (type == typeof(LinkedList<ObjectTypes.Reference>))
+            if (type == typeof(LinkedList<Reference>))
             {
                 return "LinkedList";
             }
-            if (type == typeof(ObjectTypes.Reference[]))
+            if (type == typeof(Reference[]))
             {
                 return "Tuple";
             }
-            if (type == typeof(ObjectTypes.Reference))
+            if (type == typeof(Reference))
             {
                 return "Reference";
             }
@@ -3788,18 +3842,18 @@ namespace Cantus.Core
 
                 return "Function";
             }
-            if (type == typeof(ICollection<ObjectTypes.Reference>))
+            if (type == typeof(ICollection<Reference>))
             {
                 return "(Matrix, Set, HashSet, Tuple, LinkedList)";
             }
-            if (type == typeof(IEnumerable<ObjectTypes.Reference>))
+            if (type == typeof(IEnumerable<Reference>))
             {
             }
-            if (type == typeof(IList<ObjectTypes.Reference>))
+            if (type == typeof(IList<Reference>))
             {
                 return "(Matrix, LinkedList)";
             }
-            if (type == typeof(IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>))
+            if (type == typeof(IDictionary<Reference, Reference>))
             {
 
                 return "(Set, HashSet)";
@@ -3869,7 +3923,7 @@ namespace Cantus.Core
                     if (k.Value.Reference.Resolve() is double && double.IsNaN((double)(k.Value.Reference.Resolve())))
                         continue;
                     // skip undefined vars
-                    varsCopy.Add(k.Key, new Variable(k.Value.Name, (ObjectTypes.Reference)k.Value.Reference.GetDeepCopy(), k.Value.DeclaringScope));
+                    varsCopy.Add(k.Key, new Variable(k.Value.Name, (Reference)k.Value.Reference.GetDeepCopy(), k.Value.DeclaringScope));
                 }
             }
             catch (Exception)
@@ -3999,10 +4053,10 @@ namespace Cantus.Core
         /// <param name="name">Name of the variable</param>
         /// <param name="explicit">If true, simulates explicit mode even when not set on the evaluator</param>
         /// <returns></returns>
-        internal ObjectTypes.Reference GetVariableRef(string name, bool @explicit = false)
+        internal Reference GetVariableRef(string name, bool @explicit = false)
         {
             if (name == "ans")
-                return new ObjectTypes.Reference(GetLastAns());
+                return new Reference(GetLastAns());
             string scope = _scope;
             name = RemoveRedundantScope(name, scope);
 
@@ -4076,7 +4130,7 @@ namespace Cantus.Core
                 tmp = tmp.Remove(tmp.LastIndexOf(SCOPE_SEP));
             }
 
-            Variable var = new Variable(name, new ObjectTypes.Reference(double.NaN), scope);
+            Variable var = new Variable(name, new Reference(double.NaN), scope);
             Variables[var.FullName] = var;
 
             return Variables[scope + SCOPE_SEP + name].Reference;
@@ -4176,7 +4230,7 @@ namespace Cantus.Core
                 tmp = tmp.Remove(tmp.LastIndexOf(SCOPE_SEP));
             }
 
-            Variables[scope + SCOPE_SEP + name] = new Variable(name, new ObjectTypes.Reference(double.NaN), scope);
+            Variables[scope + SCOPE_SEP + name] = new Variable(name, new Reference(double.NaN), scope);
             return Variables[scope + SCOPE_SEP + name].Value;
         }
 
@@ -4185,7 +4239,7 @@ namespace Cantus.Core
         /// </summary>
         /// <param name="name">Name of the variable</param>
         /// <param name="ref">Value of the variable as a Reference</param>
-        internal void SetVariable(string name, ObjectTypes.Reference @ref, string scope = "", IEnumerable<string> modifiers = null)
+        internal void SetVariable(string name, Reference @ref, string scope = "", IEnumerable<string> modifiers = null)
         {
             // set declaring scope
             if (string.IsNullOrWhiteSpace(name))
@@ -4210,7 +4264,7 @@ namespace Cantus.Core
         /// </summary>
         /// <param name="name">Name of the variable</param>
         /// <param name="value">Value of the variable as an IEvalObject</param>
-        public void SetVariable(string name, ObjectTypes.EvalObjectBase value, string scope = "", IEnumerable<string> modifiers = null)
+        public void SetVariable(string name, EvalObjectBase value, string scope = "", IEnumerable<string> modifiers = null)
         {
             NormalizeScope(ref name, ref scope);
 
@@ -4237,14 +4291,14 @@ namespace Cantus.Core
         /// <param name="value">Value of the variable as a system object</param>
         public void SetVariable(string name, object value, string scope = "", IEnumerable<string> modifiers = null)
         {
-            SetVariable(name, new ObjectTypes.Reference(value), scope, modifiers);
+            SetVariable(name, new Reference(value), scope, modifiers);
         }
 
         /// <summary>
         /// Set the value of the default variable (i.e. this) used when no name is specified in a self-referring function call (.xxyy())
         /// </summary>
         /// <param name="ref">Value of the variable as a Reference</param>
-        internal void SetDefaultVariable(ObjectTypes.Reference @ref)
+        internal void SetDefaultVariable(Reference @ref)
         {
             Variables[CombineScope(Scope, DEFAULT_VAR_NAME)] = new Variable(DEFAULT_VAR_NAME, @ref, _scope);
         }
@@ -4252,7 +4306,7 @@ namespace Cantus.Core
         /// <summary>
         /// Get the value of the default variable (i.e. this) used when no name is specified in a self-referring function call (.xxyy())
         /// </summary>
-        internal ObjectTypes.Reference GetDefaultVariableRef()
+        internal Reference GetDefaultVariableRef()
         {
             if (Variables.ContainsKey(CombineScope(Scope, DEFAULT_VAR_NAME)))
             {
@@ -4457,19 +4511,14 @@ namespace Cantus.Core
         /// <returns></returns>
         public bool HasFunction(string name)
         {
-            if (HasUserFunction(name))
-                return true;
-            if (name.StartsWith(ROOT_NAMESPACE))
-            {
-                if (name == ROOT_NAMESPACE)
-                    return false;
-                name = name.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
-            }
+            if (HasUserFunction(name)) return true;
 
             name = RemoveRedundantScope(name, ROOT_NAMESPACE);
-            MethodInfo info = typeof(InternalFunctions).GetMethod(name.ToLowerInvariant(), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+            MethodInfo info = typeof(InternalFunctions).GetMethod(name.ToLowerInvariant(), 
+                BindingFlags.IgnoreCase | BindingFlags.Public | 
+                BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
-            return (info != null);
+            return (info != null && ! info.IsSpecialName);
         }
 
         /// <summary>
@@ -4589,7 +4638,7 @@ namespace Cantus.Core
             }
             else
             {
-                throw new EvaluatorException("User Function " + name + " Is Undefined");
+                throw new EvaluatorException("Function " + name + " is undefined");
             }
         }
 
@@ -4602,7 +4651,7 @@ namespace Cantus.Core
             MethodInfo info = null;
 
             name = RemoveRedundantScope(name, ROOT_NAMESPACE);
-            info = typeof(InternalFunctions).GetMethod(name.ToLowerInvariant(), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+            info = typeof(InternalFunctions).GetMethod(name.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
             if ((info != null))
             {
@@ -4629,9 +4678,9 @@ namespace Cantus.Core
                     }
                     else
                     {
-                        // maintain support for legacy functions where bigdecimals are not supported
+                        // maintain support for legacy functions where BigDecimals are not supported
                         // list of exceptions
-                        string[] exceptions = { "Log", "Log10", "Print", "PrintLine", "ReadLine", "Read", "ReadChar", "Max", "Min" };
+                        string[] exceptions = { "Log", "Print", "PrintLine", "ReadLine", "Read", "ReadChar", "Max", "Min", "Abs" };
                         if (!(paraminfo.ParameterType == typeof(BigDecimal)) &&
                             args[maxParamCt].GetType() == typeof(BigDecimal) && !exceptions.Contains(info.Name))
                         {
@@ -4651,7 +4700,7 @@ namespace Cantus.Core
                             if (paramTypeName.Contains("`"))
                                 paramTypeName = paramTypeName.Remove(paramTypeName.IndexOf("`"));
 
-                            throw new EvaluatorException(name.ToLowerInvariant() + " Parameter " + maxParamCt + 1 + " '" + paramTypeName + "' Type Expected");
+                            throw new EvaluatorException(name.ToLowerInvariant() + " Parameter " + maxParamCt + 1 + " \"" + paramTypeName + "\" Type Expected");
                         }
                     }
                     maxParamCt += 1;
@@ -4744,7 +4793,7 @@ namespace Cantus.Core
         {
             name = name.Trim();
             if (!IsValidIdentifier(name))
-                throw new SyntaxException("''" + name + "'' is not a valid class name.");
+                throw new SyntaxException("\"" + name + "\" is not a valid class name.");
 
             string key = CombineScope(this.Scope, name);
 

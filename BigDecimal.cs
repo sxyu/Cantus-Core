@@ -161,10 +161,11 @@ namespace Cantus.Core.CommonTypes
         /// Truncate the number to the given precision by removing the least significant digits.
         /// </summary>
         /// <returns>The truncated number</returns>
-        public BigDecimal Truncate(int precision)
+        /// <param name="noRound">If true, rounds the BigDecimal to the nearest even number instead of truncating it.</param>
+        public BigDecimal Truncate(int precision, bool round = true)
         {
-            if (IsUndefined)
-                return this;
+            if (IsUndefined || precision <= 0 || precision == int.MaxValue) return this;
+
             // copy this instance (remember its a struct)
             BigDecimal shortened = this;
             // save some time because the number of digits is not needed to remove trailing zeros
@@ -178,16 +179,19 @@ namespace Cantus.Core.CommonTypes
                 if (noD - 1 == precision)
                 {
                     int mod1 = (int)(BigInteger.Abs(shortened.Mantissa) % 10);
-                    if (mod1 > 5)
+                    if (round)
                     {
-                        shortened.Mantissa += shortened.Mantissa.Sign * 10;
-                    }
-                    else if (mod1 == 5)
-                    {
-                        // decide if to round up or down
-                        if (BigInteger.Abs(this.Mantissa) % BigInteger.Pow(10, expo) > 0 || (int)(BigInteger.Abs(shortened.Mantissa) / 10 % 2) == 1)
+                        if (mod1 > 5)
                         {
                             shortened.Mantissa += shortened.Mantissa.Sign * 10;
+                        }
+                        else if (mod1 == 5)
+                        {
+                            // decide if to round up or down
+                            if (BigInteger.Abs(this.Mantissa) % BigInteger.Pow(10, expo) > 0 || (int)(BigInteger.Abs(shortened.Mantissa) / 10 % 2) == 1)
+                            {
+                                shortened.Mantissa += shortened.Mantissa.Sign * 10;
+                            }
                         }
                     }
                 }
@@ -207,6 +211,29 @@ namespace Cantus.Core.CommonTypes
             if (IsUndefined)
                 return this;
             return Truncate(PRECISION);
+        }
+
+        /// <summary>
+        /// Truncate this BigDecimal to the adjacent integer nearest zero
+        /// </summary>
+        public BigDecimal TruncateInt()
+        {
+            if (this.HighestDigit() < 0) return 0;
+            return Truncate(HighestDigit()+1, false);
+        }
+
+        /// <summary>
+        /// Round this BigDecimal to the nearest even integer
+        /// </summary>
+        public BigDecimal Round()
+        {
+            if (this.HighestDigit() < 0)
+            {
+                if (this > 0.5) return 1;
+                else if (this < -0.5) return -1;
+                else return 0;
+            }
+            return Truncate(HighestDigit()+1);
         }
 
         private static int NumberOfDigits(BigInteger value)
@@ -326,6 +353,7 @@ namespace Cantus.Core.CommonTypes
                 return Undefined;
             if (right.IsUndefined)
                 return Undefined;
+
             left = left.Truncate(left.SigFigs);
             right = right.Truncate(left.SigFigs);
 
@@ -385,9 +413,21 @@ namespace Cantus.Core.CommonTypes
 
         public static BigDecimal operator %(BigDecimal left, BigDecimal right)
         {
+            int leftSF = left.SigFigs;
+            int rightSF = right.SigFigs;
+
+            left.SigFigs = right.SigFigs = int.MaxValue;
             BigDecimal quot =  left / right;
-            quot = quot.Truncate(quot.HighestDigit() + 1);
-            return left - quot * right;
+            quot = quot.TruncateInt();
+
+            BigDecimal result =  left - quot * right;
+            Console.WriteLine(result);
+            
+            left.SigFigs = leftSF;
+            right.SigFigs = rightSF;
+
+            result.SigFigs = Math.Min(leftSF, rightSF);
+            return result;
         }
 
         public static bool operator ==(BigDecimal left, BigDecimal right)

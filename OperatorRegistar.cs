@@ -510,16 +510,16 @@ namespace Cantus.Core
             Register(new Bracket("(", ")", BracketOperatorRoundBracket));
             Register(new Bracket("|", BracketOperatorAbsoluteValue));
 
-            Register(new Bracket("r" + '"', "\"", BracketOperatorRawText, false));
+            Register(new Bracket("r" + '\'', "\"", BracketOperatorRawText, false));
             Register(new Bracket("\"", BracketOperatorQuotedText));
             Register(new Bracket("'", BracketOperatorQuotedText));
 
             // multiline / triple-quoted
             Register(new Bracket("\"\"\"", BracketOperatorQuotedText));
-            Register(new Bracket("r" + '"' + '"' + '"', "\"\"\"", BracketOperatorRawText));
+            Register(new Bracket("r" + '\'' + '\'' + '\'', "\"\"\"", BracketOperatorRawText));
 
             Register(new Bracket("'''", BracketOperatorQuotedText));
-            Register(new Bracket("r" + "'''", "'''", BracketOperatorRawText));
+            Register(new Bracket("r'''", "'''", BracketOperatorRawText));
 
             this.DefaultOperator = OperatorWithSign("*");
         }
@@ -1144,8 +1144,9 @@ private ObjectTypes.EvalObjectBase BinaryOperatorMultiply(ObjectTypes.EvalObject
     }
     else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
     {
-        // matrix multiplication (for appropriate matrices) or dot product (for vectors)
-        return ObjectTypes.DetectType(_eval.Internals.Multiply((List<ObjectTypes.Reference>)left.GetValue(), (List<ObjectTypes.Reference>)right.GetValue()));
+        // matrix multiplication (for appropriate matrices) or inner product (for vectors)
+        return ObjectTypes.DetectType(_eval.Internals.Multiply((List<ObjectTypes.Reference>)left.GetValue(),
+            (List<ObjectTypes.Reference>)right.GetValue()));
 
     }
     else if (ObjectTypes.Set.IsType(left) & ObjectTypes.Matrix.IsType(right) || ObjectTypes.HashSet.IsType(left) & ObjectTypes.Matrix.IsType(right))

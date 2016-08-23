@@ -731,7 +731,7 @@ namespace Cantus.Core
             }
             else
             {
-                throw new SyntaxException("Invalid ''for'' statement syntax");
+                throw new SyntaxException("Invalid \"for\" statement syntax");
             }
             return result;
         }
@@ -1091,7 +1091,7 @@ namespace Cantus.Core
                                 }
                             }
                             // nope, does not exist. complain to the user.
-                            throw new EvaluatorException("Import: Cantus package ''" + path + "'' does not exist");
+                            throw new EvaluatorException("Import: Cantus package \"" + path + "\" does not exist");
                         }
                     }
                 }
@@ -1116,7 +1116,7 @@ namespace Cantus.Core
                 }
                 catch
                 {
-                    throw new EvaluatorException("Load: package ''" + path.Trim() + "'' does not exist");
+                    throw new EvaluatorException("Load: package \"" + path.Trim() + "\" does not exist");
                 }
             }
             return new StatementResult("Load: loaded " + blocks[0].Argument.Trim(), ExecCode.resume);
