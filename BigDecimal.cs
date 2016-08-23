@@ -12,7 +12,7 @@ namespace Cantus.Core.CommonTypes
     /// Author: Jan Christoph Bernack (contact: jc.bernack at googlemail.com)
     /// (Slightly modified for the evaluator)
     /// </summary>
-    public struct BigDecimal : IComparable, IComparable<BigDecimal>
+    public struct BigDecimal : IComparable, IComparable<BigDecimal>, IEquatable<BigDecimal>, IConvertible
     {
         /// <summary>
         /// Specifies whether the significant digits should be truncated to the given precision after each operation.
@@ -321,6 +321,13 @@ namespace Cantus.Core.CommonTypes
             if (value.IsUndefined)
                 return 0;
             return (long)((double)(value.Mantissa) * Math.Pow(10, value.Exponent));
+        }
+
+        public static explicit operator ulong (BigDecimal value)
+        {
+            if (value.IsUndefined)
+                return 0;
+            return (ulong)(value.Mantissa * BigInteger.Pow(10, value.Exponent));
         }
         #endregion
 
@@ -713,6 +720,91 @@ namespace Cantus.Core.CommonTypes
         public int CompareTo(BigDecimal other)
         {
             return this < other ? -1 : (this > other ? 1 : 0);
+        }
+
+        public TypeCode GetTypeCode()
+        {
+            return TypeCode.Double;
+        }
+
+        public bool ToBoolean(IFormatProvider provider)
+        {
+            return this.Mantissa != 0;
+        }
+
+        public char ToChar(IFormatProvider provider)
+        {
+            return (char)(int)this;
+        }
+
+        public sbyte ToSByte(IFormatProvider provider)
+        {
+            return (sbyte)(int)this;
+        }
+
+        public byte ToByte(IFormatProvider provider)
+        {
+            return (byte)(int)this;
+        }
+
+        public short ToInt16(IFormatProvider provider)
+        {
+            return (short)(int)this;
+        }
+
+        public ushort ToUInt16(IFormatProvider provider)
+        {
+            return (ushort)(int)this;
+        }
+
+        public int ToInt32(IFormatProvider provider)
+        {
+            return (int)this;
+        }
+
+        public uint ToUInt32(IFormatProvider provider)
+        {
+            return (uint)this;
+        }
+
+        public long ToInt64(IFormatProvider provider)
+        {
+            return (long)this;
+        }
+
+        public ulong ToUInt64(IFormatProvider provider)
+        {
+            return (ulong)this;
+        }
+
+        public float ToSingle(IFormatProvider provider)
+        {
+            return (float)this;
+        }
+
+        public double ToDouble(IFormatProvider provider)
+        {
+            return (double)this;
+        }
+
+        public decimal ToDecimal(IFormatProvider provider)
+        {
+            return (decimal)this;
+        }
+
+        public DateTime ToDateTime(IFormatProvider provider)
+        {
+            return DateTime.MinValue;
+        }
+
+        public string ToString(IFormatProvider provider)
+        {
+            return this.ToString();
+        }
+
+        public object ToType(Type conversionType, IFormatProvider provider)
+        {
+            return Convert.ChangeType(this, conversionType);
         }
     }
 }

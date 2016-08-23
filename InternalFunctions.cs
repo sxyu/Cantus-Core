@@ -787,11 +787,11 @@ namespace Cantus.Core
             /// </summary>
             public object Pow(object @base, object power)
             {
-                if (@base is double && power is double)
-                {
-                    return BigDecimal.Pow((double)(@base), (double)(power));
-                }
-                else if (@base is BigDecimal && power is BigDecimal)
+                if (@base is double) @base = (BigDecimal)(double)@base;
+                if (@base is int) @base = (BigDecimal)(int)@base;
+                if (power is double) power = (BigDecimal)(double)power;
+                if (power is int) power = (BigDecimal)(int)power;
+                if (@base is BigDecimal && power is BigDecimal)
                 {
                     return BigDecimal.Pow((BigDecimal)@base, (BigDecimal)power);
 
@@ -910,15 +910,15 @@ namespace Cantus.Core
                     double epsi = 1E-07;
 
                     double[] p = {
-                    676.520368121885,
-                    -1259.1392167224,
-                    771.323428777653,
-                    -176.615029162141,
-                    12.5073432786869,
-                    -0.13857109526572,
-                    9.98436957801957E-06,
-                    1.50563273514931E-07
-                };
+                        676.520368121885,
+                        -1259.1392167224,
+                        771.323428777653,
+                        -176.615029162141,
+                        12.5073432786869,
+                        -0.13857109526572,
+                        9.98436957801957E-06,
+                        1.50563273514931E-07
+                    };
                     System.Numerics.Complex result = new System.Numerics.Complex();
                     if (z.Real < 0.5)
                     {
@@ -1280,9 +1280,11 @@ namespace Cantus.Core
             /// <summary>
             /// Get the sign of a number
             /// </summary>
-            public double Sgn(double value)
+            public BigDecimal Sgn(BigDecimal value)
             {
-                return Math.Sign(value);
+                if (value > 0) return 1;
+                else if (value < 0) return -1;
+                else return 0;
             }
 
             /// <summary>
@@ -2747,6 +2749,27 @@ namespace Cantus.Core
             }
 
             /// <summary>
+            /// Compare two double values with the precision
+            /// </summary>
+            internal int CmpDbl(BigDecimal v1, BigDecimal v2, BigDecimal? epsi = null)
+            {
+                if (epsi == null) epsi = 1e-12;
+                BigDecimal diff = (BigDecimal)Abs(v1 - v2);
+                if (diff < epsi)
+                {
+                    return 0;
+                }
+                else if (v1 > v2)
+                {
+                    return 1;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+
+            /// <summary>
             /// Get the length of any collection or string
             /// </summary>
             public double Len(object obj)
@@ -2962,9 +2985,20 @@ namespace Cantus.Core
                 return string.Format(text.ToString(), formatPattern);
             }
 
+            /// <summary>
+            /// Truncate and convert to integer
+            /// </summary>
             internal int Int(double value)
             {
                 return Convert.ToInt32(Math.Truncate(value));
+            }
+
+            /// <summary>
+            /// Truncate and convert to integer
+            /// </summary>
+            internal int Int(BigDecimal value)
+            {
+                return Convert.ToInt32((BigDecimal)Truncate(value));
             }
 
             /// <summary>
@@ -2999,14 +3033,14 @@ namespace Cantus.Core
             /// <summary>
             /// Simplify a radical with radicand d and index ind
             /// </summary>
-            private string SimpRadical(double d, double ind)
+            private string SimpRadical(BigDecimal d, BigDecimal ind)
             {
                 string sign = "";
                 if (d < 0)
                 {
                     sign = "-";
                 }
-                Int64[] rad = SRadical(Math.Abs(d), Int(ind));
+                Int64[] rad = SRadical((BigDecimal)Abs(d), Int(ind));
                 string textbefore = "[" + ind.ToString();
                 string textafter = "]";
                 if (ind < 4)
@@ -3031,7 +3065,7 @@ namespace Cantus.Core
             /// <summary>
             /// Internal helper for simplifying radicals
             /// </summary>
-            private Int64[] SRadical(double d, int ind)
+            private Int64[] SRadical(BigDecimal d, int ind)
             {
                 long coe = 1;
                 long rdc = Convert.ToInt64(d);
@@ -3058,10 +3092,10 @@ namespace Cantus.Core
             /// <summary>
             /// Convert a double value to a fraction
             /// </summary>
-            private string ToFrac(double d)
+            private string ToFrac(BigDecimal d)
             {
                 int sign = Int(Sgn(d));
-                double[] res = CFrac(Math.Abs(d), Math.Min(1E-13 * Math.Pow(10, Math.Round(Math.Pow(Math.Abs(d), 0.1))), 0.001));
+                BigDecimal[] res = CFrac((BigDecimal)Abs(d), Min(1E-13 * (BigDecimal)Pow(10, Round((BigDecimal)Pow((BigDecimal)Abs(d), 0.1))), 0.001));
                 if (res[1] == 1)
                 {
                     return (sign * res[0]).ToString();
@@ -3083,9 +3117,10 @@ namespace Cantus.Core
             /// <summary>
             /// Internal function for converting a double value to a fraction
             /// </summary>
-            private double[] CFrac(double d, double epsi = 1E-12)
+            private BigDecimal[] CFrac(BigDecimal d, BigDecimal? epsi = null)
             {
-                double n = Math.Floor(d);
+                if (epsi == null) epsi = 1E-16;
+                BigDecimal n = Floor(d);
                 d -= n;
                 if (d < epsi)
                 {
@@ -3101,14 +3136,14 @@ namespace Cantus.Core
                     1
                 };
                 }
-                double lower_n = 0;
-                double lower_d = 1;
+                BigDecimal lower_n = 0;
+                BigDecimal lower_d = 1;
 
-                double upper_n = 1;
-                double upper_d = 1;
+                BigDecimal upper_n = 1;
+                BigDecimal upper_d = 1;
 
-                double middle_n = 0;
-                double middle_d = 0;
+                BigDecimal middle_n = 0;
+                BigDecimal middle_d = 0;
 
                 int runtimes = 0;
                 while (runtimes < 100000000)
@@ -3146,6 +3181,14 @@ namespace Cantus.Core
             private bool IsInteger(double d)
             {
                 return CmpDbl(d, Math.Round(d), 1E-08) == 0;
+            }
+
+            /// <summary>
+            /// Tests if the double value is an interger
+            /// </summary>
+            private bool IsInteger(BigDecimal d)
+            {
+                return CmpDbl(d, (BigDecimal)Round(d), 1E-016) == 0;
             }
 
             /// <summary>
@@ -3303,7 +3346,7 @@ namespace Cantus.Core
                 // use this to see results in mathio fashion when in lineio mode
                 if (o is BigDecimal || o is double)
                 {
-                    double value = 0;
+                    BigDecimal value = 0;
                     if (o is BigDecimal)
                     {
                         if (((BigDecimal)o).IsOutsideDispRange())
@@ -3312,16 +3355,17 @@ namespace Cantus.Core
                         }
                         else
                         {
-                            value = (double)((BigDecimal)o);
+                            value = (BigDecimal)o;
                         }
                     }
                     else
                     {
-                        value = (double)(o);
+                        value = (BigDecimal)(double)(o);
                     }
+                    value = value.Truncate(12);
 
                     // eliminate integer and undefined/non-real values.
-                    if (double.IsNaN(value) || double.IsInfinity(value) || CmpDbl(value, Math.Floor(value)) == 0 || Math.Abs(value) < 1E-07 || Math.Abs(value) > 10000000)
+                    if (value.IsUndefined || IsInteger(value) || value.IsOutsideDispRange())
                     {
                         return value.ToString();
                     }
@@ -3343,7 +3387,7 @@ namespace Cantus.Core
                         // radicals
                         for (int i = 2; i <= 3; i++)
                         {
-                            double sq = Math.Pow(value, i);
+                            BigDecimal sq = (BigDecimal)Pow(value, i);
                             if (sq > 15000)
                                 break;
                             // ignore excessively large roots
@@ -3358,7 +3402,7 @@ namespace Cantus.Core
                         {
                             for (int j = 1; j <= 40; j++)
                             {
-                                double sq = Math.Pow((value - j), i);
+                                BigDecimal sq = (BigDecimal)Pow((value - j), i);
                                 if (sq > 15000)
                                     break;
                                 // ignore excessively large roots
@@ -3368,7 +3412,7 @@ namespace Cantus.Core
                                 {
                                     return (j + " + " + SimpRadical(sq, i)).Replace("+ -", "- ");
                                 }
-                                sq = Math.Pow((value + j), i);
+                                sq = (BigDecimal)Pow((value + j), i);
                                 if (sq > 15000)
                                     break;
                                 // ignore excessively large roots
@@ -3386,10 +3430,10 @@ namespace Cantus.Core
                             {
                                 for (int k = 2; k <= 40; k++)
                                 {
-                                    double ba = (value * k - j);
+                                    BigDecimal ba = (value * k - j);
                                     if (IsInteger(ba))
                                         continue;
-                                    double sq = Math.Pow(ba, i);
+                                    BigDecimal sq = (BigDecimal)Pow(ba, i);
                                     if (sq > 15000)
                                         break;
                                     // ignore excessively large roots
@@ -3410,7 +3454,7 @@ namespace Cantus.Core
                                     if (IsInteger(sq))
                                         continue;
                                     //ignore integer base 
-                                    sq = Math.Pow(sq, i);
+                                    sq = (BigDecimal)Pow(sq, i);
                                     if (sq > 15000)
                                         break;
                                     // ignore excessively large roots
@@ -3450,7 +3494,7 @@ namespace Cantus.Core
                     // try converting to fraction
                     return ToFrac(value);
 
-                    // return original texting
+                    // return original text
                     //Return value.ToString
                 }
                 else
@@ -3463,7 +3507,7 @@ namespace Cantus.Core
             /// <summary>
             /// Crazy helper function that checks for equality and then returns a symbol to use if equal
             /// </summary>
-            private string SimpStr(double val, double num, double mul, string symb, string addop = "", int addval = 0, string divop = "", double divval = 1)
+            private string SimpStr(BigDecimal val, double num, double mul, string symb, string addop = "", int addval = 0, string divop = "", double divval = 1)
             {
 
 
