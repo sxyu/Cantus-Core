@@ -572,9 +572,9 @@ namespace Cantus.Core
             /// Gets the constructor function for this class
             /// </summary>
             /// <returns></returns>
-            public ObjectTypes.Lambda Constructor
+            public Lambda Constructor
             {
-                get { return (ObjectTypes.Lambda)AllFields["init"].Reference.ResolveObj(); }
+                get { return (Lambda)AllFields["init"].Reference.ResolveObj(); }
             }
 
             /// <summary>
@@ -768,12 +768,12 @@ namespace Cantus.Core
                         fn.DeclaringScope = nsScope;
                         fn.Modifiers.Add("internal");
                         eval.UserFunctions[fn.FullName] = fn;
-                        this.Fields[fn.Name] = new Variable(fn.Name, new ObjectTypes.Lambda(fn), tmpScope, fn.Modifiers);
+                        this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn), tmpScope, fn.Modifiers);
                     }
                     else
                     {
                         fn.Modifiers.Add("internal");
-                        this.Fields[fn.Name] = new Variable(fn.Name, new ObjectTypes.Lambda(fn, true), tmpScope, fn.Modifiers);
+                        this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn, true), tmpScope, fn.Modifiers);
                     }
                 }
 
@@ -791,13 +791,13 @@ namespace Cantus.Core
                 {
                     UserFunction fn = new UserFunction("init", "", new List<string>(), tmpScope);
                     fn.Modifiers.Add("internal");
-                    this.Fields[fn.Name] = new Variable(fn.Name, new ObjectTypes.Lambda(fn, true), this.FullName, fn.Modifiers);
+                    this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn, true), this.FullName, fn.Modifiers);
                 }
 
                 // add 'type' function
-                UserFunction typeFn = new UserFunction("type", string.Format("return {0}{1}type(this)", CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), tmpScope);
+                UserFunction typeFn = new UserFunction("type", string.Format("return {0}{1}type(this)", ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), tmpScope);
                 typeFn.Modifiers.Add("internal");
-                this.Fields[typeFn.Name] = new Variable(typeFn.Name, new ObjectTypes.Lambda(typeFn, true), this.FullName, typeFn.Modifiers);
+                this.Fields[typeFn.Name] = new Variable(typeFn.Name, new Lambda(typeFn, true), this.FullName, typeFn.Modifiers);
             }
 
             /// <summary>
@@ -1338,26 +1338,6 @@ namespace Cantus.Core
                 {
                     if (Result is Exception) return ((Exception)Result).Message;
                     return _evaluator.Internals.O(Result);
-                }
-            }
-
-            /// <summary>
-            /// The result converted to a formatted string (with human-readable matrices)
-            /// </summary>
-            public string FormattedString
-            {
-                get
-                {
-                    string res = ResultString;
-                    if (res.StartsWith("[") && res.EndsWith("]")) // format a matrix
-                    {
-                        if (! res.Contains("], [")) // column vector
-                            res = res.Replace(", ", "]\n[");
-                        else // matrix
-                            res = res.Replace("], [", "]\n[");
-                        res = res.Replace("[[", "[").Replace("]]", "]");
-                    }
-                    return res;
                 }
             }
 
@@ -3038,7 +3018,7 @@ namespace Cantus.Core
                                         string fn = eo.ToString();
                                         if (HasUserFunction(fn))
                                         {
-                                            varlist.Add(new ObjectTypes.Lambda(fn, GetUserFunction(fn).Args, true));
+                                            varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
                                         }
                                         else if (HasFunction(fn))
                                         {
@@ -3046,7 +3026,7 @@ namespace Cantus.Core
                                             if (fn.StartsWith(ROOT_NAMESPACE))
                                                 fn = fn.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
                                             MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-                                            varlist.Add(new ObjectTypes.Lambda(fn, (from param in info.GetParameters() select param.Name), true));
+                                            varlist.Add(new Lambda(fn, (from param in info.GetParameters() select param.Name), true));
                                         }
                                         else
                                         {
@@ -3223,7 +3203,7 @@ namespace Cantus.Core
                     string fn = eo.ToString();
                     if (HasUserFunction(fn))
                     {
-                        varlist.Add(new ObjectTypes.Lambda(fn, GetUserFunction(fn).Args, true));
+                        varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
                     }
                     else if (HasFunction(fn))
                     {
@@ -3232,7 +3212,7 @@ namespace Cantus.Core
                             fn = fn.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
                         MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
-                        varlist.Add(new ObjectTypes.Lambda(fn, (from param in info.GetParameters() select param.Name), true));
+                        varlist.Add(new Lambda(fn, (from param in info.GetParameters() select param.Name), true));
                     }
                     else
                     {
@@ -3585,11 +3565,11 @@ namespace Cantus.Core
                     return lst;
 
                 }
-                else if (HasVariable(fn) && ObjectTypes.Lambda.IsType(GetVariableRef(fn).ResolveObj()))
+                else if (HasVariable(fn) && Lambda.IsType(GetVariableRef(fn).ResolveObj()))
                 {
                     // lambda expression/function pointer
 
-                    ObjectTypes.Lambda lambda = (Lambda)GetVariableRef(fn).ResolveObj();
+                    Lambda lambda = (Lambda)GetVariableRef(fn).ResolveObj();
                     if (lambda.Args.Count() != argLst.Count())
                     {
                         throw new EvaluatorException(fn + ": " + lambda.Args.Count() + " parameter(s) expected" + ((baseObj != null) ? "(self-referring resolution on)" : ""));
@@ -3836,7 +3816,7 @@ namespace Cantus.Core
             {
                 return "Reference";
             }
-            if (type == typeof(ObjectTypes.Lambda))
+            if (type == typeof(Lambda))
             {
 
                 return "Function";

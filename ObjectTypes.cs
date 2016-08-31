@@ -1704,20 +1704,18 @@ namespace Cantus.Core
                     // deep copy everything before doing anything to avoid messing up due to references
                     Matrix mat = (Matrix)this.GetDeepCopy();
 
-                    //' convert all rows to matrices
-                    //If mat.Width = 1 Then
-                    //    Dim lst As List(Of Reference) = DirectCast(mat.GetValue(), List(Of Reference))
-                    //    For i As Integer = 0 To mat.Height - 1
-                    //        lst(i) = New Reference(New Matrix(new[]{lst(i).ResolveObj()}))
-                    //    Next
-                    //End If
-
                     Dictionary<int, int> pivot = new Dictionary<int, int>();
                     int curRow = 0;
+
+                    bool skip = false;
+
                     for (int col = 0; col <= mat.Width - 1; col++)
                     {
                         if (curRow >= mat.Height)
-                            return mat;
+                        {
+                            skip = true;
+                            break;
+                        }
                         bool success = true;
 
                         for (int swapRow = curRow; swapRow <= mat.Height; swapRow++)
@@ -1761,10 +1759,26 @@ namespace Cantus.Core
                         curRow += 1;
                     }
 
-                    while (curRow < mat.Height)
+                    if (!skip){
+                        while (curRow < mat.Height)
+                        {
+                            mat.ScaleRow(curRow, 0, augmented);
+                            curRow += 1;
+                        }
+                    }
+
+                    for (int i = 0; i < mat.Height; ++i)
                     {
-                        mat.ScaleRow(curRow, 0, augmented);
-                        curRow += 1;
+                        for (int j = 0; j < mat.Width; ++j)
+                        {
+                            object obj = mat.GetCoord(i, j);
+                            if (obj is Reference) obj = ((Reference)obj).Resolve();
+                            if (obj is double) obj = (BigDecimal)(double)obj;
+                            if (obj is BigDecimal)
+                            {
+                                mat.SetCoord(i, j, ((BigDecimal)obj).Truncate(15));
+                            }
+                        }
                     }
 
                     return mat;
@@ -1839,18 +1853,65 @@ namespace Cantus.Core
                     return str.StartsWith("[") && str.EndsWith("]");
                 }
 
-                public override string ToString()
+                /// <summary>
+                /// Get the maximum length of a subitem in the matrix, used for conversion to a human readable string
+                /// </summary>
+                private int MaxItemLen(Matrix m = null)
                 {
-                    StringBuilder str = new StringBuilder("[");
-                    foreach (Reference k in _value)
+                    if (m == null) m = this;
+
+                    InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                    int maxLen = 0;
+
+                    foreach (Reference k in m._value)
                     {
-                        if (!(str.Length == 1))
-                            str.Append(", ");
-                        InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
-                        str.Append(ef.O(k.GetRefObject()));
+                        if (k.GetRefObject() is Matrix)
+                            maxLen = Math.Max(maxLen, MaxItemLen((Matrix)k.GetRefObject()));
+                        else
+                            maxLen = Math.Max(maxLen, ef.O(k.GetRefObject()).Length);
+                    }
+
+                    return maxLen;
+                }
+
+                /// <summary>
+                /// Get the human readable string representation of the matrix
+                /// </summary>
+                private string StringRepr(int itemWid, Matrix m = null)
+                {
+                    if (m == null) m = this;
+
+                    StringBuilder str = new StringBuilder("[");
+
+                    InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                    foreach (Reference k in m._value)
+                    {
+                        if (str.Length != 1)
+                        {
+                            str.Append(',');
+                            if (m.Width > 1) str.Append(" _\n ");
+                            else str.Append(' ');
+                        }
+                        string tostr = "";
+                        if (k.GetRefObject() is Matrix)
+                        {
+                            tostr = StringRepr(itemWid, (Matrix)k.GetRefObject());
+                        }
+                        else
+                        {
+                            tostr = ef.O(k.GetRefObject());
+                        }
+                        str.Append(tostr.PadRight(itemWid));
                     }
                     str.Append("]");
+
                     return str.ToString();
+                }
+
+                public override string ToString()
+                {
+                    int maxLen = MaxItemLen();
+                    return StringRepr(maxLen);
                 }
 
                 public override bool Equals(EvalObjectBase other)

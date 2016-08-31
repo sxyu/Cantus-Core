@@ -1482,11 +1482,11 @@ private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseXor(ObjectTypes.EvalObje
         if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
         {
             // symmetric difference
-            dict = _eval.Internals.SymmetricDifference(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
+            dict = _eval.Internals.DifferenceSymmetric(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
         }
         else if (ObjectTypes.Matrix.IsType(right))
         {
-            dict = _eval.Internals.SymmetricDifference(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
+            dict = _eval.Internals.DifferenceSymmetric(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
         }
         else
         {

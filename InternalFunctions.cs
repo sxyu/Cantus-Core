@@ -3656,13 +3656,17 @@ namespace Cantus.Core
                         object x = list[i].GetRefObject();
                         _eval.SetDefaultVariable(new Reference(x));
                         object res;
-                        if (x is Reference[])
+                        if (x is ObjectTypes.Tuple)
                         {
-                             res= function.Execute(_eval, (Reference[])x);
+                             res = function.Execute(_eval, (Reference[])(((ObjectTypes.Tuple)x).GetValue()));
+                        }
+                        else if (x is Matrix)
+                        {
+                             res = Select(((Matrix)x).GetValue(), function);
                         }
                         else if (x is Reference)
                         {
-                            res = function.Execute(_eval, new[] { (Reference)x });
+                             res = function.Execute(_eval, new[] { (Reference)x });
                         }
                         else
                         {
@@ -3716,6 +3720,30 @@ namespace Cantus.Core
                 {
                     return lst;
                 }
+            }
+
+
+            /// <summary>
+            /// Flatten the matrix to a list
+            /// </summary>
+            public List<Reference> Flatten(IList<Reference> lst)
+            {
+                List<Reference> newLst = new List<Reference>();
+                for (int i=0; i < lst.Count; ++i)
+                {
+                    if (lst[i].GetRefObject() is Matrix)
+                    {
+                        foreach (Reference r in Flatten((List<Reference>)lst[i].GetValue()))
+                        {
+                            newLst.Add(r);
+                        }
+                    }
+                    else
+                    {
+                        newLst.Add(lst[i]);
+                    }
+                }
+                return newLst;
             }
 
             /// <summary>
@@ -6123,7 +6151,7 @@ namespace Cantus.Core
             {
                 foreach (KeyValuePair<Reference, Reference> kv in set2)
                 {
-                    set1[new Reference(kv.Key)] = kv.Value;
+                    set1[kv.Key] = kv.Value;
                 }
                 return set1;
             }
@@ -6162,7 +6190,7 @@ namespace Cantus.Core
             /// <summary>
             /// Computes the symmetric difference of two sets
             /// </summary>
-            public IDictionary<Reference, Reference> SymmetricDifference(IDictionary<Reference, Reference> set1, IDictionary<Reference, Reference> set2)
+            public IDictionary<Reference, Reference> DifferenceSymmetric(IDictionary<Reference, Reference> set1, IDictionary<Reference, Reference> set2)
             {
                 foreach (KeyValuePair<Reference, Reference> kv in set2)
                 {
