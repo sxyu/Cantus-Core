@@ -1293,7 +1293,7 @@ namespace Cantus.Core
         /// <summary>
         /// Data for EvalComplete event
         /// </summary>
-        public sealed class AnswerEventArgs : EventArgs{
+        public sealed class AnswerEventArgs : EventArgs {
 
             private string _expression = null;
             /// <summary>
@@ -1305,7 +1305,7 @@ namespace Cantus.Core
             /// <summary>
             /// False if this result was saved to answers
             /// </summary>
-            public bool NoSaveAns { get { return _noSaveAns;  } }
+            public bool NoSaveAns { get { return _noSaveAns; } }
 
             private object _result = null;
             /// <summary>
@@ -1346,17 +1346,17 @@ namespace Cantus.Core
             /// The evaluator used to evaluate this expression
             /// </summary>
             public CantusEvaluator Evaluator { get { return _evaluator; } }
-            
+
             /// <summary>
             /// Create a new object representing the result of an evaluation.
             /// </summary>
-            public AnswerEventArgs(CantusEvaluator eval, object result, string expr, bool noSaveAns=true)
+            public AnswerEventArgs(CantusEvaluator eval, object result, string expr, bool noSaveAns = true)
             {
                 _evaluator = eval;
                 _result = result;
                 _expression = expr;
                 _noSaveAns = noSaveAns;
-            } 
+            }
 
             public override string ToString()
             {
@@ -1382,7 +1382,7 @@ namespace Cantus.Core
             /// The max number of threads to spawn before killing old threads
             /// </summary>
 
-            private const int MAX_THREADS = 5;
+            public int MaxThreads { get;  set; } = 8;
             /// <summary>
             /// A dictionary containing threads managed by this ThreadManager
             /// </summary>
@@ -1480,7 +1480,7 @@ namespace Cantus.Core
                     this._threadCt = 0;
                 }
 
-                if (this._threadCt > MAX_THREADS)
+                if (this._threadCt > MaxThreads)
                 {
                     try
                     {
@@ -1684,6 +1684,16 @@ namespace Cantus.Core
         }
 
         /// <summary>
+        /// The path to the currently executing file on each process
+        /// </summary>
+        public Dictionary<int, string> ExecPath { get; set; } = new Dictionary<int, string>();
+
+        /// <summary>
+        /// The path to the currently executing directory on each process
+        /// </summary>
+        public Dictionary<int, string> ExecDir { get; set; } = new Dictionary<int, string>();
+
+        /// <summary>
         /// Get the line number the evaluator started from, used for error reporting
         /// </summary>
 
@@ -1881,6 +1891,8 @@ namespace Cantus.Core
             this.StatementRegistar = new StatementRegistar(this);
             this._baseLine = 0;
             this._curLine = 0;
+            this.ExecPath[Thread.CurrentThread.ManagedThreadId] = Internals.CantusPath();
+            this.ExecDir[Thread.CurrentThread.ManagedThreadId] = Internals.CantusDir();
         }
 
         /// <summary>
@@ -1896,6 +1908,7 @@ namespace Cantus.Core
         /// <param name="userFunctions">Dictionary of user function definitions</param>
         /// <param name="baseLine">The line number that this evaluator started at, used for error reporting</param>
         /// <param name="scope">The name of the scope of this evaluator</param>
+        /// <param name="parent">The parent evaluator, if any</param>
         public CantusEvaluator(eOutputFormat outputFormat = eOutputFormat.Math,
             eAngleRepresentation angleRepr = eAngleRepresentation.Radian,
             int spacesPerTab = 4,
@@ -1929,8 +1942,14 @@ namespace Cantus.Core
                 this._baseLine = baseLine;
                 this._curLine = baseLine;
                 this._scope = scope;
+
                 if (parent != null)
+                {
                     this._parent = parent;
+                    if (parent.Internals.RequestClearConsoleHandler != null) this.ClearConsole += parent.Internals.RequestClearConsoleHandler;
+                    if (parent.Internals.ReadInputHandler != null) this.ReadInput += parent.Internals.ReadInputHandler;
+                    if (parent.Internals.WriteOutputHandler != null) this.WriteOutput += parent.Internals.WriteOutputHandler;
+                }
 
                 Loaded.Add(ROOT_NAMESPACE);
                 if (IsExternalScope(scope, ROOT_NAMESPACE))
@@ -2019,13 +2038,13 @@ namespace Cantus.Core
                     // if still not found look in the include directory
                     if (!path.StartsWith("include" + System.IO.Path.DirectorySeparatorChar))
                     {
-                        path = "include" + System.IO.Path.DirectorySeparatorChar + path;
+                        path = "include" + Path.DirectorySeparatorChar + path;
                     }
                 }
             }
 
             // load entire directory, with include
-            if (System.IO.Directory.Exists(path))
+            if (Directory.Exists(path))
             {
                 LoadDir(path, asInternal, import);
                 return;
@@ -2041,8 +2060,12 @@ namespace Cantus.Core
             CantusEvaluator tmpEval = DeepCopy(newScope);
 
             Exception except = null;
+            string prevPath = ExecPath[Thread.CurrentThread.ManagedThreadId];
+            string prevDir = ExecDir[Thread.CurrentThread.ManagedThreadId];
             try
             {
+                ExecDir[Thread.CurrentThread.ManagedThreadId] = Path.GetDirectoryName(path);
+                ExecPath[Thread.CurrentThread.ManagedThreadId] = path;
                 tmpEval.EvalRaw(File.ReadAllText(path), noSaveAns: true);
             }
             catch (Exception ex)
@@ -2050,6 +2073,9 @@ namespace Cantus.Core
                 except = ex;
                 // first ensure all things we currently have are loaded. Throw the error in the end.
             }
+
+            ExecPath[Thread.CurrentThread.ManagedThreadId] = prevPath;
+            ExecDir[Thread.CurrentThread.ManagedThreadId] = prevDir;
 
             // load new user functions
             foreach (UserFunction uf in tmpEval.UserFunctions.Values)
@@ -2190,6 +2216,10 @@ namespace Cantus.Core
                 this.ThreadController.RemoveThreadById(Thread.CurrentThread.ManagedThreadId);
             });
             int id = this.ThreadController.AddThread(th);
+
+            this.ExecPath[id] = Internals.CantusPath();
+            this.ExecDir[id] = Internals.CantusDir();
+
             th.IsBackground = true;
             th.Start();
             if (ThreadStarted != null)
@@ -2685,6 +2715,10 @@ namespace Cantus.Core
                 this.ThreadController.RemoveThreadById(Thread.CurrentThread.ManagedThreadId);
             });
             int id = this.ThreadController.AddThread(th);
+
+            this.ExecPath[id] = Internals.CantusPath();
+            this.ExecDir[id] = Internals.CantusDir();
+
             th.IsBackground = true;
             th.Start();
             if (ThreadStarted != null)
@@ -2957,7 +2991,7 @@ namespace Cantus.Core
 
                         // if the object is not empty we try to detect its type
                         if (!string.IsNullOrEmpty(objstr))
-                            eo = ObjectTypes.StrDetectType(objstr, this, numberPreserveSigFigs: SignificantMode);
+                            eo = ObjectTypes.Parse(objstr, this, numberPreserveSigFigs: SignificantMode);
 
                         // if the object is not empty
                         if (!string.IsNullOrEmpty(objstr))
@@ -3190,7 +3224,7 @@ namespace Cantus.Core
             // add remaining bit at the end
             if (idx < expr.Length && !string.IsNullOrEmpty(expr.Substring(idx, expr.Length - idx).Trim()))
             {
-                EvalObjectBase eo = ObjectTypes.StrDetectType(expr.Substring(idx, expr.Length - idx).Trim(), numberPreserveSigFigs: SignificantMode);
+                EvalObjectBase eo = ObjectTypes.Parse(expr.Substring(idx, expr.Length - idx).Trim(), numberPreserveSigFigs: SignificantMode);
 
                 // if the object we get is an identifier, we try to break it into variables which are resolved using ResolveVariables
                 if (ObjectTypes.Identifier.IsType(eo))
@@ -3302,7 +3336,7 @@ namespace Cantus.Core
                     {
                         if (baseObj == null || (br.Resolve() is double && double.IsNaN((double)(br.Resolve())) || br.Resolve() is BigDecimal && ((BigDecimal)br.Resolve()).IsUndefined))
                         {
-                            baseObj = StrDetectType(baseTxt, this, true, numberPreserveSigFigs: SignificantMode);
+                            baseObj = Parse(baseTxt, this, true, numberPreserveSigFigs: SignificantMode);
                             br = new Reference(baseObj);
                         }
                     }
@@ -3912,8 +3946,14 @@ namespace Cantus.Core
             Dictionary<string, UserFunction> funcCopy = new Dictionary<string, UserFunction>(this.UserFunctions);
             Dictionary<string, UserClass> classesCopy = new Dictionary<string, UserClass>(this.UserClasses);
 
-            CantusEvaluator res = new CantusEvaluator(this.OutputFormat, this.AngleMode, this.SpacesPerTab, this.ExplicitMode, this.SignificantMode, this.PrevAns, varsCopy, funcCopy, classesCopy, this._baseLine,
-            string.IsNullOrEmpty(scopeName) ? this._scope : scopeName, false);
+            CantusEvaluator res = new CantusEvaluator(this.OutputFormat, this.AngleMode, this.SpacesPerTab, this.ExplicitMode,
+                this.SignificantMode, this.PrevAns, varsCopy, funcCopy, classesCopy, this._baseLine,
+                string.IsNullOrEmpty(scopeName) ? this._scope : scopeName, false);
+
+            if (Internals.RequestClearConsoleHandler != null) res.ClearConsole += Internals.RequestClearConsoleHandler;
+            if (Internals.ReadInputHandler != null) res.ReadInput += Internals.ReadInputHandler;
+            if (Internals.WriteOutputHandler != null) res.WriteOutput += Internals.WriteOutputHandler;
+
             foreach (string import in GetAllAccessibleScopes())
             {
                 res.Import(import);

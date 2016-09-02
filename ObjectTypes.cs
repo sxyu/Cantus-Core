@@ -71,7 +71,7 @@ namespace Cantus.Core
             /// <param name="identifierAsText">If true, parses remaining into Text's instead of Identifiers</param>
             /// <param name="primitiveOnly">If true, only checks number, boolean, text types</param>
             /// <returns></returns>
-            public static EvalObjectBase StrDetectType(string str, CantusEvaluator eval = null, bool identifierAsText = false, bool primitiveOnly = true, bool numberPreserveSigFigs = false)
+            public static EvalObjectBase Parse(string str, CantusEvaluator eval = null, bool identifierAsText = false, bool primitiveOnly = true, bool numberPreserveSigFigs = false)
             {
                 if (Number.StrIsType(str))
                 {
@@ -87,27 +87,25 @@ namespace Cantus.Core
                     {
                         foreach (Type t in _types)
                         {
-                            // identifiers & text are both strings, so we need to look at the identifierAsText flag
-                            if (identifierAsText && t == typeof(Identifier))
-                                continue;
-                            if (!identifierAsText && t == typeof(Text))
-                                continue;
+                            try {
+                                // We don't need to parse strings or primitives
+                                if (t == typeof(Identifier) || t == typeof(Text) || t == typeof (Number) || t == typeof (Boolean))
+                                    continue;
 
-                            if (Convert.ToBoolean(t.GetMethod("StrIsType").Invoke(t, new[] { str })))
-                            {
-                                try
+                                if (Convert.ToBoolean(t.GetMethod("StrIsType").Invoke(t, new string[] { str })))
                                 {
-                                    t.GetConstructor(new[] { typeof(string) });
-                                    return (EvalObjectBase)Activator.CreateInstance(t, new[] { (object)str });
-                                }
-                                catch
-                                {
-                                    return (EvalObjectBase)Activator.CreateInstance(t, new[]{
-                                    (object)str,
-                                    eval
-                                });
+                                    try
+                                    {
+                                        t.GetConstructor(new[] { typeof(string) });
+                                        return (EvalObjectBase)Activator.CreateInstance(t, new string[] { str });
+                                    }
+                                    catch
+                                    {
+                                        return (EvalObjectBase)Activator.CreateInstance(t, new object[] { str, eval });
+                                    }
                                 }
                             }
+                            catch { }
                         }
                     }
                     else
@@ -636,6 +634,9 @@ namespace Cantus.Core
                                     case '\"':
                                     case '?':
                                         SetOrAppend(ref newstr, _value[i], idx);
+                                        break;
+                                    case '/':
+                                        SetOrAppend(ref newstr, System.IO.Path.DirectorySeparatorChar, idx);
                                         break;
                                     default:
                                         throw new EvaluatorException("Invalid escape sequence");
@@ -2226,9 +2227,9 @@ namespace Cantus.Core
                     else if (obj is Matrix)
                     {
                         _value = new SortedDictionary<Reference, Reference>(new ObjectComparer());
-                        foreach (EvalObjectBase o in (List<Reference>)obj.GetValue())
+                        foreach (Reference o in (List<Reference>)obj.GetValue())
                         {
-                            _value[new Reference(o)] = null;
+                            _value[o] = null;
                         }
                     }
                     else
@@ -2369,9 +2370,9 @@ namespace Cantus.Core
                     else if (obj is Matrix)
                     {
                         _value = new Dictionary<Reference, Reference>(new ObjectComparer());
-                        foreach (EvalObjectBase o in (List<Reference>)obj.GetValue())
+                        foreach (Reference o in (List<Reference>)obj.GetValue())
                         {
-                            _value[new Reference(o)] = null;
+                            _value[o] = null;
                         }
                     }
                     else

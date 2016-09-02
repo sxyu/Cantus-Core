@@ -531,6 +531,7 @@ namespace Cantus.Core
                 }
                 ct += 1;
             }
+            if (result.Code == ExecCode.@continue) result = new StatementResult(result.Value);
             return result;
         }
 
@@ -580,6 +581,8 @@ namespace Cantus.Core
                 }
                 ct += 1;
             }
+
+            if (result.Code == ExecCode.@continue) result = new StatementResult(result.Value);
             return result;
         }
 
@@ -587,7 +590,10 @@ namespace Cantus.Core
         {
             if (blocks.Count != 1)
                 throw new SyntaxException("Run statement is invalid");
-            return Run(blocks[0].Content);
+
+            StatementResult result = Run(blocks[0].Content);
+            if (result.Code == ExecCode.@continue) result = new StatementResult(result.Value);
+            return result;
         }
 
         private StatementResult StatementFor(List<Block> blocks)
@@ -635,6 +641,13 @@ namespace Cantus.Core
                         }
                     }
                 }
+                else if (lstName is string)
+                {
+                    foreach (char c in (string)lstName)
+                    {
+                        lstNames.Add(new List<EvalObjectBase>(new[]{ new Text(c.ToString()) }));
+                    }
+                }
                 else
                 {
                     lstNames.Add(new List<EvalObjectBase>(new[]{ DetectType(lstName) }));
@@ -674,10 +687,10 @@ namespace Cantus.Core
                     ct += 1;
                 }
 
-                // for ... = ... to ... step ...
             }
             else if (arg.ToLowerInvariant().Contains(" to "))
             {
+                // for ... = ... to ... step ...
                 string varname = arg.Remove(arg.ToLowerInvariant().IndexOf(" to "));
 
                 BigDecimal var = (BigDecimal)_eval.EvalExprRaw(varname, true);
@@ -733,6 +746,7 @@ namespace Cantus.Core
             {
                 throw new SyntaxException("Invalid \"for\" statement syntax");
             }
+            if (result.Code == ExecCode.@continue) result = new StatementResult(result.Value);
             return result;
         }
 

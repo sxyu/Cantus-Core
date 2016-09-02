@@ -49,6 +49,16 @@ namespace Cantus.Core
             /// Raised when Cantus needs to read input input from the console. Handle to use I/O in GUI applications
             /// </summary>
             public event ReadInputDelegate ReadInput;
+            
+            /// <summary>
+            /// The event handler for the ReadInput event
+            /// </summary>
+            internal ReadInputDelegate ReadInputHandler
+            {
+                    get{
+                        return this.ReadInput;
+                    }
+            }
 
             /// <summary>
             /// Raised when Cantus needs to write output to the console. Handle to use I/O in GUI applications
@@ -58,6 +68,16 @@ namespace Cantus.Core
             /// Raised when Cantus needs to read input input from the console. Handle to use I/O in GUI applications
             /// </summary>
             public event WriteOutputDelegate WriteOutput;
+
+            /// <summary>
+            /// The event handler for the WriteOutput event
+            /// </summary>
+            internal WriteOutputDelegate WriteOutputHandler
+            {
+                get{
+                    return this.WriteOutput;
+                }
+            }
 
 
             public delegate void ClearConsoleDelegate(object sender, EventArgs e);
@@ -69,6 +89,16 @@ namespace Cantus.Core
             public InternalFunctions(CantusEvaluator parent)
             {
                 this._eval = parent;
+            }
+
+            /// <summary>
+            /// The event handler for the RequestClearConsole event
+            /// </summary>
+            internal ClearConsoleDelegate RequestClearConsoleHandler
+            {
+                    get{
+                        return this.RequestClearConsole;
+                    }
             }
 
             // evaluator management
@@ -268,7 +298,7 @@ namespace Cantus.Core
                     {
                         try
                         {
-                            result = ObjectTypes.StrDetectType(Clipboard.GetText(), _eval, true, false, _eval.SignificantMode).GetValue();
+                            result = ObjectTypes.Parse(Clipboard.GetText(), _eval, true, false, _eval.SignificantMode).GetValue();
                         }
                         catch
                         {
@@ -3974,14 +4004,17 @@ namespace Cantus.Core
             {
                 return obj.ToString();
             }
+
             public bool Boolean(object obj)
             {
                 return IsTrue(obj);
             }
+
             public string Char(double id)
             {
                 return ((char)(Int(id))).ToString();
             }
+
             public int Ascii(string c)
             {
                 return (int)(c[0]);
@@ -3995,28 +4028,22 @@ namespace Cantus.Core
             {
                 try
                 {
-                    return ParseN(text);
-                    //ex As Exception
+                    return ObjectTypes.Parse(text, eval : _eval , identifierAsText : true, primitiveOnly : false).GetValue();
                 }
                 catch
                 {
-                    try
-                    {
-                        return ParseD(text);
-                    }
-                    catch
-                    {
-                        return text;
-                    }
+                    return text;
                 }
             }
-            public double ParseN(string text)
+
+            public double ParseNumber(string text)
             {
                 return (double)(new Number(text).GetValue());
             }
-            public System.DateTime ParseD(string text)
+
+            public object ParseDate(string text)
             {
-                return System.DateTime.Parse(text);
+                return new ObjectTypes.DateTime(text).GetValue();
             }
 
             // texting operations
@@ -4050,6 +4077,102 @@ namespace Cantus.Core
             public string ToUpper(string text)
             {
                 return text.ToUpperInvariant();
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only upper case letters and non-letter characters
+            /// </summary>
+            public bool IsUpper(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (char.IsLower(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only lower case letters and non-letter characters
+            /// </summary>
+            public bool IsLower(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (char.IsUpper(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only letters
+            /// </summary>
+            public bool IsLetter(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (!char.IsLetter(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only digits
+            /// </summary>
+            public bool IsDigit(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (!char.IsDigit(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only digits and letters
+            /// </summary>
+            public bool IsLetterOrDigit(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (!char.IsLetterOrDigit(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only punctuation marks
+            /// </summary>
+            public bool IsPunctuation(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (!char.IsPunctuation(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only separator marks
+            /// </summary>
+            public bool IsSeparator(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (!char.IsSeparator(c)) return false;
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Checks if the given string consists of only symbol marks
+            /// </summary>
+            public bool IsSymbol(string text)
+            {
+                foreach (char c in text)
+                {
+                    if (!char.IsSymbol(c)) return false;
+                }
+                return true;
             }
 
             /// <summary>
@@ -7156,9 +7279,9 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the startup directory
+            /// Get the base directory
             /// </summary>
-            public string BaseDir()
+            public string CurrentDir()
             {
                 return Environment.CurrentDirectory;
             }
@@ -7219,12 +7342,29 @@ namespace Cantus.Core
                 return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             }
 
+
             /// <summary>
-            /// Get the path of the Cantus executable
+            /// Get the path of the executing file
+            /// </summary>
+            public string ExecPath()
+            {
+                return _eval.ExecPath[Thread.CurrentThread.ManagedThreadId];
+            }
+
+            /// <summary>
+            /// Get the directory of the executing file
+            /// </summary>
+            public string ExecDir()
+            {
+                return _eval.ExecDir[Thread.CurrentThread.ManagedThreadId];
+            }
+
+            /// <summary>
+            /// Get the path of the Cantus core dll
             /// </summary>
             public string CantusPath()
             {
-                return Environment.GetCommandLineArgs()[0];
+                return Assembly.GetExecutingAssembly().Location;
             }
 
             /// <summary>
@@ -7232,7 +7372,7 @@ namespace Cantus.Core
             /// </summary>
             public string CantusDir()
             {
-                return Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]);
+                return Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location);
             }
 
             /// <summary>
@@ -7254,7 +7394,7 @@ namespace Cantus.Core
             /// Start an asynchronous task.
             /// </summary>
             /// <returns>The id of the thread started</returns>
-            public int Async(Lambda func, List<Reference> args = null, Lambda callback = null, string runAfter = "")
+            public int Async(Lambda func, List<Reference> args = null, Lambda callback = null)
             {
                 try
                 {
@@ -7371,32 +7511,21 @@ namespace Cantus.Core
             /// <summary>
             /// Execute a script at the specified path, saves the result into var and executes runAfter
             /// </summary>
-            public string Run(string path, string runAfter = "", string var = "result")
+            public void Run(string path, Lambda callback = null)
             {
                 CantusEvaluator tmp = _eval.DeepCopy();
-                tmp.EvalComplete += (object sender, AnswerEventArgs e) => { RunCallBack(tmp, e.Result, var, runAfter); };
-                tmp.EvalAsync(File.ReadAllText(path));
-                return "";
-            }
-
-            private void RunCallBack(CantusEvaluator tmp, object result, string var, string runAfter)
-            {
-                try
-                {
-                    _eval.SetVariable(var, result);
-                    if (string.IsNullOrEmpty(runAfter))
-                    {
-                        // if no callback is defined then return the variable
-                        _eval.EvalAsync(var);
-                    }
-                    else
-                    {
-                        _eval.EvalAsync(runAfter);
-                    }
-                    tmp.Dispose();
+                tmp.EvalComplete += (object sender, AnswerEventArgs e) => { callback.Execute( _eval, new []{ e.Result }); };
+                string prevDir = _eval.ExecDir[Thread.CurrentThread.ManagedThreadId];
+                string prevPath = _eval.ExecPath[Thread.CurrentThread.ManagedThreadId];
+                try {
+                    _eval.ExecPath[Thread.CurrentThread.ManagedThreadId] = path;
+                    _eval.ExecDir[Thread.CurrentThread.ManagedThreadId] = Path.GetDirectoryName(path);
+                    tmp.EvalAsync(File.ReadAllText(path));
                 }
-                catch
+                finally
                 {
+                    _eval.ExecDir[Thread.CurrentThread.ManagedThreadId] = prevDir;
+                    _eval.ExecPath[Thread.CurrentThread.ManagedThreadId] = prevPath;
                 }
             }
 
@@ -7423,13 +7552,12 @@ namespace Cantus.Core
             /// <summary>
             /// Download from the specified url to the specified path without waiting for completion
             /// </summary>
-            public bool Download(string url, string path)
+            public void Download(string url, string path)
             {
                 using (WebClient wc = new WebClient())
                 {
                     wc.DownloadFileAsync(new Uri(url), path);
                 }
-                return true;
             }
 
             public bool UploadWait(string url, string path)
@@ -7441,13 +7569,12 @@ namespace Cantus.Core
                 return true;
             }
 
-            public bool Upload(string url, string path)
+            public void Upload(string url, string path)
             {
                 using (WebClient wc = new WebClient())
                 {
                     wc.UploadFileAsync(new Uri(url), path);
                 }
-                return true;
             }
 
             public string DownloadText(string url)
