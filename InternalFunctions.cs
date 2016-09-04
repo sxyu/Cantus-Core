@@ -164,14 +164,14 @@ namespace Cantus.Core
                         double ___tmp;
                         if (double.TryParse(val, out ___tmp))
                             throw new EvaluatorException();
-                        _eval.OutputFormat = (eOutputFormat)Enum.Parse(typeof(eOutputFormat), val, true);
+                        _eval.OutputMode = (OutputFormat)Enum.Parse(typeof(OutputFormat), val, true);
                     }
                     catch
                     {
                         throw new EvaluatorException(val + " is not a valid output mode. Choices are: Raw, Math, Scientific (Sci)");
                     }
                 }
-                return _eval.OutputFormat.ToString();
+                return _eval.OutputMode.ToString();
             }
 
             /// <summary>
@@ -3607,11 +3607,11 @@ namespace Cantus.Core
                 else if (value is double || value is BigDecimal)
                 {
                     string ret = null;
-                    if (_eval.OutputFormat == CantusEvaluator.eOutputFormat.Math)
+                    if (_eval.OutputMode == CantusEvaluator.OutputFormat.Math)
                     {
                         ret = MathO(value);
                     }
-                    else if (_eval.OutputFormat == CantusEvaluator.eOutputFormat.Scientific)
+                    else if (_eval.OutputMode == CantusEvaluator.OutputFormat.Scientific)
                     {
                         ret = SciO(value);
                     }
@@ -6923,16 +6923,19 @@ namespace Cantus.Core
             /// </summary>
             public void ClearConsole()
             {
-                if ((RequestClearConsole != null))
-                {
+                try {
                     if (RequestClearConsole != null)
                     {
                         RequestClearConsole(_eval, new EventArgs());
                     }
+                    else
+                    {
+                        Console.Clear();
+                    }
                 }
-                else
+                catch 
                 {
-                    Console.Clear();
+                    throw new EvaluatorException("No console available");
                 }
             }
 

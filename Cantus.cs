@@ -284,7 +284,7 @@ namespace Cantus.Core
         /// <summary>
         /// Represents an output format
         /// </summary>
-        public enum eOutputFormat
+        public enum OutputFormat
         {
             /// <summary>
             /// Directly outputs as a decimal number (switches to scientific notation for very large/very small numbers)
@@ -1538,7 +1538,7 @@ namespace Cantus.Core
         /// The output mode of the evaluator
         /// </summary>
         /// <returns></returns>
-        public eOutputFormat OutputFormat { get; set; }
+        public OutputFormat OutputMode { get; set; }
 
         /// <summary>
         /// The angle representation mode of the evaluator (radians, degrees, gradians)
@@ -1902,7 +1902,7 @@ public void ReInitialize()
             if (file.StartsWith(cantusPath + "plugin/"))
             {
                 AngleMode = AngleRepresentation.Radian;
-                OutputFormat = eOutputFormat.Math;
+                OutputMode = OutputFormat.Math;
                 SignificantMode = false;
                 ExplicitMode = false;
             }
@@ -1950,7 +1950,7 @@ public void ReInitialize()
         /// <param name="baseLine">The line number that this evaluator started at, used for error reporting</param>
         /// <param name="scope">The name of the scope of this evaluator</param>
         /// <param name="parent">The parent evaluator, if any</param>
-        public CantusEvaluator(eOutputFormat outputFormat = eOutputFormat.Math,
+        public CantusEvaluator(OutputFormat outputFormat = OutputFormat.Math,
             AngleRepresentation angleRepr = AngleRepresentation.Radian,
             int spacesPerTab = 4,
             bool @explicit = false,
@@ -1967,7 +1967,7 @@ public void ReInitialize()
 
             try
             {
-                this.OutputFormat = outputFormat;
+                this.OutputMode = outputFormat;
                 this.AngleMode = angleRepr;
                 this.SpacesPerTab = spacesPerTab;
                 this.SignificantMode = significant;
@@ -2154,7 +2154,7 @@ public void ReInitialize()
 
             if (asInternal)
             {
-                OutputFormat = tmpEval.OutputFormat;
+                OutputMode = tmpEval.OutputMode;
                 AngleMode = tmpEval.AngleMode;
                 SpacesPerTab = tmpEval.SpacesPerTab;
                 ExplicitMode = tmpEval.ExplicitMode;
@@ -3773,7 +3773,7 @@ public void ReInitialize()
                 serialized.AppendLine("# Use caution when modifying manually").Append(Environment.NewLine);
                 serialized.AppendLine("# Modes");
 
-                serialized.Append("_output(").Append('\'').Append(OutputFormat.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
+                serialized.Append("_output(").Append('\'').Append(OutputMode.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
                 serialized.Append("_anglerepr(").Append('\'').Append(AngleMode.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
                 serialized.Append("_spacespertab(").Append(SpacesPerTab.ToString()).Append(")").Append(Environment.NewLine);
                 serialized.Append("_sigfigs(").Append(SignificantMode.ToString()).Append(")").Append(Environment.NewLine);
@@ -3869,6 +3869,7 @@ public void ReInitialize()
             }
             if (type == typeof(double))
             {
+                return "Number";
             }
             if (type == typeof(BigDecimal))
             {
@@ -3882,7 +3883,7 @@ public void ReInitialize()
             {
                 return "HashSet";
             }
-            if (type == typeof(List<Reference>))
+            if (type == typeof(List<Reference>) || type == typeof(IEnumerable<Reference>) || type == typeof(IList<Reference>))
             {
                 return "Matrix";
             }
@@ -3958,7 +3959,7 @@ public void ReInitialize()
                 subScopeName = GetAnonymousSubscope();
 
             CantusEvaluator res =
-                new CantusEvaluator(this.OutputFormat, this.AngleMode, this.SpacesPerTab,
+                new CantusEvaluator(this.OutputMode, this.AngleMode, this.SpacesPerTab,
                 this.ExplicitMode, this.SignificantMode, this.PrevAns, varsCopy, funcCopy, classesCopy,
                 lineNumber,
                 _scope + SCOPE_SEP + subScopeName, false, this);
@@ -3994,7 +3995,7 @@ public void ReInitialize()
             Dictionary<string, UserFunction> funcCopy = new Dictionary<string, UserFunction>(this.UserFunctions);
             Dictionary<string, UserClass> classesCopy = new Dictionary<string, UserClass>(this.UserClasses);
 
-            CantusEvaluator res = new CantusEvaluator(this.OutputFormat, this.AngleMode, this.SpacesPerTab, this.ExplicitMode,
+            CantusEvaluator res = new CantusEvaluator(this.OutputMode, this.AngleMode, this.SpacesPerTab, this.ExplicitMode,
                 this.SignificantMode, this.PrevAns, varsCopy, funcCopy, classesCopy, this._baseLine,
                 string.IsNullOrEmpty(scopeName) ? this._scope : scopeName, false);
 
@@ -4033,7 +4034,7 @@ public void ReInitialize()
             Dictionary<string, UserFunction> funcCopy = new Dictionary<string, UserFunction>(this.UserFunctions);
             Dictionary<string, UserClass> classesCopy = new Dictionary<string, UserClass>(this.UserClasses);
 
-            CantusEvaluator res = new CantusEvaluator(this.OutputFormat, this.AngleMode, this.SpacesPerTab, this.ExplicitMode, this.SignificantMode, this.PrevAns, varsCopy, funcCopy, classesCopy, this._baseLine,
+            CantusEvaluator res = new CantusEvaluator(this.OutputMode, this.AngleMode, this.SpacesPerTab, this.ExplicitMode, this.SignificantMode, this.PrevAns, varsCopy, funcCopy, classesCopy, this._baseLine,
             string.IsNullOrEmpty(scopeName) ? this._scope : scopeName, false);
             foreach (string import in GetAllAccessibleScopes())
             {
@@ -4767,7 +4768,7 @@ public void ReInitialize()
                             if (paramTypeName.Contains("`"))
                                 paramTypeName = paramTypeName.Remove(paramTypeName.IndexOf("`"));
 
-                            throw new EvaluatorException(name.ToLowerInvariant() + " Parameter " + maxParamCt + 1 + " \"" + paramTypeName + "\" Type Expected");
+                            throw new EvaluatorException("In " + name.ToLowerInvariant() + ": Parameter " + (maxParamCt + 1) + " \"" + paramTypeName + "\" Type Expected");
                         }
                     }
                     maxParamCt += 1;

@@ -24,11 +24,11 @@ CantusEvaluator eval = new CantusEvaluator();
 // so you don't really need to set them, but I'm writing them here for demo purposes
 
 // Angle representation: Radian, Degree, or Gradian
-eval.AngleMode = CantusEvaluator.eAngleRepresentation.Radian; 
+eval.AngleMode = CantusEvaluator.AngleRepresentation.Radian; 
 
 // Math (auto-detect fractions and roots), Scientific (scientific notation), 
 // or Raw (raw number, uses scientific for very large/very small values)
-eval.OutputFormat = CantusEvaluator.eOutputFormat.Math; 
+eval.OutputMode = CantusEvaluator.OutputFormat.Math; 
 
 // If true, prevents implicit declarations of variables in scripts
 eval.ExplicitMode = false;
