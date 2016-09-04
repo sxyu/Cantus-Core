@@ -7484,9 +7484,11 @@ namespace Cantus.Core
             /// </summary>
             public string StartWait(string path, string args = "")
             {
+                if (!File.Exists(path) && !Directory.Exists(path))
+                    throw new EvaluatorException("Error: file does not exist");
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
-                si.UseShellExecute = false;
+                si.UseShellExecute = true;
                 si.RedirectStandardOutput = true;
                 p.StartInfo = si;
                 p.Start();
@@ -7502,10 +7504,16 @@ namespace Cantus.Core
             /// <summary>
             /// Start a process from the specified filesystem path without waiting for completion
             /// </summary>
-            public double Start(string path, string args = "")
+            public void Start(string path, string args = "")
             {
-                Process.Start(path, args);
-                return double.NaN;
+                if (!File.Exists(path) && !Directory.Exists(path))
+                    throw new EvaluatorException("Error: file does not exist");
+                Process p = new Process();
+                ProcessStartInfo si = new ProcessStartInfo(path, args);
+                si.UseShellExecute = true;
+                si.RedirectStandardOutput = true;
+                p.StartInfo = si;
+                p.Start();
             }
 
             /// <summary>
@@ -7513,6 +7521,8 @@ namespace Cantus.Core
             /// </summary>
             public void Run(string path, Lambda callback = null)
             {
+                if (!File.Exists(path) && !Directory.Exists(path))
+                    throw new EvaluatorException("Error: script does not exist");
                 CantusEvaluator tmp = _eval.DeepCopy();
                 tmp.EvalComplete += (object sender, AnswerEventArgs e) => { callback.Execute( _eval, new []{ e.Result }); };
                 string prevDir = _eval.ExecDir[Thread.CurrentThread.ManagedThreadId];
@@ -7534,6 +7544,8 @@ namespace Cantus.Core
             /// </summary>
             public object RunWait(string path)
             {
+                if (!File.Exists(path) && !Directory.Exists(path))
+                    throw new EvaluatorException("Error: script does not exist");
                 return _eval.EvalRaw(File.ReadAllText(path), noSaveAns: true);
             }
 
