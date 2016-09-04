@@ -274,7 +274,7 @@ namespace Cantus.Core
         /// <summary>
         /// Represents a represenatation of an angle (degree/radian/gradian)
         /// </summary>
-        public enum eAngleRepresentation
+        public enum AngleRepresentation
         {
             Degree = 0,
             Radian,
@@ -1382,7 +1382,7 @@ namespace Cantus.Core
             /// The max number of threads to spawn before killing old threads
             /// </summary>
 
-            public int MaxThreads { get;  set; } = 8;
+            public int MaxThreads { get;  set; } = int.MaxValue;
             /// <summary>
             /// A dictionary containing threads managed by this ThreadManager
             /// </summary>
@@ -1544,7 +1544,7 @@ namespace Cantus.Core
         /// The angle representation mode of the evaluator (radians, degrees, gradians)
         /// </summary>
         /// <returns></returns>
-        public eAngleRepresentation AngleMode { get; set; }
+        public AngleRepresentation AngleMode { get; set; }
 
         /// <summary>
         /// The number of spaces that would represent a tab. Default is 4.
@@ -1876,6 +1876,47 @@ namespace Cantus.Core
                 }
             }
         }
+
+           
+/// <summary>
+/// Reload initialization files
+/// </summary>
+public void ReInitialize()
+{
+    string cantusPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar;
+	List<string> initScripts = new List<string>();
+    if (Directory.Exists(cantusPath + "plugin/"))
+    {
+        initScripts.AddRange(Directory.GetFiles(cantusPath + "plugin/", "*.can", SearchOption.AllDirectories));
+    }
+
+	// initialization files: init.can and init/* ran in root scope on startup
+	if (File.Exists(cantusPath + "init.can"))
+		initScripts.Add(cantusPath + "init.can");
+	if (Directory.Exists(cantusPath + "init/"))
+		initScripts.AddRange(Directory.GetFiles(cantusPath + "init/", "*.can", SearchOption.AllDirectories));
+
+	foreach (string file in initScripts) {
+		try {
+			// Evaluate each file. On error, ignore.
+            if (file.StartsWith(cantusPath + "plugin/"))
+            {
+                AngleMode = AngleRepresentation.Radian;
+                OutputFormat = eOutputFormat.Math;
+                SignificantMode = false;
+                ExplicitMode = false;
+            }
+			Load(file, file == cantusPath + "init.can" || file.ToLower().StartsWith(cantusPath + "init" + Path.DirectorySeparatorChar));
+		} catch (Exception ex) {
+			if (file == cantusPath + "init.can") {
+                        throw new EvaluatorException("Error occurred while processing init.can.\nVariables and functions may not load.\n\nMessage:\n\n" + ex.Message);
+			} else {
+                        throw new EvaluatorException("Error occurred while loading \"" + file.Replace(Path.DirectorySeparatorChar, SCOPE_SEP).Remove(file.LastIndexOf(".")) + "\"\n" + ex.Message);
+			}
+		}
+	}
+}
+
         #endregion
         #endregion
 
@@ -1910,7 +1951,7 @@ namespace Cantus.Core
         /// <param name="scope">The name of the scope of this evaluator</param>
         /// <param name="parent">The parent evaluator, if any</param>
         public CantusEvaluator(eOutputFormat outputFormat = eOutputFormat.Math,
-            eAngleRepresentation angleRepr = eAngleRepresentation.Radian,
+            AngleRepresentation angleRepr = AngleRepresentation.Radian,
             int spacesPerTab = 4,
             bool @explicit = false,
             bool significant = false,
@@ -1959,11 +2000,18 @@ namespace Cantus.Core
                 {
                     // reload default variable values
                     this.ReloadDefault();
+                    // reload initialization files
+                    this.ReInitialize();
                 }
+            }
+            catch (EvaluatorException ex)
+            {
+                throw ex;
             }
             catch (Exception) { // do nothing 
             }
         }
+        
         #endregion
 
         /// <summary>
@@ -4960,22 +5008,23 @@ namespace Cantus.Core
         /// </summary>
         public static string GetFileScopeName(string path)
         {
+            path = Path.GetFullPath(path);
             string newScope = "";
-            if (System.IO.Path.GetFullPath(path) != path)
+            string appDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (path.StartsWith(appDir))
             {
-                newScope = path.Replace('/', SCOPE_SEP).Replace('\\', SCOPE_SEP);
+                newScope = path.Substring(appDir.Length + 1).Replace('/', SCOPE_SEP).Replace('\\', SCOPE_SEP);
+                // do not include 'include'
                 if (newScope.StartsWith("include."))
                     newScope = newScope.Substring("include.".Count());
-                // do not include 'include'
             }
             else
             {
-                newScope = System.IO.Path.GetDirectoryName(path) + SCOPE_SEP + System.IO.Path.GetFileName(path);
-                newScope = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(newScope)) + SCOPE_SEP + System.IO.Path.GetFileName(newScope);
+                newScope = Path.GetFileName(Path.GetDirectoryName(path)) + SCOPE_SEP + Path.GetFileName(path);
             }
             if (newScope.EndsWith(".can"))
                 newScope = newScope.Remove(newScope.Length - 4);
-            newScope = newScope.Trim(new[] { SCOPE_SEP });
+            newScope = newScope.Trim(SCOPE_SEP);
             return newScope;
         }
     }

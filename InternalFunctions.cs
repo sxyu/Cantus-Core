@@ -197,7 +197,7 @@ namespace Cantus.Core
                     }
                     try
                     {
-                        _eval.AngleMode = (eAngleRepresentation)Enum.Parse(typeof(eAngleRepresentation), val, true);
+                        _eval.AngleMode = (AngleRepresentation)Enum.Parse(typeof(AngleRepresentation), val, true);
                     }
                     catch
                     {
@@ -368,11 +368,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return SinD((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return SinR((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return SinG((double)(x));
                         default:
                             return double.NaN;
@@ -393,11 +393,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return CosD((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return CosR((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return CosG((double)(x));
                         default:
                             return double.NaN;
@@ -418,11 +418,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return TanD((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return TanR((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return TanG((double)(x));
                         default:
                             return double.NaN;
@@ -573,11 +573,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return Asind((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return Asinr((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return Asing((double)(x));
                         default:
                             return double.NaN;
@@ -599,11 +599,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return Acosd((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return Acosr((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return Acosg((double)(x));
                         default:
                             return double.NaN;
@@ -651,11 +651,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return Atand((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return Atanr((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return Atang((double)(x));
                         default:
                             return double.NaN;
@@ -689,11 +689,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return SinhD((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return SinhR((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return SinhG((double)(x));
                         default:
                             return double.NaN;
@@ -715,11 +715,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return TanhD((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return TanhR((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return TanhG((double)(x));
                         default:
                             return double.NaN;
@@ -741,11 +741,11 @@ namespace Cantus.Core
                 {
                     switch (_eval.AngleMode)
                     {
-                        case CantusEvaluator.eAngleRepresentation.Degree:
+                        case CantusEvaluator.AngleRepresentation.Degree:
                             return CoshD((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Radian:
+                        case CantusEvaluator.AngleRepresentation.Radian:
                             return CoshR((double)(x));
-                        case CantusEvaluator.eAngleRepresentation.Gradian:
+                        case CantusEvaluator.AngleRepresentation.Gradian:
                             return CoshG((double)(x));
                         default:
                             return double.NaN;
