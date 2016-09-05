@@ -18,7 +18,7 @@ namespace Cantus.Core
         /// Represents the precedence of an operator. The higher, the earlier the operator is executed.
         /// Note that brackets do not have precedence. They are pre-evaluated during tokenization.
         /// </summary>
-        public enum ePrecedence
+        public enum Precedence
         {
             /// <summary>
             /// Represents the precedence of assignment operators like =.
@@ -32,13 +32,13 @@ namespace Cantus.Core
             /// <summary>
             /// represents the precedence of the logical and operator
             /// </summary>
-            and,
-            /// <summary>
-            /// represents the precedence of the logical or operator
-            /// </summary>
             or,
             /// <summary>
             /// represents the precedence of the logical not operator
+            /// </summary>
+            and,
+            /// <summary>
+            /// represents the precedence of the logical or operator
             /// </summary>
             not,
             /// <summary>
@@ -76,7 +76,7 @@ namespace Cantus.Core
         public abstract class Operator
         {
             public abstract List<string> Signs { get; } 
-            public abstract ePrecedence Precedence { get; }
+            public abstract Precedence Precedence { get; }
             /// <summary>
             /// If true, values are passed by the Reference class which allows the value within to be manipulated
             /// </summary>
@@ -94,7 +94,7 @@ namespace Cantus.Core
         public class BinaryOperator : Operator
         {
             public override List<string> Signs { get; } 
-            public override ePrecedence Precedence { get; }
+            public override Precedence Precedence { get; }
             public Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> Execute { get; }
             /// <summary>
             /// Initialize a new binary operator
@@ -102,7 +102,7 @@ namespace Cantus.Core
             /// <param name="signs">The list of signs to register for the operator</param>
             /// <param name="precedence">The precedence of the operator</param>
             /// <param name="execute">The operator definition, specified as a function (use AddressOf ...)</param>
-            public BinaryOperator(string[] signs, ePrecedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute)
+            public BinaryOperator(string[] signs, Precedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute)
             {
                 this.Signs = new List<string>(signs);
                 this.Precedence = precedence;
@@ -116,14 +116,14 @@ namespace Cantus.Core
         public abstract class UnaryOperator : Operator
         {
             public override List<string> Signs { get; }
-            public override ePrecedence Precedence { get; }
+            public override Precedence Precedence { get; }
             public Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> Execute { get; }
             /// <summary>
             /// Initialize a new unary operator
             /// </summary>
             /// <param name="signs">The list of signs to register for the operator</param>
             /// <param name="execute">The operator definition, specified as a function (use AddressOf ...)</param>
-            public UnaryOperator(string[] signs, ePrecedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute)
+            public UnaryOperator(string[] signs, Precedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute)
             {
                 this.Signs = new List<string>(signs);
                 this.Precedence = precedence;
@@ -136,7 +136,7 @@ namespace Cantus.Core
         /// </summary>
         public class UnaryOperatorBefore : UnaryOperator
         {
-            public UnaryOperatorBefore(string[] signs, ePrecedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute) : base(signs, precedence, execute)
+            public UnaryOperatorBefore(string[] signs, Precedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute) : base(signs, precedence, execute)
             {
             }
         }
@@ -146,7 +146,7 @@ namespace Cantus.Core
         /// </summary>
         public class UnaryOperatorAfter : UnaryOperator
         {
-            public UnaryOperatorAfter(string[] signs, ePrecedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute) : base(signs, precedence, execute)
+            public UnaryOperatorAfter(string[] signs, Precedence precedence, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> execute) : base(signs, precedence, execute)
             {
             }
         }
@@ -188,10 +188,10 @@ namespace Cantus.Core
                 }
             }
 
-            public override ePrecedence Precedence
+            public override Precedence Precedence
             {
                 // not used
-                get { return ePrecedence.fact_pct; }
+                get { return Precedence.fact_pct; }
             }
             public delegate ObjectTypes.EvalObjectBase BracketDelegate(string inner, ref ObjectTypes.EvalObjectBase left);
 
@@ -361,7 +361,7 @@ namespace Cantus.Core
         /// A hashset of operator signs to quickly check if a given name is an operator
         /// </summary>
         #endregion
-        private Dictionary<string, Operator> _operatorSigns = new Dictionary<string, Operator>();
+        private Dictionary<string, List<Operator>> _operatorSigns = new Dictionary<string, List<Operator>>();
 
         #region "Public Methods"
         /// <summary>
@@ -384,14 +384,30 @@ namespace Cantus.Core
             return _operatorSigns.ContainsKey(sign);
         }
 
+
         /// <summary>
-        /// Returns the operator that registered the sign
+        /// Return all operators with the sign given
         /// </summary>
-        /// <param name="sign"></param>
-        /// <returns></returns>
-        public Operator OperatorWithSign(string sign)
+        public IEnumerable<Operator> OperatorsWithSign(string sign)
         {
             return _operatorSigns[sign];
+        }
+
+        /// <summary>
+        /// Returns the operator that registered the sign and precedence
+        /// </summary>
+        /// <returns></returns>
+        public Operator OperatorWithSign(string sign, Precedence? precedence = null)
+        {
+            try {
+                foreach (Operator op in _operatorSigns[sign])
+                {
+                    if (precedence == null || op.Precedence == precedence)
+                        return op;
+                }
+            }
+            catch { }
+            return null;
         }
         #endregion
 
@@ -402,7 +418,7 @@ namespace Cantus.Core
         private void RegisterOperators()
         {
             Operators.Clear();
-            foreach (int lvl in Enum.GetValues(typeof(ePrecedence)))
+            foreach (int lvl in Enum.GetValues(typeof(Precedence)))
             {
                 Operators.Add(new List<Operator>());
             }
@@ -411,90 +427,91 @@ namespace Cantus.Core
             // FORMAT: 
             // Register(New [Type]Operator(new[]{[List of signs to register]}, Precedence.[Precedence], AddressOf [Definition]))
 
-            Register(new BinaryOperator(new[]{ "+" }, ePrecedence.add_sub, BinaryOperatorAdd));
-            Register(new BinaryOperator(new[]{ "-" }, ePrecedence.add_sub, BinaryOperatorSubtract));
+            Register(new BinaryOperator(new[]{ "+" }, Precedence.add_sub, BinaryOperatorAdd));
+            Register(new BinaryOperator(new[]{ "-" }, Precedence.add_sub, BinaryOperatorSubtract));
 
-            Register(new BinaryOperator(new[]{ "*" }, ePrecedence.mul_div, BinaryOperatorMultiply));
-            Register(new BinaryOperator(new[]{ "/" }, ePrecedence.mul_div, BinaryOperatorDivide));
-            Register(new BinaryOperator(new[]{ "**" }, ePrecedence.mul_div, BinaryOperatorDuplicateCross));
-            Register(new BinaryOperator(new[]{ "//" }, ePrecedence.mul_div, BinaryOperatorDivideFloor));
-            Register(new BinaryOperator(new[]{ " mod " }, ePrecedence.mul_div, BinaryOperatorModulo));
+            Register(new BinaryOperator(new[]{ "*" }, Precedence.mul_div, BinaryOperatorMultiply));
+            Register(new BinaryOperator(new[]{ "/" }, Precedence.mul_div, BinaryOperatorDivide));
+            Register(new BinaryOperator(new[]{ "**" }, Precedence.mul_div, BinaryOperatorDuplicateCross));
+            Register(new BinaryOperator(new[]{ "//" }, Precedence.mul_div, BinaryOperatorDivideFloor));
+            Register(new BinaryOperator(new[]{ " mod " }, Precedence.mul_div, BinaryOperatorModulo));
 
-            Register(new BinaryOperator(new[]{ "^" }, ePrecedence.exponent, BinaryOperatorExponent));
-            Register(new BinaryOperator(new[]{ "&" }, ePrecedence.bitshift_concat_frac, BinaryOperatorConcat));
-            Register(new BinaryOperator(new[]{ "\\" }, ePrecedence.bitshift_concat_frac, BinaryOperatorDivide));
-            Register(new BinaryOperator(new[]{ "<<" }, ePrecedence.bitshift_concat_frac, BinaryOperatorShl));
-            Register(new BinaryOperator(new[]{ ">>" }, ePrecedence.bitshift_concat_frac, BinaryOperatorShr));
+            Register(new BinaryOperator(new[]{ "^" }, Precedence.exponent, BinaryOperatorExponent));
+            Register(new BinaryOperator(new[]{ "&" }, Precedence.bitshift_concat_frac, BinaryOperatorConcat));
+            Register(new BinaryOperator(new[]{ "\\" }, Precedence.bitshift_concat_frac, BinaryOperatorDivide));
+            Register(new BinaryOperator(new[]{ "<<" }, Precedence.bitshift_concat_frac, BinaryOperatorShl));
+            Register(new BinaryOperator(new[]{ ">>" }, Precedence.bitshift_concat_frac, BinaryOperatorShr));
 
-            Register(new BinaryOperator(new[]{ " or " }, ePrecedence.or, BinaryOperatorOr));
-            Register(new BinaryOperator(new[]{ "||" }, ePrecedence.mul_div, BinaryOperatorBitwiseOr));
-            Register(new BinaryOperator(new[]{ " and " }, ePrecedence.and, BinaryOperatorAnd));
-            Register(new BinaryOperator(new[]{ "&&" }, ePrecedence.mul_div, BinaryOperatorBitwiseAnd));
-            Register(new BinaryOperator(new[]{ " xor " }, ePrecedence.or, BinaryOperatorXor));
-            Register(new BinaryOperator(new[]{ "^^" }, ePrecedence.mul_div, BinaryOperatorBitwiseXor));
+            Register(new BinaryOperator(new[]{ " or " }, Precedence.or, BinaryOperatorOr));
+            Register(new BinaryOperator(new[]{ "||" }, Precedence.mul_div, BinaryOperatorBitwiseOr));
+            Register(new BinaryOperator(new[]{ " and " }, Precedence.and, BinaryOperatorAnd));
+            Register(new BinaryOperator(new[]{ "&&" }, Precedence.mul_div, BinaryOperatorBitwiseAnd));
+            Register(new BinaryOperator(new[]{ " xor " }, Precedence.or, BinaryOperatorXor));
+            Register(new BinaryOperator(new[]{ "^^" }, Precedence.mul_div, BinaryOperatorBitwiseXor));
 
             // use number group separator for ,
-            RegisterByRef(new BinaryOperator(new[]{ "," }, ePrecedence.tupling, BinaryOperatorCommaTuple));
+            RegisterByRef(new BinaryOperator(new[]{ "," }, Precedence.tupling, BinaryOperatorCommaTuple));
 
-            RegisterByRef(new BinaryOperator(new[]{ ":" }, ePrecedence.tupling, BinaryOperatorColon));
+            RegisterByRef(new BinaryOperator(new[]{ ":" }, Precedence.tupling, BinaryOperatorColon));
 
             Register(new BinaryOperator(new[]{
                 " choose ",
                 " c "
-            }, ePrecedence.mul_div, BinaryOperatorChoose));
-            Register(new BinaryOperator(new[]{ " e " }, ePrecedence.fact_pct, BinaryOperatorExp10));
+            }, Precedence.mul_div, BinaryOperatorChoose));
+            Register(new BinaryOperator(new[]{ " e " }, Precedence.fact_pct, BinaryOperatorExp10));
 
-            Register(new BinaryOperator(new[]{ "==" }, ePrecedence.comparison, BinaryOperatorEqualTo));
+            Register(new BinaryOperator(new[]{ "==" }, Precedence.comparison, BinaryOperatorEqualTo));
+            RegisterByRef(new BinaryOperator(new[]{ "=" }, Precedence.comparison, BinaryOperatorAutoEqual));
             Register(new BinaryOperator(new[]{
                 "!=",
                 "<>"
-            }, ePrecedence.comparison, BinaryOperatorNotEqualTo));
-            Register(new BinaryOperator(new[]{ ">" }, ePrecedence.comparison, BinaryOperatorGreaterThan));
-            Register(new BinaryOperator(new[]{ ">=" }, ePrecedence.comparison, BinaryOperatorGreaterThanOrEqualTo));
-            Register(new BinaryOperator(new[]{ "<" }, ePrecedence.comparison, BinaryOperatorLessThan));
-            Register(new BinaryOperator(new[]{ "<=" }, ePrecedence.comparison, BinaryOperatorLessThanOrEqualTo));
+            }, Precedence.comparison, BinaryOperatorNotEqualTo));
+            Register(new BinaryOperator(new[]{ ">" }, Precedence.comparison, BinaryOperatorGreaterThan));
+            Register(new BinaryOperator(new[]{ ">=" }, Precedence.comparison, BinaryOperatorGreaterThanOrEqualTo));
+            Register(new BinaryOperator(new[]{ "<" }, Precedence.comparison, BinaryOperatorLessThan));
+            Register(new BinaryOperator(new[]{ "<=" }, Precedence.comparison, BinaryOperatorLessThanOrEqualTo));
 
-            Register(new BinaryOperator(new[]{ "?:" }, ePrecedence.assignment, BinaryOperatorElvis));
+            Register(new BinaryOperator(new[]{ "?:" }, Precedence.assignment, BinaryOperatorElvis));
 
             // assignment (use RegisterByRef, with same format)
 
-            RegisterAssignment(new BinaryOperator(new[]{ "=" }, ePrecedence.assignment, BinaryOperatorAutoEqual));
-            RegisterAssignment(new BinaryOperator(new[]{ ":=" }, ePrecedence.assignment, BinaryOperatorAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "+=" }, ePrecedence.assignment, BinaryOperatorAddAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "-=" }, ePrecedence.assignment, BinaryOperatorSubtractAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "*=" }, ePrecedence.assignment, BinaryOperatorMultiplyAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "/=" }, ePrecedence.assignment, BinaryOperatorDivideAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "**=" }, ePrecedence.assignment, BinaryOperatorDuplicateAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "//=" }, ePrecedence.assignment, BinaryOperatorDivideFloorAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "=" }, Precedence.assignment, BinaryOperatorAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ ":=" }, Precedence.assignment, BinaryOperatorAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "+=" }, Precedence.assignment, BinaryOperatorAddAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "-=" }, Precedence.assignment, BinaryOperatorSubtractAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "*=" }, Precedence.assignment, BinaryOperatorMultiplyAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "/=" }, Precedence.assignment, BinaryOperatorDivideAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "**=" }, Precedence.assignment, BinaryOperatorDuplicateAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "//=" }, Precedence.assignment, BinaryOperatorDivideFloorAssign));
             RegisterAssignment(new BinaryOperator(new[]{
                 " mod=",
                 " mod ="
-            }, ePrecedence.assignment, BinaryOperatorModuloAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "^=" }, ePrecedence.assignment, BinaryOperatorExponentAssign));
+            }, Precedence.assignment, BinaryOperatorModuloAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "^=" }, Precedence.assignment, BinaryOperatorExponentAssign));
 
-            RegisterAssignment(new BinaryOperator(new[]{ "&=" }, ePrecedence.assignment, BinaryOperatorConcatAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "&=" }, Precedence.assignment, BinaryOperatorConcatAssign));
 
-            RegisterAssignment(new BinaryOperator(new[]{ "||=" }, ePrecedence.assignment, BinaryOperatorBitwiseOrAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "&&=" }, ePrecedence.assignment, BinaryOperatorBitwiseAndAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "^^=" }, ePrecedence.assignment, BinaryOperatorBitwiseXorAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "<<=" }, ePrecedence.assignment, BinaryOperatorShlAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ ">>=" }, ePrecedence.assignment, BinaryOperatorShrAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "||=" }, Precedence.assignment, BinaryOperatorBitwiseOrAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "&&=" }, Precedence.assignment, BinaryOperatorBitwiseAndAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "^^=" }, Precedence.assignment, BinaryOperatorBitwiseXorAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ "<<=" }, Precedence.assignment, BinaryOperatorShlAssign));
+            RegisterAssignment(new BinaryOperator(new[]{ ">>=" }, Precedence.assignment, BinaryOperatorShrAssign));
 
-            RegisterAssignment(new BinaryOperator(new[]{ "++" }, ePrecedence.add_sub, BinaryOperatorIncrement));
-            RegisterAssignment(new BinaryOperator(new[]{ "--" }, ePrecedence.add_sub, BinaryOperatorDecrement));
+            RegisterAssignment(new BinaryOperator(new[]{ "++" }, Precedence.add_sub, BinaryOperatorIncrement));
+            RegisterAssignment(new BinaryOperator(new[]{ "--" }, Precedence.add_sub, BinaryOperatorDecrement));
 
             // unary
 
-            Register(new UnaryOperatorBefore(new[]{ "!" }, ePrecedence.fact_pct, UnaryOperatorFactorial));
-            Register(new UnaryOperatorBefore(new[]{ "%" }, ePrecedence.fact_pct, UnaryOperatorPercent));
-            Register(new UnaryOperatorAfter(new[]{ "not " }, ePrecedence.not, UnaryOperatorNot));
-            Register(new UnaryOperatorAfter(new[]{ "~" }, ePrecedence.fact_pct, UnaryOperatorBitwiseNot));
+            Register(new UnaryOperatorBefore(new[]{ "!" }, Precedence.fact_pct, UnaryOperatorFactorial));
+            Register(new UnaryOperatorBefore(new[]{ "%" }, Precedence.fact_pct, UnaryOperatorPercent));
+            Register(new UnaryOperatorAfter(new[]{ "not " }, Precedence.not, UnaryOperatorNot));
+            Register(new UnaryOperatorAfter(new[]{ "~" }, Precedence.fact_pct, UnaryOperatorBitwiseNot));
 
             // ref keyword: create reference to object (reference not saved after session)
-            RegisterByRef(new UnaryOperatorAfter(new[]{ "ref " }, ePrecedence.fact_pct, UnaryOperatorReference));
+            RegisterByRef(new UnaryOperatorAfter(new[]{ "ref " }, Precedence.fact_pct, UnaryOperatorReference));
 
             // deref keyword: dereference the reference
-            RegisterByRef(new UnaryOperatorAfter(new[]{ "deref " }, ePrecedence.fact_pct, UnaryOperatorDereference));
+            RegisterByRef(new UnaryOperatorAfter(new[]{ "deref " }, Precedence.fact_pct, UnaryOperatorDereference));
 
             // Brackets:
             // Register(New Bracket([start], [end], AddressOf [Definition]))
@@ -541,7 +558,10 @@ namespace Cantus.Core
             }
             foreach (string sign in op.Signs)
             {
-                _operatorSigns[sign] = op;
+                if (!_operatorSigns.ContainsKey(sign))
+                    _operatorSigns[sign] = new List<Operator>();
+
+                _operatorSigns[sign].Add(op);
             }
         }
 
@@ -1362,7 +1382,7 @@ private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseOr(ObjectTypes.EvalObjec
     {
         try
         {
-            return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) || Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
+            return new ObjectTypes.Boolean((bool)lv || (bool)rv);
         }
         catch
         {
@@ -1386,14 +1406,7 @@ private ObjectTypes.EvalObjectBase BinaryOperatorAnd(ObjectTypes.EvalObjectBase 
     object rv = right.GetValue();
     if (ObjectTypes.Boolean.IsType(left) && ObjectTypes.Boolean.IsType(right))
     {
-        try
-        {
-            return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) && Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
-        }
-        catch
-        {
-            throw new SyntaxException("Operator and: Expression must produce a boolean value");
-        }
+            return new ObjectTypes.Boolean((bool)lv && (bool)rv);
     }
     else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
     {
@@ -1438,7 +1451,7 @@ private ObjectTypes.EvalObjectBase BinaryOperatorXor(ObjectTypes.EvalObjectBase 
     {
         try
         {
-            return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) ^ Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
+            return new ObjectTypes.Boolean((bool)lv ^ (bool)rv);
         }
         catch
         {
@@ -1793,15 +1806,13 @@ private ObjectTypes.EvalObjectBase BinaryOperatorDecrement(ObjectTypes.EvalObjec
 /// <returns></returns>
 private ObjectTypes.EvalObjectBase BinaryOperatorAutoEqual(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
 {
-    // if it is a reference, tuple, or identifier and we are not in conditional mode then we assign to it
-    if ((ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) || ObjectTypes.Tuple.IsType(right)) && !ConditionMode)
+    if (!((ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) || ObjectTypes.Tuple.IsType(right)) && !ConditionMode))
     {
-        return BinaryOperatorAssign(left, right);
+        return BinaryOperatorEqualTo(left, right);
     }
     else
     {
-        return BinaryOperatorEqualTo(left, right);
-        // otherwise we compare to the right side
+        return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
     }
 }
 

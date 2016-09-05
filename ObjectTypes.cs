@@ -2666,6 +2666,75 @@ namespace Cantus.Core
             }
 
             /// <summary>
+            /// A message to be sent through the evaluator
+            /// </summary>
+            public sealed class SystemMessage : EvalObjectBase
+            {
+                public enum MessageType
+                {
+                    /// Defer messages may be returned by operator definitions to indicate that
+                    ///   the evaluator should look for an overloaded operator at a lower precedence.
+                    /// For example:
+                    /// = means comparison -> comparison precedence
+                    /// a = 3 will not resolve because it is an assignment operation
+                    /// Thus, it is deferred to the assignment operator at assignment precedence
+                    defer
+                }
+                public MessageType Type { get; set; }
+                public object Content { get;  set; }
+                public override bool Equals(EvalObjectBase other)
+                {
+                    return other is SystemMessage && ((SystemMessage)other).Type == Type  && Content == ((SystemMessage)other).Content;
+                }
+
+                public override int GetHashCode()
+                {
+                    return Content.GetHashCode();
+                }
+
+                public override object GetValue()
+                {
+                    return Content;
+                }
+
+                public override void SetValue(object obj)
+                {
+                    Content = obj;
+                }
+
+                protected override EvalObjectBase DeepCopy()
+                {
+                    return new SystemMessage(Type, Content);
+                }
+
+                public new static bool IsType(object obj)
+                {
+                    return obj is SystemMessage;
+                }
+
+                public new static bool StrIsType(string str)
+                {
+                    return false;
+                }
+
+                /// <summary>
+                /// Create a new system message with the given type and content.
+                /// Currently, only 'defer' messages are supported.
+                /// These messages may be returned by operator definitions to indicate that
+                ///   the evaluator should look for an overloaded operator at a lower precedence.
+                /// For example:
+                /// = means comparison -> comparison precedence
+                /// a = 3 will not resolve because it is an assignment operation
+                /// Thus, it is deferred to the assignment operator at assignment precedence
+                /// </summary>
+                public SystemMessage(MessageType type, object content = null)
+                {
+                    this.Type = type;
+                    this.Content = content;
+                }
+            }
+
+            /// <summary>
             /// A reference to another object
             /// </summary>
             public sealed class Reference : EvalObjectBase

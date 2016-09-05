@@ -937,7 +937,7 @@ namespace Cantus.Core
             /// </summary>
             public TokenList()
             {
-                foreach (int i in Enum.GetValues(typeof(OperatorRegistar.ePrecedence)))
+                foreach (int i in Enum.GetValues(typeof(OperatorRegistar.Precedence)))
                 {
                     _opsByPrecedence.Add(new SortedSet<int>());
                 }
@@ -1077,7 +1077,7 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="prec">The precedence</param>
             /// <returns></returns>
-            public int OperatorsWithPrecedenceCount(OperatorRegistar.ePrecedence prec)
+            public int OperatorsWithPrecedenceCount(OperatorRegistar.Precedence prec)
             {
                 return _opsByPrecedence[(int)prec].Count;
             }
@@ -1087,7 +1087,7 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="prec"></param>
             /// <returns></returns>
-            public List<int> OperatorsWithPrecedence(OperatorRegistar.ePrecedence prec)
+            public List<int> OperatorsWithPrecedence(OperatorRegistar.Precedence prec)
             {
                 return new List<int>(_opsByPrecedence[(int)prec]);
             }
@@ -2835,9 +2835,9 @@ public void ReInitialize()
         private EvalObjectBase ResolveOperators(TokenList tokens)
         {
             // start from operators with highest precedence, skipping the brackets (already evaluated when tokenizing)
-            for (int i = Enum.GetValues(typeof(OperatorRegistar.ePrecedence)).Length - 1; i >= 0; i += -1)
+            for (int i = Enum.GetValues(typeof(OperatorRegistar.Precedence)).Length - 1; i >= 0; i += -1)
             {
-                OperatorRegistar.ePrecedence cur_precedence = (OperatorRegistar.ePrecedence)i;
+                OperatorRegistar.Precedence cur_precedence = (OperatorRegistar.Precedence)i;
 
                 int prevct = 0;
                 // keep looping until all operators are done
@@ -2847,7 +2847,7 @@ public void ReInitialize()
                     prevct = tokens.OperatorsWithPrecedenceCount(cur_precedence);
 
                     // RTL evaluation for assignment operators so you can chain them
-                    if (cur_precedence == OperatorRegistar.ePrecedence.assignment)
+                    if (cur_precedence == OperatorRegistar.Precedence.assignment)
                         preclst.Reverse();
 
 
@@ -2878,6 +2878,10 @@ public void ReInitialize()
                             try
                             {
                                 result = op.Execute(prevtoken.Object);
+                                if (SystemMessage.IsType(result) &&
+                                    ((SystemMessage)result).Type == SystemMessage.MessageType.defer) {
+                                    continue;
+                                }
                             }
                             catch (NullReferenceException)
                             {
@@ -2922,6 +2926,10 @@ public void ReInitialize()
                             try
                             {
                                 result = op.Execute(curtoken.Object);
+                                if (SystemMessage.IsType(result) &&
+                                    ((SystemMessage)result).Type == SystemMessage.MessageType.defer) {
+                                    continue;
+                                }
                             }
                             catch (NullReferenceException)
                             {
@@ -2941,9 +2949,8 @@ public void ReInitialize()
                                 // default to multiply
                             }
 
-                            // if binary
                         }
-                        else
+                        else // if binary
                         {
                             OperatorRegistar.BinaryOperator op = (OperatorRegistar.BinaryOperator)curtoken.Operator;
 
@@ -2991,6 +2998,11 @@ public void ReInitialize()
                             try
                             {
                                 result = op.Execute(prevtoken.Object, curtoken.Object);
+                                if (SystemMessage.IsType(result) &&
+                                    ((SystemMessage)result).Type == SystemMessage.MessageType.defer) {
+                                    tokens.SetOperator(opid, NextOperator(op));
+                                    continue;
+                                }
                             }
                             catch (NullReferenceException)
                             {
@@ -3009,6 +3021,19 @@ public void ReInitialize()
             }
 
             return tokens.ObjectAt(tokens.ObjectCount - 1);
+        }
+
+        private OperatorRegistar.Operator NextOperator(OperatorRegistar.Operator op)
+        {
+            IEnumerable<OperatorRegistar.Operator> lst = OperatorRegistar.OperatorsWithSign(op.Signs[0]);
+            for (int i=0; i<lst.Count()-1; ++i)
+            {
+                if (lst.ElementAt(i).Precedence == op.Precedence)
+                {
+                    return lst.ElementAt(i + 1);
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -3033,238 +3058,240 @@ public void ReInitialize()
 
                     if (OperatorRegistar.OperatorExists(valueL))
                     {
-                        OperatorRegistar.Operator op = OperatorRegistar.OperatorWithSign(valueL);
+                        IEnumerable<OperatorRegistar.Operator> ops = OperatorRegistar.OperatorsWithSign(valueL);
                         string objstr = expr.Substring(idx, i - idx).Trim();
                         EvalObjectBase eo = null;
 
                         // if the object is not empty we try to detect its type
                         if (!string.IsNullOrEmpty(objstr))
                             eo = ObjectTypes.Parse(objstr, this, numberPreserveSigFigs: SignificantMode);
-
-                        // if the object is not empty
-                        if (!string.IsNullOrEmpty(objstr))
+                        foreach (OperatorRegistar.Operator op in ops)
                         {
-
-                            // we already detected the type of the object earlier
-
-                            // if the object is an identifier, we try to resolve it.
-
-
-                            if (ObjectTypes.Identifier.IsType(eo))
+                            // if the object is not empty
+                            if (!string.IsNullOrEmpty(objstr))
                             {
-                                List<EvalObjectBase> varlist = null;
-                                EvalObjectBase left = null;
 
-                                // this ends with a function, so try resolving the function
-                                if (valueL == "(")
+                                // we already detected the type of the object earlier
+
+                                // if the object is an identifier, we try to resolve it.
+
+
+                                if (ObjectTypes.Identifier.IsType(eo))
                                 {
+                                    List<EvalObjectBase> varlist = null;
+                                    EvalObjectBase left = null;
 
-                                    string funcargs = expr.Substring(j);
-                                    if (funcargs.Contains(")"))
+                                    // this ends with a function, so try resolving the function
+                                    if (valueL == "(")
                                     {
-                                        int endIdx = ((OperatorRegistar.Bracket)OperatorRegistar.OperatorWithSign("(")).FindCloseBracket(funcargs, OperatorRegistar);
-                                        if (endIdx < funcargs.Length)
+
+                                        string funcargs = expr.Substring(j);
+                                        if (funcargs.Contains(")"))
                                         {
-                                            funcargs = funcargs.Remove(endIdx);
+                                            int endIdx = ((OperatorRegistar.Bracket)OperatorRegistar.OperatorWithSign("(")).FindCloseBracket(funcargs, OperatorRegistar);
+                                            if (endIdx < funcargs.Length)
+                                            {
+                                                funcargs = funcargs.Remove(endIdx);
+                                            }
                                         }
+                                        else
+                                        {
+                                            throw new EvaluatorException("(: No close bracket found");
+                                        }
+
+                                        if (lst.ObjectCount > 0 && lst.OperatorCount >= lst.ObjectCount && eo.ToString().Trim().StartsWith(SCOPE_SEP.ToString()))
+                                        {
+                                            left = lst.ObjectAt(lst.ObjectCount - 1);
+                                        }
+                                        varlist = ResolveFunctions(eo.ToString(), funcargs, ref left);
+
+                                        // advance past this function
+                                        idx = j + funcargs.Count() + 1;
+                                        i = idx - 1;
+
+                                        // this consists of variables only, so only resolve variables / function pointers
                                     }
                                     else
                                     {
-                                        throw new EvaluatorException("(: No close bracket found");
+                                        if (op.AssignmentOperator)
+                                        {
+                                            // for assignment operators, do not resolve the variables
+                                            varlist = new List<EvalObjectBase>(new[] { GetVariableRef(eo.ToString()) });
+                                        }
+                                        else
+                                        {
+                                            // try resolving a function pointer
+
+                                            varlist = new List<EvalObjectBase>();
+                                            string fn = eo.ToString();
+                                            if (HasUserFunction(fn))
+                                            {
+                                                varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
+                                            }
+                                            else if (HasFunction(fn))
+                                            {
+                                                varlist.Clear();
+                                                if (fn.StartsWith(ROOT_NAMESPACE))
+                                                    fn = fn.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
+                                                MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                                                varlist.Add(new Lambda(fn, (from param in info.GetParameters() select param.Name), true));
+                                            }
+                                            else
+                                            {
+                                                if (lst.ObjectCount > 0 && (lst.ObjectAt(lst.ObjectCount - 1) != null) && eo.ToString().StartsWith(SCOPE_SEP.ToString()))
+                                                {
+                                                    var obj = lst.ObjectAt(lst.ObjectCount - 1);
+                                                    varlist = ResolveFunctions(eo.ToString(), "", ref obj);
+                                                }
+                                            }
+                                            if (varlist.Count == 0)
+                                            {
+                                                varlist = ResolveVariables(eo.ToString());
+                                            }
+                                            else
+                                            {
+                                                // advance past this function
+                                                idx = j + 1;
+                                                i = idx - 1;
+                                            }
+                                        }
                                     }
 
-                                    if (lst.ObjectCount > 0 && lst.OperatorCount >= lst.ObjectCount && eo.ToString().Trim().StartsWith(SCOPE_SEP.ToString()))
+                                    // good we found variables/functions, let's add them
+                                    if (varlist.Count > 0)
                                     {
-                                        left = lst.ObjectAt(lst.ObjectCount - 1);
+
+                                        if (left == null)
+                                        {
+                                            lst.AddObject(varlist[0]);
+                                            // if this is a self-referring function call then we need to replace the previous value
+                                        }
+                                        else
+                                        {
+                                            lst.SetObject(lst.ObjectCount - 1, varlist[0]);
+                                        }
+
+                                        for (int k = 1; k <= varlist.Count - 1; k++)
+                                        {
+                                            // default operation is *; we add this operator between each variable
+
+                                            lst.AddOperator(OperatorRegistar.DefaultOperator);
+                                            //End If
+                                            lst.AddObject(varlist[k]);
+                                        }
+
+                                        // we couldn't resolve this identifier
                                     }
-                                    varlist = ResolveFunctions(eo.ToString(), funcargs, ref left);
+                                    else
+                                    {
+                                        lst.AddObject(null);
+                                    }
+                                    // if it was a function then we don't continue since we're already
+                                    // done adding And advancing the counters
+                                    if (valueL == ("("))
+                                        break;
 
-                                    // advance past this function
-                                    idx = j + funcargs.Count() + 1;
-                                    i = idx - 1;
-
-                                    // this consists of variables only, so only resolve variables / function pointers
+                                    // if the object is not a identifier (if it is a number, etc.) we just add it
                                 }
                                 else
                                 {
-                                    if (op.AssignmentOperator)
-                                    {
-                                        // for assignment operators, do not resolve the variables
-                                        varlist = new List<EvalObjectBase>(new[] { GetVariableRef(eo.ToString()) });
-                                    }
-                                    else
-                                    {
-                                        // try resolving a function pointer
-
-                                        varlist = new List<EvalObjectBase>();
-                                        string fn = eo.ToString();
-                                        if (HasUserFunction(fn))
-                                        {
-                                            varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
-                                        }
-                                        else if (HasFunction(fn))
-                                        {
-                                            varlist.Clear();
-                                            if (fn.StartsWith(ROOT_NAMESPACE))
-                                                fn = fn.Remove(ROOT_NAMESPACE.Length).Trim(new[] { SCOPE_SEP });
-                                            MethodInfo info = typeof(InternalFunctions).GetMethod(fn.ToLowerInvariant(), BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-                                            varlist.Add(new Lambda(fn, (from param in info.GetParameters() select param.Name), true));
-                                        }
-                                        else
-                                        {
-                                            if (lst.ObjectCount > 0 && (lst.ObjectAt(lst.ObjectCount - 1) != null) && eo.ToString().StartsWith(SCOPE_SEP.ToString()))
-                                            {
-                                                var obj = lst.ObjectAt(lst.ObjectCount - 1);
-                                                varlist = ResolveFunctions(eo.ToString(), "", ref obj);
-                                            }
-                                        }
-                                        if (varlist.Count == 0)
-                                        {
-                                            varlist = ResolveVariables(eo.ToString());
-                                        }
-                                        else
-                                        {
-                                            // advance past this function
-                                            idx = j + 1;
-                                            i = idx - 1;
-                                        }
-                                    }
+                                    lst.AddObject(eo);
                                 }
 
-                                // good we found variables/functions, let's add them
-                                if (varlist.Count > 0)
+                                // if the object is empty we just add the operator
+                            }
+                            else
+                            {
+                                // if the operator count is too high we will add a null object to balance it
+                                if (lst.OperatorCount - lst.ObjectCount >= 1)
+                                    lst.AddObject(null);
+                                //'
+                            }
+
+                            if (!(op is OperatorRegistar.Bracket))
+                                lst.AddOperator(op, valueL);
+
+                            // if we find an operator with brackets type
+                            // we evaluate the bracket and continue after it.
+                            // If the value before is an identifier we recognize it as a function so we skip this
+
+                            if (op is OperatorRegistar.Bracket && (op.Signs[0] != "( " || eo == null || !ObjectTypes.Identifier.IsType(eo)))
+                            {
+                                string inner = expr.Substring(j);
+                                int endIdx = 0;
+
+                                if (op.Signs.Count > 0)
                                 {
+                                    endIdx = ((OperatorRegistar.Bracket)op).FindCloseBracket(inner, OperatorRegistar);
+                                }
+                                else
+                                {
+                                    throw new EvaluatorException("Invalid bracket operator: must have at least 1 sign");
+                                }
+
+                                if (endIdx >= 0)
+                                {
+                                    if (endIdx < inner.Length)
+                                        inner = inner.Remove(endIdx);
+
+                                    OperatorRegistar.Bracket brkt = (OperatorRegistar.Bracket)op;
+                                    EvalObjectBase left = null;
+                                    EvalObjectBase orig = null;
+
+                                    if (lst.ObjectCount > 0)
+                                    {
+                                        left = lst.ObjectAt(lst.ObjectCount - 1);
+                                        // if we're not passing by reference then "dereference" the references before passing
+                                        if (!brkt.ByReference && (left != null))
+                                        {
+                                            left = left.GetDeepCopy();
+                                            if (left is Reference)
+                                            {
+                                                left = ((Reference)left).GetRefObject();
+                                            }
+                                        }
+                                        orig = left;
+                                    }
+                                    EvalObjectBase result = brkt.Execute(inner, ref left);
 
                                     if (left == null)
                                     {
-                                        lst.AddObject(varlist[0]);
-                                        // if this is a self-referring function call then we need to replace the previous value
+                                        lst.SetObject(lst.ObjectCount - 1, result);
                                     }
                                     else
                                     {
-                                        lst.SetObject(lst.ObjectCount - 1, varlist[0]);
-                                    }
-
-                                    for (int k = 1; k <= varlist.Count - 1; k++)
-                                    {
-                                        // default operation is *; we add this operator between each variable
-
-                                        lst.AddOperator(OperatorRegistar.DefaultOperator);
-                                        //End If
-                                        lst.AddObject(varlist[k]);
-                                    }
-
-                                    // we couldn't resolve this identifier
-                                }
-                                else
-                                {
-                                    lst.AddObject(null);
-                                }
-                                // if it was a function then we don't continue since we're already
-                                // done adding And advancing the counters
-                                if (valueL == ("("))
-                                    break;
-
-                                // if the object is not a identifier (if it is a number, etc.) we just add it
-                            }
-                            else
-                            {
-                                lst.AddObject(eo);
-                            }
-
-                            // if the object is empty we just add the operator
-                        }
-                        else
-                        {
-                            // if the operator count is too high we will add a null object to balance it
-                            if (lst.OperatorCount - lst.ObjectCount >= 1)
-                                lst.AddObject(null);
-                            //'
-                        }
-
-                        if (!(op is OperatorRegistar.Bracket))
-                            lst.AddOperator(op, valueL);
-
-                        // if we find an operator with brackets type
-                        // we evaluate the bracket and continue after it.
-                        // If the value before is an identifier we recognize it as a function so we skip this
-
-                        if (op is OperatorRegistar.Bracket && (op.Signs[0] != "( " || eo == null || !ObjectTypes.Identifier.IsType(eo)))
-                        {
-                            string inner = expr.Substring(j);
-                            int endIdx = 0;
-
-                            if (op.Signs.Count > 0)
-                            {
-                                endIdx = ((OperatorRegistar.Bracket)op).FindCloseBracket(inner, OperatorRegistar);
-                            }
-                            else
-                            {
-                                throw new EvaluatorException("Invalid bracket operator: must have at least 1 sign");
-                            }
-
-                            if (endIdx >= 0)
-                            {
-                                if (endIdx < inner.Length)
-                                    inner = inner.Remove(endIdx);
-
-                                OperatorRegistar.Bracket brkt = (OperatorRegistar.Bracket)op;
-                                EvalObjectBase left = null;
-                                EvalObjectBase orig = null;
-
-                                if (lst.ObjectCount > 0)
-                                {
-                                    left = lst.ObjectAt(lst.ObjectCount - 1);
-                                    // if we're not passing by reference then "dereference" the references before passing
-                                    if (!brkt.ByReference && (left != null))
-                                    {
-                                        left = left.GetDeepCopy();
-                                        if (left is Reference)
+                                        if ((!object.ReferenceEquals(left, orig)))
                                         {
-                                            left = ((Reference)left).GetRefObject();
+                                            lst.SetObject(lst.ObjectCount - 1, left);
+                                        }
+                                        else
+                                        {
+                                            if (!string.IsNullOrEmpty(valueL.Trim()))
+                                                lst.AddOperator(OperatorRegistar.DefaultOperator);
+                                            lst.AddObject(result);
+                                            if (lst.ObjectCount > lst.OperatorCount)
+                                                lst.AddOperator(OperatorRegistar.DefaultOperator);
                                         }
                                     }
-                                    orig = left;
-                                }
-                                EvalObjectBase result = brkt.Execute(inner, ref left);
 
-                                if (left == null)
-                                {
-                                    lst.SetObject(lst.ObjectCount - 1, result);
+                                    //advance the counters past the entire bracket set
+                                    i += brkt.Signs[0].Length - 1 + inner.Length + (brkt.Signs.Count == 1 ? brkt.Signs[0].Length : brkt.Signs[1].Length);
+
+                                    idx = i + 1;
+
+                                    break;
                                 }
                                 else
                                 {
-                                    if ((!object.ReferenceEquals(left, orig)))
-                                    {
-                                        lst.SetObject(lst.ObjectCount - 1, left);
-                                    }
-                                    else
-                                    {
-                                        if (!string.IsNullOrEmpty(valueL.Trim()))
-                                            lst.AddOperator(OperatorRegistar.DefaultOperator);
-                                        lst.AddObject(result);
-                                        if (lst.ObjectCount > lst.OperatorCount)
-                                            lst.AddOperator(OperatorRegistar.DefaultOperator);
-                                    }
+                                    throw new EvaluatorException(op.Signs[0] + ": No close bracket found");
                                 }
-
-                                //advance the counters past the entire bracket set
-                                i += brkt.Signs[0].Length - 1 + inner.Length + (brkt.Signs.Count == 1 ? brkt.Signs[0].Length : brkt.Signs[1].Length);
-
-                                idx = i + 1;
-
-                                break;
                             }
-                            else
-                            {
-                                throw new EvaluatorException(op.Signs[0] + ": No close bracket found");
-                            }
+
+                            // advance the counters past this identifier
+                            idx = j;
+                            i = j - 1;
+                            break;
                         }
-
-                        // advance the counters past this identifier
-                        idx = j;
-                        i = j - 1;
-                        break;
                     }
                 }
             }
