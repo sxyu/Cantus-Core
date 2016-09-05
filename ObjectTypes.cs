@@ -919,15 +919,30 @@ namespace Cantus.Core
                         if (!(obj is Reference[]))
                             obj = new[] { new Reference(obj) };
                         Reference[] reflst = (Reference[])obj;
+
+                        // tuple assignment
                         for (int i = 0; i <= _value.Count - 1; i++)
                         {
                             if (reflst.Length <= i)
                             {
-                                _value[i].SetValue(reflst[reflst.Length - 1]);
+                                if (reflst[reflst.Length - 1].GetRefObject() is Reference)
+                                {
+                                    _value[i].SetValue(reflst[reflst.Length - 1]);
+                                }
+                                else
+                                {
+                                    _value[i].SetValue(reflst[i].Resolve());
+                                }
                             }
                             else
                             {
-                                _value[i].SetValue(reflst[i]);
+                                if (reflst[i].GetRefObject() is Reference) { 
+                                    _value[i].SetValue(reflst[i]);
+                                }
+                                else
+                                {
+                                    _value[i].SetValue(reflst[i].Resolve());
+                                }
                             }
                         }
                     }
