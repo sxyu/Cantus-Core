@@ -1993,8 +1993,11 @@ public void ReInitialize()
                 }
 
                 Loaded.Add(ROOT_NAMESPACE);
+                Loaded.Add("plugin");
                 if (IsExternalScope(scope, ROOT_NAMESPACE))
                     this.Import(ROOT_NAMESPACE);
+
+                this.Import("plugin");
 
                 if (reloadDefault)
                 {
@@ -2386,7 +2389,28 @@ public void ReInitialize()
                         while (fullLine.TrimEnd().EndsWith("\\"))
                         {
                             lineNum += 1;
-                            fullLine = fullLine.TrimEnd().TrimEnd('_').TrimEnd() + lines[lineNum];
+                            if (lineNum >= lines.Count)
+                            {
+                                if (feederScript != null)
+                                {
+                                    if (!feederScript.IsBusy && feederScript.IsStarted)
+                                    {
+                                        feederScript.RaiseWaiting(lines[lines.Count - 1]);
+                                        feederScript.ResetEvent.Wait();
+                                    }
+                                    feederScript.ResetEvent.Reset();
+                                    if (!feederScript.IsStarted)
+                                    {
+                                        break;
+                                    }
+                                    lines.Add(feederScript.GetLine());
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                            fullLine = fullLine.TrimEnd().TrimEnd('\\').TrimEnd() + lines[lineNum];
                         }
 
                         // multiline lambda

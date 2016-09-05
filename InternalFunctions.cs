@@ -131,9 +131,18 @@ namespace Cantus.Core
             /// <summary>
             /// Reload default constants. if name is specified, reloads constant with that name only.
             /// </summary>
-            public void _Reload(string name = "")
+            public void _ReloadConst(string name = "")
             {
                 _eval.ReloadDefault(name);
+            }
+
+            /// <summary>
+            /// Reload all constants and init scripts
+            /// </summary>
+            public void _Reload()
+            {
+                _eval.ReloadDefault();
+                _eval.ReInitialize();
             }
 
             /// <summary>
