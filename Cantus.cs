@@ -4716,18 +4716,19 @@ public void ReInitialize()
                 catch (EvaluatorException ex)
                 {
                     // append current function name & internal to exception 'stack trace'
-                    string newMsg = ex.Message + " [In function " + name + " (" + scope + "), line " + ex.Line + "]" + Environment.NewLine;
+                    string newMsg = ex.Message + " [In function " + name + " (" + scope + "), line " +
+                        (ex.Line+1) + "]" + Environment.NewLine;
                     if (ex is MathException)
                     {
-                        throw new MathException(newMsg, ex.Line);
+                        throw new MathException(newMsg, ex.Line+1);
                     }
                     else if (ex is SyntaxException)
                     {
-                        throw new SyntaxException(newMsg, ex.Line);
+                        throw new SyntaxException(newMsg, ex.Line+1);
                     }
                     else
                     {
-                        throw new EvaluatorException(newMsg, ex.Line);
+                        throw new EvaluatorException(newMsg, ex.Line+1);
                     }
                 }
             }
