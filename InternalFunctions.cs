@@ -862,7 +862,7 @@ namespace Cantus.Core
                 {
                     if ((double)(x) >= 0)
                     {
-                        return Math.Sqrt((double)(x));
+                        return BigDecimal.Pow((BigDecimal)(double)x, 0.5);
                     }
                     else
                     {
@@ -886,7 +886,7 @@ namespace Cantus.Core
             {
                 if (x is double)
                 {
-                    return (double)(x) < 0 ? -1 : 1 * Math.Pow(Math.Abs((double)(x)), 1 / 3);
+                    return ((BigDecimal)(double)(x) < 0.0 ? -1.0 : 1.0) * BigDecimal.Pow((BigDecimal)Abs((BigDecimal)(double)(x)), 1.0 / 3);
                 }
                 else if (x is System.Numerics.Complex)
                 {
@@ -3079,17 +3079,17 @@ namespace Cantus.Core
                 {
                     sign = "-";
                 }
-                Int64[] rad = SRadical((BigDecimal)Abs(d), Int(ind));
+                long[] rad = SRadical((BigDecimal)Abs(d), Int(ind));
                 string textbefore = "[" + ind.ToString();
                 string textafter = "]";
-                if (ind < 4)
+                if (ind < 3)
                 {
                     textbefore = "";
                     textafter = "";
                 }
                 if (rad[0] == 1)
                 {
-                    return sign + textbefore + (ind == 3 ? "∛" : "√" + textafter + rad[1]);
+                    return sign + textbefore + "√" + textafter + rad[1];
                 }
                 else if (rad[1] == 1)
                 {
@@ -3123,9 +3123,9 @@ namespace Cantus.Core
                     }
                 }
                 return new[]{
-                coe,
-                rdc
-            };
+                    coe,
+                    rdc
+                };
             }
 
             /// <summary>
@@ -3225,9 +3225,9 @@ namespace Cantus.Core
             /// <summary>
             /// Tests if the double value is an interger
             /// </summary>
-            private bool IsInteger(BigDecimal d)
+            public bool IsInteger(BigDecimal d)
             {
-                return CmpDbl(d, (BigDecimal)Round(d), 1E-016) == 0;
+                return CmpDbl(d, Round(d), 1E-09) == 0;
             }
 
             /// <summary>
@@ -3410,7 +3410,7 @@ namespace Cantus.Core
                     }
 
                     // multiples of PI
-                    for (int j = -100; j <= 100; j++)
+                    for (int j = -50; j <= 50; j++)
                     {
                         if (j == 0)
                             continue;
@@ -3434,7 +3434,7 @@ namespace Cantus.Core
                                 sq *= Sgn(value);
                             if (IsInteger(sq))
                             {
-                                return SimpRadical(sq, i);
+                                return SimpRadical(sq.TruncateInt(), i);
                             }
                         }
                         for (int i = 2; i <= 3; i++)
