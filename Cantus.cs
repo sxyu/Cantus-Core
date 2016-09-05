@@ -2356,9 +2356,13 @@ public void ReInitialize()
                             {
                                 dqCount = !dqCount;
                             }
-                            else if (c == "'"[0])
+                            else if (c == '\'')
                             {
                                 sqCount = !sqCount;
+                            }
+                            else if (c == '\"')
+                            {
+                                sqCount = !dqCount;
                             }
                             else if (c == COMMENT_START_PTN && dqCount && sqCount)
                             {
@@ -2378,8 +2382,8 @@ public void ReInitialize()
                             continue;
                         }
 
-                        // while line ends with " _" then keep joining the next line
-                        while (fullLine.TrimEnd().EndsWith(" _"))
+                        // while line ends with \ then keep joining the next line
+                        while (fullLine.TrimEnd().EndsWith("\\"))
                         {
                             lineNum += 1;
                             fullLine = fullLine.TrimEnd().TrimEnd('_').TrimEnd() + lines[lineNum];
@@ -2800,9 +2804,9 @@ public void ReInitialize()
                     resultObj = ((Reference)resultObj).GetRefObject();
                 }
 
-                if (resultObj is ObjectTypes.Number)
+                if (resultObj is Number)
                 {
-                    result = ((ObjectTypes.Number)resultObj).BigDecValue();
+                    result = ((Number)resultObj).BigDecValue();
                 }
                 else if (resultObj is Reference)
                 {
@@ -3535,16 +3539,16 @@ public void ReInitialize()
                         string lastSect = args.Substring(lastIdx, i - lastIdx);
                         lastIdx = i + 1;
                         string optVar = "";
-                        if (lastSect.Contains("=") && IsValidIdentifier(lastSect.Remove(lastSect.IndexOf('='))))
+                        if (lastSect.Contains(":=") && IsValidIdentifier(lastSect.Remove(lastSect.IndexOf(":="))))
                         {
-                            optVar = lastSect.Remove(lastSect.IndexOf("="));
-                            if (lastSect.IndexOf("=") + 1 == lastSect.Length)
+                            optVar = lastSect.Remove(lastSect.IndexOf(":="));
+                            if (lastSect.IndexOf(":=") + 1 == lastSect.Length)
                             {
                                 lastSect = "";
                             }
                             else
                             {
-                                lastSect = lastSect.Substring(lastSect.IndexOf("=") + 1);
+                                lastSect = lastSect.Substring(lastSect.IndexOf(":=") + 1);
                             }
                         }
 
@@ -3698,7 +3702,7 @@ public void ReInitialize()
                 }
             }
 
-            throw new EvaluatorException("Function \"" + str.ToLowerInvariant().Trim() + "\" is undefined");
+            throw new EvaluatorException("Function \"" + str.Trim() + "\" is undefined");
         }
 
         /// <summary>
@@ -4509,10 +4513,10 @@ public void ReInitialize()
             {
                 args[i] = args[i].Trim();
                 // default
-                if (args[i].Contains("="))
+                if (args[i].Contains(":="))
                 {
-                    defaults.Add(EvalExprRaw(args[i].Substring(args[i].IndexOf("=") + 1).Trim(), true, true));
-                    args[i] = args[i].Remove(args[i].IndexOf("=")).Trim();
+                    defaults.Add(EvalExprRaw(args[i].Substring(args[i].IndexOf(":=") + 1).Trim(), true, true));
+                    args[i] = args[i].Remove(args[i].IndexOf(":=")).Trim();
                 }
                 else
                 {

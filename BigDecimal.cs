@@ -366,10 +366,11 @@ namespace Cantus.Core.CommonTypes
 
             int digit = Math.Max(left.LeastSigFig, right.LeastSigFig);
 
-            BigDecimal bn = left.Exponent > right.Exponent ? new BigDecimal(AlignExponent(left, right) + right.Mantissa, right.Exponent) : new BigDecimal(AlignExponent(right, left) + left.Mantissa, left.Exponent);
+            BigDecimal bn = left.Exponent > right.Exponent ?
+                new BigDecimal(AlignExponent(left, right) + right.Mantissa, right.Exponent) :
+                new BigDecimal(AlignExponent(right, left) + left.Mantissa, left.Exponent);
 
-
-            if (digit == int.MinValue)
+            if (left.SigFigs == int.MaxValue || right.SigFigs == int.MaxValue)
             {
                 bn.SigFigs = int.MaxValue;
                 return bn;

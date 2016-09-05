@@ -1905,7 +1905,7 @@ namespace Cantus.Core
                         if (str.Length != 1)
                         {
                             str.Append(',');
-                            if (m.Width > 1) str.Append(" _\n ");
+                            if (m.Width > 1) str.Append(" \\\n ");
                             else str.Append(' ');
                         }
                         string tostr = "";

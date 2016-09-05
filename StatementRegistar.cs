@@ -407,7 +407,7 @@ namespace Cantus.Core
         {
             string scope = _eval.Scope;
             _eval.ParentScope();
-            bool res = _eval.Internals.IsTrue(_eval.EvalExprRaw(expr, true, true));
+            bool res = _eval.Internals.IsTrue(_eval.EvalExprRaw(expr.TrimStart(), true, true));
             _eval.Scope = scope;
             return res;
         }

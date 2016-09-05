@@ -361,16 +361,6 @@ As in Python, blocks are formatted using indentation. However, unlike Python, bl
 * `continue` Stops all blocks up to the loop above and trolls it.
 * `break` Break out of the loop above
 
-**Infinite Loops**
-* Try not to write loops like
-```python
-    while 1=1
-        1=1
-```
-* This will create a infinite loop. Try it (trust me, your computer won't explode). No answer will be displayed.
-* Fortunately for you Cantus runs these expressions on separate threads so the main program won't crash. However, this will take a lot of CPU resources for nothing and also if you do this several time the program may end up getting very slow / freezing / failing to close.
-* Use the `_stopall()` Function` to stop these threads and recover resouces. You may (rarely, but occasionally) need to call this more than once if some threads aren't responding.
-
 #### Running Scripts
 After writing a script, save it as a .can (Cantus Script) file.
 
@@ -378,7 +368,7 @@ To run the script later, you can do one of the following:
 * Go in command prompt (cmd) and type (without quotes or angle brackets)    
 *"can &lt;filename&gt;.can"* (result written to console)
 * Double click the file and select to open with the Cantus program (result not shown)
-* Press `F5` in the editor ([/sxyu/Cantus-2]) and select the file (result written to label)
+* Press `Ctrl+F5` in the editor ([/sxyu/Cantus-2]) and select the file (result written to label)
 * Use the run(path) function (async) or runwait(path) function (single threaded)
 
 **Run another program**     

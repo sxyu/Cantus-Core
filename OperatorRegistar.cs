@@ -460,8 +460,8 @@ namespace Cantus.Core
             }, Precedence.mul_div, BinaryOperatorChoose));
             Register(new BinaryOperator(new[]{ " e " }, Precedence.fact_pct, BinaryOperatorExp10));
 
-            Register(new BinaryOperator(new[]{ "==" }, Precedence.comparison, BinaryOperatorEqualTo));
             RegisterByRef(new BinaryOperator(new[]{ "=" }, Precedence.comparison, BinaryOperatorAutoEqual));
+            Register(new BinaryOperator(new[]{ "==" }, Precedence.comparison, BinaryOperatorEqualTo));
             Register(new BinaryOperator(new[]{
                 "!=",
                 "<>"
@@ -1806,8 +1806,9 @@ private ObjectTypes.EvalObjectBase BinaryOperatorDecrement(ObjectTypes.EvalObjec
 /// <returns></returns>
 private ObjectTypes.EvalObjectBase BinaryOperatorAutoEqual(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
 {
-    if (!((ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) || ObjectTypes.Tuple.IsType(right)) && !ConditionMode))
+    if (!(ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) || ObjectTypes.Tuple.IsType(right)) || ConditionMode)
     {
+        if (ObjectTypes.Reference.IsType(left)) left = ((ObjectTypes.Reference)left).ResolveObj();
         return BinaryOperatorEqualTo(left, right);
     }
     else
