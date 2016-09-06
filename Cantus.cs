@@ -772,7 +772,7 @@ function instanceid()
                     if (fn.DeclaringScope != tmpScope)
                         continue;
                     // static functions
-                    if (fn.Modifiers.Contains("static"))
+                    if (fn.Modifiers.Contains("static") || fn.Name.StartsWith("operator"))
                     {
                         fn.DeclaringScope = nsScope;
                         fn.Modifiers.Add("internal");

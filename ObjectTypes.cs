@@ -3551,7 +3551,7 @@ namespace Cantus.Core
                 {
                     // add 'instaneid' function
                     UserFunction iidFn = new UserFunction("instanceid", string.Format(
-                        "return " + '\'' + this.InnerScope + '\'', CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), this.InnerScope);
+                        "return {0}{1}instanceid(this)", CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), this.InnerScope);
                     iidFn.Modifiers.Add("internal");
                     this.Fields[iidFn.Name] = new Reference(new Lambda(iidFn, true));
                 }
