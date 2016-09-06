@@ -5040,6 +5040,7 @@ public void ReInitialize()
             // same scope, none required
             if (name.StartsWith(scope + SCOPE_SEP))
                 name = name.Substring(scope.Length + 1);
+            if (name.StartsWith("plugin")) name = name.Substring("plugin".Length+1);
             return name;
         }
 

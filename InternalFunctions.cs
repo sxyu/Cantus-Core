@@ -3072,14 +3072,14 @@ namespace Cantus.Core
             /// <summary>
             /// Simplify a radical with radicand d and index ind
             /// </summary>
-            private string SimpRadical(BigDecimal d, BigDecimal ind)
+            private string SimpRadical(BigDecimal rdc, BigDecimal ind)
             {
                 string sign = "";
-                if (d < 0)
+                if (rdc < 0)
                 {
                     sign = "-";
                 }
-                long[] rad = SRadical((BigDecimal)Abs(d), Int(ind));
+                long[] rad = SRadical((BigDecimal)Abs(rdc), Int(ind));
                 string textbefore = "[" + ind.ToString();
                 string textafter = "]";
                 if (ind < 3)
@@ -3104,27 +3104,29 @@ namespace Cantus.Core
             /// <summary>
             /// Internal helper for simplifying radicals
             /// </summary>
-            private Int64[] SRadical(BigDecimal d, int ind)
+            private long[] SRadical(BigDecimal rdc, int ind)
             {
-                long coe = 1;
-                long rdc = Convert.ToInt64(d);
+                // The new index
+                long newInd = 1;
+                // The new radical
+                long newRdc = (long)Round(rdc);
                 for (int i = 2; i <= 12; i++)
                 {
                     for (int j = 12; j >= ind; j += -ind)
                     {
-                        long pow = Convert.ToInt64(Math.Pow(i, j));
-                        long modu = rdc % pow;
+                        long pow = (long)Math.Pow(i, j);
+                        long modu = newRdc % pow;
 
                         if (modu == 0)
                         {
-                            coe *= Convert.ToInt64(i * j / ind);
-                            rdc /= pow;
+                            newInd *= (long)i * j / ind;
+                            newRdc /= pow;
                         }
                     }
                 }
                 return new[]{
-                    coe,
-                    rdc
+                    newInd,
+                    newRdc
                 };
             }
 
@@ -3426,15 +3428,16 @@ namespace Cantus.Core
                         // radicals
                         for (int i = 2; i <= 3; i++)
                         {
-                            BigDecimal sq = (BigDecimal)Pow(value, i);
-                            if (sq > 15000)
-                                break;
+                            BigDecimal sq = (BigDecimal)Pow(value, (BigDecimal)i);
+
                             // ignore excessively large roots
+                            if (sq > 10000)
+                                break;
                             if (i % 2 == 0)
                                 sq *= Sgn(value);
                             if (IsInteger(sq))
                             {
-                                return SimpRadical(sq.TruncateInt(), i);
+                                return SimpRadical(sq, i);
                             }
                         }
                         for (int i = 2; i <= 3; i++)
@@ -3531,6 +3534,7 @@ namespace Cantus.Core
                     }
 
                     // try converting to fraction
+
                     return ToFrac(value);
 
                     // return original text
