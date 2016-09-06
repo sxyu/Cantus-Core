@@ -735,6 +735,15 @@ namespace Cantus.Core
                 string nsScope = eval.Scope + SCOPE_SEP + this.Name;
                 this._innerScope = tmpScope;
 
+                // define type function, etc.
+                string extraDefinitions = string.Format(@"function type()
+    return {0}{1}type(this)
+function instanceid()
+    return {0}{1}instanceid(this)", ROOT_NAMESPACE, SCOPE_SEP, ROOT_NAMESPACE, SCOPE_SEP);
+
+                tmpEval.Eval(extraDefinitions, true);
+
+                // definitions created by user
                 tmpEval.Eval(def, true);
 
                 // add back newly declared variables
@@ -794,10 +803,6 @@ namespace Cantus.Core
                     this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn, true), this.FullName, fn.Modifiers);
                 }
 
-                // add 'type' function
-                UserFunction typeFn = new UserFunction("type", string.Format("return {0}{1}type(this)", ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), tmpScope);
-                typeFn.Modifiers.Add("internal");
-                this.Fields[typeFn.Name] = new Variable(typeFn.Name, new Lambda(typeFn, true), this.FullName, typeFn.Modifiers);
             }
 
             /// <summary>
@@ -1890,32 +1895,39 @@ public void ReInitialize()
         initScripts.AddRange(Directory.GetFiles(cantusPath + "plugin/", "*.can", SearchOption.AllDirectories));
     }
 
-	// initialization files: init.can and init/* ran in root scope on startup
-	if (File.Exists(cantusPath + "init.can"))
-		initScripts.Add(cantusPath + "init.can");
-	if (Directory.Exists(cantusPath + "init/"))
-		initScripts.AddRange(Directory.GetFiles(cantusPath + "init/", "*.can", SearchOption.AllDirectories));
+            // initialization files: init.can and init ran in root scope on startup
+            if (File.Exists(cantusPath + "init.can"))
+                initScripts.Add(cantusPath + "init.can");
+            if (Directory.Exists(cantusPath + "init/"))
+                initScripts.AddRange(Directory.GetFiles(cantusPath + "init/", "*.can", SearchOption.AllDirectories));
 
-	foreach (string file in initScripts) {
-		try {
-			// Evaluate each file. On error, ignore.
-            if (file.StartsWith(cantusPath + "plugin/"))
+            foreach (string file in initScripts)
             {
-                AngleMode = AngleRepresentation.Radian;
-                OutputMode = OutputFormat.Math;
-                SignificantMode = false;
-                ExplicitMode = false;
-            }
-			Load(file, file == cantusPath + "init.can" || file.ToLower().StartsWith(cantusPath + "init" + Path.DirectorySeparatorChar));
-		} catch (Exception ex) {
-			if (file == cantusPath + "init.can") {
+                try
+                {
+                    // Evaluate each file. On error, ignore.
+                    if (file.StartsWith(cantusPath + "plugin/"))
+                    {
+                        AngleMode = AngleRepresentation.Radian;
+                        OutputMode = OutputFormat.Math;
+                        SignificantMode = false;
+                        ExplicitMode = false;
+                    }
+                    Load(file, file == cantusPath + "init.can" || file.ToLower().StartsWith(cantusPath + "init" + Path.DirectorySeparatorChar));
+                }
+                catch (Exception ex)
+                {
+                    if (file == cantusPath + "init.can")
+                    {
                         throw new EvaluatorException("Error occurred while processing init.can.\nVariables and functions may not load.\n\nMessage:\n\n" + ex.Message);
-			} else {
+                    }
+                    else
+                    {
                         throw new EvaluatorException("Error occurred while loading \"" + file.Replace(Path.DirectorySeparatorChar, SCOPE_SEP).Remove(file.LastIndexOf(".")) + "\"\n" + ex.Message);
-			}
-		}
-	}
-}
+                    }
+                }
+            }
+        }
 
         #endregion
         #endregion
@@ -1979,6 +1991,8 @@ public void ReInitialize()
                     this.Variables = vars;
                 if ((userFunctions != null))
                     this.UserFunctions = userFunctions;
+                if ((userClasses != null))
+                    this.UserClasses = userClasses;
 
                 this._baseLine = baseLine;
                 this._curLine = baseLine;
@@ -1994,9 +2008,8 @@ public void ReInitialize()
 
                 Loaded.Add(ROOT_NAMESPACE);
                 Loaded.Add("plugin");
-                if (IsExternalScope(scope, ROOT_NAMESPACE))
-                    this.Import(ROOT_NAMESPACE);
-
+                //if (IsExternalScope(scope, ROOT_NAMESPACE))
+                this.Import(ROOT_NAMESPACE);
                 this.Import("plugin");
 
                 if (reloadDefault)
@@ -2011,10 +2024,11 @@ public void ReInitialize()
             {
                 throw ex;
             }
-            catch (Exception) { // do nothing 
+            catch (Exception)
+            { // do nothing 
             }
         }
-        
+
         #endregion
 
         /// <summary>
@@ -2774,7 +2788,7 @@ public void ReInitialize()
                 {
                     if (EvalComplete != null)
                     {
-                        EvalComplete(this, new AnswerEventArgs(this,EvalExprRaw(expr, noSaveAns, conditionMode), expr, noSaveAns));
+                        EvalComplete(this, new AnswerEventArgs(this, EvalExprRaw(expr, noSaveAns, conditionMode), expr, noSaveAns));
                     }
                     // do nothing
                 }
@@ -2903,17 +2917,44 @@ public void ReInitialize()
                                 }
                             }
 
-                            try
+                            if (prevtoken.Object is ClassInstance)
                             {
-                                result = op.Execute(prevtoken.Object);
-                                if (SystemMessage.IsType(result) &&
-                                    ((SystemMessage)result).Type == SystemMessage.MessageType.defer) {
-                                    continue;
+                                ClassInstance ci = (ClassInstance)prevtoken.Object;
+
+                                bool found = false;
+                                foreach (string s in op.Signs)
+                                {
+                                    string overloadName = "operator" + s;
+                                    if (ci.Fields.ContainsKey(overloadName) && ci.Fields[overloadName].ResolveObj() is Lambda)
+                                    {
+                                        result =
+                                           DetectType(((Lambda)ci.Fields[overloadName].ResolveObj()).Execute(
+                                               this, new[] { prevtoken.Object }));
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    throw new EvaluatorException("Operator " + op.Signs[0] + " is undefined for class " +
+                                        ci.UserClass.FullName);
                                 }
                             }
-                            catch (NullReferenceException)
+                            else
                             {
-                                throw new EvaluatorException("Operator " + op.Signs[0] + " disallows empty operands");
+                                try
+                                {
+                                    result = op.Execute(prevtoken.Object);
+                                }
+                                catch (NullReferenceException)
+                                {
+                                    throw new EvaluatorException("Operator " + op.Signs[0] + " disallows empty operands");
+                                }
+                            }
+                            if (SystemMessage.IsType(result) &&
+                                ((SystemMessage)result).Type == SystemMessage.MessageType.defer)
+                            {
+                                continue;
                             }
 
                             tokens.SetObject(opid - 1, result);
@@ -2923,12 +2964,12 @@ public void ReInitialize()
                             }
                             else
                             {
+                                // default to multiply (DefaultOperator)
                                 tokens.SetOperator(opid, OperatorRegistar.DefaultOperator);
-                                // default to multiply
                             }
 
-                            // operators like ~x
                         }
+                        // operators like ~x
                         else if (curtoken.Operator is OperatorRegistar.UnaryOperatorAfter)
                         {
                             OperatorRegistar.UnaryOperatorAfter op = (OperatorRegistar.UnaryOperatorAfter)curtoken.Operator;
@@ -2951,20 +2992,46 @@ public void ReInitialize()
                                 }
                             }
 
-                            try
+                            if (curtoken.Object is ClassInstance)
                             {
-                                result = op.Execute(curtoken.Object);
-                                if (SystemMessage.IsType(result) &&
-                                    ((SystemMessage)result).Type == SystemMessage.MessageType.defer) {
-                                    continue;
+                                ClassInstance ci = (ClassInstance)curtoken.Object;
+
+                                bool found = false;
+                                foreach (string s in op.Signs)
+                                {
+                                    string overloadName = "operator" + s;
+                                    if (ci.Fields.ContainsKey(overloadName) && ci.Fields[overloadName].ResolveObj() is Lambda)
+                                    {
+                                        result =
+                                           DetectType(((Lambda)ci.Fields[overloadName].ResolveObj()).Execute(
+                                               this, new[] { curtoken.Object }));
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    throw new EvaluatorException("Operator " + op.Signs[0] + " is undefined for class " +
+                                        ci.UserClass.FullName);
                                 }
                             }
-                            catch (NullReferenceException)
+                            else
                             {
-                                throw new EvaluatorException("Operator " + op.Signs[0] + " disallows empty operands");
+                                try
+                                {
+                                    result = op.Execute(curtoken.Object);
+                                }
+                                catch (NullReferenceException)
+                                {
+                                    throw new EvaluatorException("Operator " + op.Signs[0] + " disallows empty operands");
+                                }
                             }
 
-                            tokens.SetObject(opid, result);
+                            if (SystemMessage.IsType(result) &&
+                                ((SystemMessage)result).Type == SystemMessage.MessageType.defer)
+                            {
+                                continue;
+                            }
 
                             if (tokens.ObjectAt(opid - 1) == null || (tokens.ObjectAt(opid - 1).GetValue() is double && double.IsNaN((double)(tokens.ObjectAt(opid - 1).GetValue()))))
                             {
@@ -3022,19 +3089,47 @@ public void ReInitialize()
                                     curtoken.Object = curtoken.Object.GetDeepCopy();
                                 }
                             }
-
-                            try
+                            if ((prevtoken.Object is ClassInstance || curtoken.Object is ClassInstance) && op.Signs[0] != "=")
                             {
-                                result = op.Execute(prevtoken.Object, curtoken.Object);
-                                if (SystemMessage.IsType(result) &&
-                                    ((SystemMessage)result).Type == SystemMessage.MessageType.defer) {
-                                    tokens.SetOperator(opid, NextOperator(op));
-                                    continue;
+                                ClassInstance ci =
+                                    prevtoken.Object is ClassInstance ? (ClassInstance)prevtoken.Object : (ClassInstance)curtoken.Object;
+
+                                bool found = false;
+                                foreach (string s in op.Signs)
+                                {
+                                    string overloadName = "operator" + s;
+                                    if (ci.Fields.ContainsKey(overloadName) && ci.Fields[overloadName].ResolveObj() is Lambda)
+                                    {
+                                        result =
+                                           DetectType(((Lambda)ci.Fields[overloadName].ResolveObj()).Execute(
+                                               this, new[] { prevtoken.Object, curtoken.Object }));
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    throw new EvaluatorException("Operator " + op.Signs[0] + " is undefined for class " +
+                                        ci.UserClass.FullName);
                                 }
                             }
-                            catch (NullReferenceException)
+                            else
                             {
-                                throw new EvaluatorException("Operator " + op.Signs[0] + " disallows empty operands");
+                                try
+                                {
+                                    result = op.Execute(prevtoken.Object, curtoken.Object);
+                                }
+                                catch (NullReferenceException)
+                                {
+                                    throw new EvaluatorException("Operator " + op.Signs[0] + " disallows empty operands");
+                                }
+                            }
+
+                            if (SystemMessage.IsType(result) &&
+                                ((SystemMessage)result).Type == SystemMessage.MessageType.defer)
+                            {
+                                tokens.SetOperator(opid, NextOperator(op));
+                                continue;
                             }
 
                             tokens.SetObject(opid - 1, result);
@@ -3054,7 +3149,7 @@ public void ReInitialize()
         private OperatorRegistar.Operator NextOperator(OperatorRegistar.Operator op)
         {
             IEnumerable<OperatorRegistar.Operator> lst = OperatorRegistar.OperatorsWithSign(op.Signs[0]);
-            for (int i=0; i<lst.Count()-1; ++i)
+            for (int i = 0; i < lst.Count() - 1; ++i)
             {
                 if (lst.ElementAt(i).Precedence == op.Precedence)
                 {
@@ -3566,13 +3661,13 @@ public void ReInitialize()
                         if (lastSect.Contains(":=") && IsValidIdentifier(lastSect.Remove(lastSect.IndexOf(":="))))
                         {
                             optVar = lastSect.Remove(lastSect.IndexOf(":="));
-                            if (lastSect.IndexOf(":=") + 1 == lastSect.Length)
+                            if (lastSect.IndexOf(":=") + 2 == lastSect.Length)
                             {
                                 lastSect = "";
                             }
                             else
                             {
-                                lastSect = lastSect.Substring(lastSect.IndexOf(":=") + 1);
+                                lastSect = lastSect.Substring(lastSect.IndexOf(":=") + 2);
                             }
                         }
 
@@ -3675,8 +3770,8 @@ public void ReInitialize()
                         }
                         return lst;
                     }
-                    // user class constructors
                 }
+                // user class constructors
                 else if (HasUserClass(fn))
                 {
 
@@ -3692,8 +3787,8 @@ public void ReInitialize()
                     }
                     return lst;
 
-                    // user functions
                 }
+                // user functions
                 else if (HasUserFunction(fn))
                 {
 
@@ -4464,7 +4559,7 @@ public void ReInitialize()
 
         /// <summary>
         /// Returns true if the name given is a valid identifier (variable/function/class/namespace) name 
-        /// (i.e. is not empty, does not contain any of &amp;+-*/{}[]()';^$@#!%=&lt;&gt;,:|\` and does not start with a number)
+        /// (i.e. is not empty, does not contain any of &amp;+-{}[]()';^$@#!%=&lt;&gt;,:|\` and does not start with a number)
         /// </summary>
         public static bool IsValidIdentifier(string name)
         {
@@ -4537,10 +4632,10 @@ public void ReInitialize()
             {
                 args[i] = args[i].Trim();
                 // default
-                if (args[i].Contains(":="))
+                if (args[i].Contains("="))
                 {
-                    defaults.Add(EvalExprRaw(args[i].Substring(args[i].IndexOf(":=") + 1).Trim(), true, true));
-                    args[i] = args[i].Remove(args[i].IndexOf(":=")).Trim();
+                    defaults.Add(EvalExprRaw(args[i].Substring(args[i].IndexOf("=") + 1).Trim(), true, true));
+                    args[i] = args[i].Remove(args[i].IndexOf("=")).Trim();
                 }
                 else
                 {

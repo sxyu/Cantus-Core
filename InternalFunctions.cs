@@ -3383,7 +3383,7 @@ namespace Cantus.Core
             /// Output as mathematical notation
             /// </summary>
             private string MathO(object o)
-            {
+           {
                 // use this to see results in mathio fashion when in lineio mode
                 if (o is BigDecimal || o is double)
                 {
@@ -4013,9 +4013,15 @@ namespace Cantus.Core
                 }
             }
 
+            public string InstanceId(ClassInstance instance) {
+                return instance.InnerScope;
+            }
+
             public string Text(object obj)
             {
-                return obj.ToString();
+                if (obj is Reference)
+                    obj = ((Reference)obj).Resolve();
+                return O(obj);
             }
 
             public bool Boolean(object obj)

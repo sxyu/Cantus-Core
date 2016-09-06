@@ -733,6 +733,7 @@ namespace Cantus.Core
                         return false;
                     // check if starts with number
 
+                    if (str.ToLowerInvariant().StartsWith("operator") || str.ToLowerInvariant().Contains(".operator")) return true;
                     char[] disallowed = "&+-*/{}[]()';^$@#!%=<>,:|\\`~ ".ToCharArray();
                     foreach (char c in str)
                     {
@@ -3487,7 +3488,7 @@ namespace Cantus.Core
                     {
                         throw ex;
                     }
-                    catch (Exception)
+                    catch (Exception )//ex)
                     {
                         throw new Exception(fieldName + " is not a field of " + UserClass.Name);
                     }
@@ -3549,7 +3550,8 @@ namespace Cantus.Core
                 private void InitInstanceId()
                 {
                     // add 'instaneid' function
-                    UserFunction iidFn = new UserFunction("type", string.Format("return " + '\'' + this.InnerScope + '\'', CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), this.InnerScope);
+                    UserFunction iidFn = new UserFunction("instanceid", string.Format(
+                        "return " + '\'' + this.InnerScope + '\'', CantusEvaluator.ROOT_NAMESPACE, SCOPE_SEP), new List<string>(), this.InnerScope);
                     iidFn.Modifiers.Add("internal");
                     this.Fields[iidFn.Name] = new Reference(new Lambda(iidFn, true));
                 }
