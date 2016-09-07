@@ -2371,15 +2371,11 @@ public void ReInitialize()
                             char c = fullLine[i];
                             if (c == '\'')
                             {
-                                dqCount = !dqCount;
-                            }
-                            else if (c == '\'')
-                            {
                                 sqCount = !sqCount;
                             }
                             else if (c == '\"')
                             {
-                                sqCount = !dqCount;
+                                dqCount = !dqCount;
                             }
                             else if (c == COMMENT_START_PTN && dqCount && sqCount)
                             {
@@ -3334,7 +3330,9 @@ public void ReInitialize()
                             }
 
                             if (!(op is OperatorRegistar.Bracket))
+                            {
                                 lst.AddOperator(op, valueL);
+                            }
 
                             // if we find an operator with brackets type
                             // we evaluate the bracket and continue after it.
@@ -4840,20 +4838,21 @@ public void ReInitialize()
                 }
                 catch (EvaluatorException ex)
                 {
-                    // append current function name & internal to exception 'stack trace'
+                    int line = ex.Line + 1;
+                     // append current function name & internal to exception 'stack trace'
                     string newMsg = ex.Message + " [In function " + name + " (" + scope + "), line " +
-                        (ex.Line+1) + "]" + Environment.NewLine;
+                        line + "]" + Environment.NewLine;
                     if (ex is MathException)
                     {
-                        throw new MathException(newMsg, ex.Line+1);
+                        throw new MathException(newMsg, line);
                     }
                     else if (ex is SyntaxException)
                     {
-                        throw new SyntaxException(newMsg, ex.Line+1);
+                        throw new SyntaxException(newMsg, line);
                     }
                     else
                     {
-                        throw new EvaluatorException(newMsg, ex.Line+1);
+                        throw new EvaluatorException(newMsg, line);
                     }
                 }
             }

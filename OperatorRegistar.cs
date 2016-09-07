@@ -527,13 +527,16 @@ namespace Cantus.Core
             Register(new Bracket("(", ")", BracketOperatorRoundBracket));
             Register(new Bracket("|", BracketOperatorAbsoluteValue));
 
-            Register(new Bracket("r" + '\'', "\"", BracketOperatorRawText, false));
+            // strings
             Register(new Bracket("\"", BracketOperatorQuotedText));
             Register(new Bracket("'", BracketOperatorQuotedText));
 
+            Register(new Bracket("r'", "'", BracketOperatorRawText, false));
+            Register(new Bracket("r\"", "\"", BracketOperatorRawText, false));
+
             // multiline / triple-quoted
             Register(new Bracket("\"\"\"", BracketOperatorQuotedText));
-            Register(new Bracket("r" + '\'' + '\'' + '\'', "\"\"\"", BracketOperatorRawText));
+            Register(new Bracket("r'''", "'''", BracketOperatorRawText));
 
             Register(new Bracket("'''", BracketOperatorQuotedText));
             Register(new Bracket("r'''", "'''", BracketOperatorRawText));
