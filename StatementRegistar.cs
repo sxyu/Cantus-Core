@@ -963,8 +963,8 @@ namespace Cantus.Core
                     return new StatementResult(blocks[0].Keyword + blocks[0].Argument + " ...", ExecCode.resume);
                 }
 
-                // classes
             }
+            // classes
             else if (var.Contains("class "))
             {
                 var = var.Substring("class ".Length).Trim();

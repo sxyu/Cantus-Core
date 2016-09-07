@@ -772,7 +772,7 @@ function instanceid()
                     if (fn.DeclaringScope != tmpScope)
                         continue;
                     // static functions
-                    if (fn.Modifiers.Contains("static") || fn.Name.StartsWith("operator"))
+                    if (fn.Modifiers.Contains("static"))
                     {
                         fn.DeclaringScope = nsScope;
                         fn.Modifiers.Add("internal");
@@ -3183,11 +3183,13 @@ public void ReInitialize()
                     {
                         IEnumerable<OperatorRegistar.Operator> ops = OperatorRegistar.OperatorsWithSign(valueL);
                         string objstr = expr.Substring(idx, i - idx).Trim();
+                        if (objstr == "operator" && valueL != "=") continue;
                         EvalObjectBase eo = null;
 
                         // if the object is not empty we try to detect its type
                         if (!string.IsNullOrEmpty(objstr))
                             eo = ObjectTypes.Parse(objstr, this, numberPreserveSigFigs: SignificantMode);
+
                         foreach (OperatorRegistar.Operator op in ops)
                         {
                             // if the object is not empty
@@ -4681,7 +4683,7 @@ public void ReInitialize()
 
             if (l.Count == 1 && string.IsNullOrWhiteSpace(l[0]))
                 l.Clear();
-            InternalDefineUserFunction(name, l, def);
+            InternalDefineUserFunction(name, l, def , modifiers);
 
             return true;
         }
