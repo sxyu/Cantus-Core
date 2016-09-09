@@ -4021,6 +4021,10 @@ public void ReInitialize()
             {
                 return "Number";
             }
+            if (type == typeof (bool) || type == typeof(Nullable<bool>))
+            {
+                return "Boolean";
+            }
             if (type == typeof(BigDecimal))
             {
                 return "Number";

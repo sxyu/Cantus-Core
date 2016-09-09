@@ -35,6 +35,7 @@ namespace Cantus.Core.CommonTypes
         /// </summary>
 
         public const double MIN_FULL_DISP = 1E-09;
+        
         /// <summary>
         /// A BigDecimal representing the undefined (NaN) value
         /// </summary>
@@ -59,9 +60,33 @@ namespace Cantus.Core.CommonTypes
         public int SigFigs { get; set; }
 
         /// <summary>
+        /// Represents a type of operator
+        /// </summary>
+        public enum OperatorType
+        {
+            /// <summary>
+            /// Set when no operator has been applied or the last operator was neither an add/sub nor a mul/div operation
+            /// </summary>
+            none = 0,
+            /// <summary>
+            /// Represents an addition or subtraction operation
+            /// </summary>
+            addsub = 1,
+            /// <summary>
+            /// Represents a multiplication or division operation
+            /// </summary>
+            muldiv = 2
+        }
+
+        /// <summary>
+        /// The type of the last operation performed on this BigDecimal
+        /// </summary>
+        public OperatorType LastOperation { get; set; }
+
+        /// <summary>
         /// Decimal separator
         /// </summary>
-        private static string DecimalSep { get; } = System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+        private static string DecimalSep { get; } = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
 
         /// <summary>
         /// Get the index of the lowest sig fig in the number. 
@@ -105,11 +130,14 @@ namespace Cantus.Core.CommonTypes
             this.Exponent = exponent;
             this.IsUndefined = undefined;
             this.SigFigs = sigFigs;
+
             Normalize();
             if (AlwaysTruncate)
             {
                 Truncate();
             }
+
+            this.LastOperation = OperatorType.none;
         }
 
         public BigDecimal(double value, int sigFigs = int.MaxValue) : this()
@@ -119,15 +147,18 @@ namespace Cantus.Core.CommonTypes
                 this.IsUndefined = true;
                 return;
             }
+
             BigInteger mantissa = (BigInteger)value;
             int exponent = 0;
             double scaleFactor = 1;
+
             while (Math.Abs(value * scaleFactor - (double)(mantissa)) > 0)
             {
                 exponent -= 1;
                 scaleFactor *= 10;
                 mantissa = (BigInteger)(value * scaleFactor);
             }
+
             this.Mantissa = mantissa;
             this.Exponent = exponent;
             this.SigFigs = sigFigs;
@@ -356,13 +387,11 @@ namespace Cantus.Core.CommonTypes
 
         private static BigDecimal Add(BigDecimal left, BigDecimal right)
         {
-            if (left.IsUndefined)
-                return Undefined;
-            if (right.IsUndefined)
-                return Undefined;
+            if (left.IsUndefined) return Undefined;
+            if (right.IsUndefined) return Undefined;
 
-            left = left.Truncate(left.SigFigs);
-            right = right.Truncate(left.SigFigs);
+            if (left.LastOperation == OperatorType.muldiv) left.Truncate(left.SigFigs);
+            if (right.LastOperation == OperatorType.muldiv) right.Truncate(right.SigFigs);
 
             int digit = Math.Max(left.LeastSigFig, right.LeastSigFig);
 
@@ -378,26 +407,32 @@ namespace Cantus.Core.CommonTypes
             else
             {
                 bn.SigFigs = bn.HighestDigit() - digit + 1;
-                return bn.Truncate(bn.HighestDigit() - digit + 1);
+                bn.LastOperation = OperatorType.addsub;
+                return bn;
             }
         }
 
         public static BigDecimal operator *(BigDecimal left, BigDecimal right)
         {
-            if (left.IsUndefined)
-                return Undefined;
-            if (right.IsUndefined)
-                return Undefined;
+            if (left.IsUndefined) return Undefined;
+            if (right.IsUndefined) return Undefined;
+
+            if (left.LastOperation == OperatorType.addsub) left.Truncate(left.SigFigs);
+            if (right.LastOperation == OperatorType.addsub) right.Truncate(right.SigFigs);
+
             BigDecimal prod = new BigDecimal(left.Mantissa * right.Mantissa, left.Exponent + right.Exponent, false, Math.Min(left.SigFigs, right.SigFigs));
+            prod.LastOperation = OperatorType.muldiv;
             return prod;
         }
 
         public static BigDecimal operator /(BigDecimal dividend, BigDecimal divisor)
         {
-            if (dividend.IsUndefined)
-                return Undefined;
-            if (divisor.IsUndefined)
-                return Undefined;
+            if (dividend.IsUndefined) return Undefined;
+            if (divisor.IsUndefined) return Undefined;
+
+            if (dividend.LastOperation == OperatorType.addsub) dividend.Truncate(dividend.SigFigs);
+            if (divisor.LastOperation == OperatorType.addsub) divisor.Truncate(divisor.SigFigs);
+
             if (divisor == 0) 
                 throw new MathException("Division by Zero");
 
@@ -411,6 +446,7 @@ namespace Cantus.Core.CommonTypes
                 dividend.Mantissa *= BigInteger.Pow(10, delta);
                 BigDecimal quotient = new BigDecimal(dividend.Mantissa / divisor.Mantissa,
                     dividend.Exponent - divisor.Exponent - delta, false, Math.Min(dividend.SigFigs, divisor.SigFigs));
+                quotient.LastOperation = OperatorType.muldiv;
                 return quotient;
             }
             catch (ArithmeticException)
@@ -421,6 +457,12 @@ namespace Cantus.Core.CommonTypes
 
         public static BigDecimal operator %(BigDecimal left, BigDecimal right)
         {
+            if (left.IsUndefined) return Undefined;
+            if (right.IsUndefined) return Undefined;
+
+            if (left.LastOperation == OperatorType.addsub) left.Truncate(left.SigFigs);
+            if (right.LastOperation == OperatorType.addsub) right.Truncate(right.SigFigs);
+
             int leftSF = left.SigFigs;
             int rightSF = right.SigFigs;
 
@@ -429,12 +471,12 @@ namespace Cantus.Core.CommonTypes
             quot = quot.TruncateInt();
 
             BigDecimal result =  left - quot * right;
-            Console.WriteLine(result);
             
             left.SigFigs = leftSF;
             right.SigFigs = rightSF;
 
             result.SigFigs = Math.Min(leftSF, rightSF);
+            result.LastOperation = OperatorType.muldiv;
             return result;
         }
 
