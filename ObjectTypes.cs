@@ -256,7 +256,11 @@ namespace Cantus.Core
                 protected override EvalObjectBase DeepCopy()
                 {
                     this._value.Normalize();
-                    return new Number(new BigDecimal(this._value.Mantissa, this._value.Exponent, this._value.IsUndefined, this._value.SigFigs));
+                    BigDecimal bn = new BigDecimal(this._value.Mantissa, this._value.Exponent,
+                        this._value.IsUndefined, this._value.SigFigs);
+                    bn.LastOperation = this._value.LastOperation;
+                    Number n =  new Number(bn);
+                    return n;
                 }
 
                 public Number(double value)
