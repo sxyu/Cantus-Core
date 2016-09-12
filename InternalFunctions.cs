@@ -2571,7 +2571,7 @@ namespace Cantus.Core
             // octal repr
             public string Oct(double value)
             {
-                return Convert.ToString(Int(Math.Truncate(value)), 7);
+                return Convert.ToString(Int(Math.Truncate(value)), 8);
             }
             // hex repr   
             public string Hex(double value)
