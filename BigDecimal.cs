@@ -532,16 +532,16 @@ namespace Cantus.Core.CommonTypes
 
         #region "Additional mathematical functions"
 
-        public static BigDecimal Exp(double exponent)
+        public static BigDecimal Exp(BigDecimal exponent)
         {
             BigDecimal tmp = (BigDecimal)1;
-            while (Math.Abs(exponent) > 100)
+            while (BigDecimal.Abs(exponent) > 100)
             {
                 int diff = exponent > 0 ? 100 : -100;
                 tmp *= Math.Exp(diff);
                 exponent -= diff;
             }
-            return tmp * Math.Exp(exponent);
+            return tmp * Pow(Math.E, exponent);
         }
 
         /// <summary>
@@ -556,11 +556,16 @@ namespace Cantus.Core.CommonTypes
             double expo = (double)(exponent);
             double @base = (double)(basis);
 
+            int ct = 0;
+            int MAX_CT = 300;
             while (Math.Abs(expo) > 100)
             {
                 int diff = exponent > 0 ? 100 : -100;
                 tmp *= Math.Pow(@base, diff);
-                exponent -= diff;
+                expo -= diff;
+                ++ct;
+                if (ct > MAX_CT)
+                    throw new MathException("Warning: Exponentiation resulted in too many computations. Terminated to prevent freeze.");
             }
 
             tmp *= Math.Pow(@base, expo);
@@ -574,6 +579,33 @@ namespace Cantus.Core.CommonTypes
             }
 
             return tmp;
+        }
+
+        public static BigDecimal Abs(BigDecimal value)
+        {
+            if (value < 0) return -value;
+            else return value;
+        }
+        
+        private static BigDecimal mod(BigDecimal x, BigDecimal m)
+        {
+            return (x % m + m) % m;
+        }
+
+        public static BigDecimal Sin(BigDecimal value)
+        {
+            value = mod(value, Math.PI * 2);
+            return Math.Sin((double)value);
+        }
+        public static BigDecimal Cos(BigDecimal value)
+        {
+            value = mod(value, Math.PI * 2);
+            return Math.Cos((double)value);
+        }
+        public static BigDecimal Tan(BigDecimal value)
+        {
+            value = mod(value, Math.PI * 2);
+            return Math.Tan((double)value);
         }
 
         #endregion
@@ -850,5 +882,140 @@ namespace Cantus.Core.CommonTypes
             return Convert.ChangeType(this, conversionType);
         }
     }
+
+    /// <summary>
+    /// Arbitrarily Precise Complex Number
+    /// </summary>
+    public struct BigComplex
+    {
+        public BigDecimal Imaginary { get; set; }
+        public BigDecimal Real { get; set; }
+
+        private BigDecimal mod(BigDecimal x, BigDecimal m)
+        {
+            return (x % m + m) % m;
+        }
+
+        public BigDecimal Phase
+        {
+            get
+            {
+                if (Real > 0) return Math.Atan((double)(mod((Imaginary / Real) , Math.PI * 2)));
+                else if (Real == 0)
+                {
+                    if (Imaginary > 0) return Math.PI / 2;
+                    else if (Imaginary < 0) return -Math.PI / 2;
+                    else return BigDecimal.Undefined;
+                }
+                else { 
+                    if (Imaginary >= 0) return Math.Atan((double)(mod((Imaginary / Real) , Math.PI * 2))) + Math.PI;
+                    else return Math.Atan((double)(mod((Imaginary / Real) , Math.PI * 2))) - Math.PI;
+                }
+            }
+            set
+            {
+                value = mod(value, Math.PI * 2);
+                BigDecimal mag = Magnitude;
+                Imaginary =  mag * Math.Sin((double)value);
+                Real = mag * Math.Cos((double)value);
+            }
+        }
+
+        public BigDecimal Magnitude { get
+            {
+                return Imaginary * Imaginary + Real * Real;
+            }
+            set
+            {
+                BigDecimal phi = Phase;
+                Imaginary =  value * Math.Sin((double)phi);
+                Real = value * Math.Cos((double)phi); 
+            }
+        }
+        /// <summary>
+        /// Create a BigComplex object from real and imaginary parts
+        /// </summary>
+        public BigComplex(BigDecimal? real = null, BigDecimal? imag = null)
+        {
+            if (real == null) real = 0.0;
+            this.Real = (BigDecimal)real;
+            if (imag == null) imag = 0.0;
+            this.Imaginary = (BigDecimal)imag;
+        }
+
+        /// <summary>
+        /// Get a BigComplex object from a magnitude and a phase
+        /// </summary>
+        public static BigComplex FromMagnitudePhase(BigDecimal magnitude, BigDecimal phase)
+        {
+            BigComplex bc = new BigComplex(0);
+            bc.Magnitude = magnitude;
+            bc.Phase = phase;
+            return bc;
+        }
+
+        public static implicit operator BigComplex(int val)
+        {
+            return new BigComplex(val);
+        }
+
+        public static implicit operator BigComplex(double val)
+        {
+            return new BigComplex(val);
+        }
+
+        public static implicit operator BigComplex(BigDecimal val)
+        {
+            return new BigComplex(val);
+        }
+
+        public static implicit operator BigComplex(Complex val)
+        {
+            return new BigComplex(val.Real, val.Imaginary);
+        }
+
+        public static BigComplex operator -(BigComplex value)
+        {
+            return new BigComplex(-value.Real, -value.Imaginary);
+        }
+
+        public static BigComplex operator +(BigComplex left, BigComplex right)
+        {
+            return new BigComplex(left.Real + right.Real, left.Imaginary + right.Imaginary);
+        }
+
+        public static BigComplex operator -(BigComplex left, BigComplex right)
+        {
+            return new BigComplex(left.Real - right.Real, left.Imaginary - right.Imaginary);
+        }
+
+        public static BigComplex operator *(BigComplex left, BigComplex right)
+        {
+            return new BigComplex(left.Real * right.Real - left.Imaginary * right.Imaginary,
+                                  left.Real * right.Imaginary + left.Imaginary * right.Real);
+        }
+
+        public static BigComplex operator /(BigComplex left, BigComplex right)
+        {
+            BigDecimal denom = right.Real * right.Real + right.Imaginary * right.Imaginary;
+            return new BigComplex((left.Real * right.Real + left.Imaginary * right.Imaginary) / denom ,
+                                  (left.Imaginary * right.Real - left.Real * right.Imaginary) / denom );
+        }
+
+        public BigComplex Reciprocal {
+            get 
+            {
+                return 1 / this;
+            }
+        }
+
+        public static BigComplex Exp(BigComplex z)
+        {
+            BigDecimal value = BigDecimal.Exp(z.Real);
+            return new BigComplex(value * BigDecimal.Cos(z.Imaginary), value * BigDecimal.Sin(z.Imaginary));
+        }
+
+
+    };
 }
 

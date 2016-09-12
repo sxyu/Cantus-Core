@@ -1,9 +1,5 @@
-﻿using Microsoft.VisualBasic;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
 using System.Linq;
 using Cantus.Core.Exceptions;
 using Cantus.Core.CommonTypes;
@@ -218,20 +214,6 @@ namespace Cantus.Core
                 this.Stackable = stackable;
             }
 
-            ///' <summary>
-            ///' Create a new bracket operator with one start sign and many end signs
-            ///' </summary>
-            ///' <param name="signStart">The sign that begins the operator (eg. '(')</param>
-            ///' <param name="signsEnd">A list of signs that end the bracket (eg. ')')</param>
-            ///' <param name="execute">The operator definition (use AddressOf)</param>
-            //Public Sub New(signStart As String, signsEnd As IEnumerable(Of String), execute As BracketDelegate, Optional stackable As Boolean = True)
-            //    Me.Signs = New List(Of String)
-            //    Me.Signs.Add(signStart)
-            //    Me.Signs.AddRange(signsEnd)
-            //    Me.Execute = execute
-            //    Me.Stackable = stackable
-            //End Sub
-
             /// <summary>
             /// Create a new bracket operator with one sign (for example '|x|')
             /// </summary>
@@ -330,10 +312,17 @@ namespace Cantus.Core
         #endregion
 
         #region "Constants & Variable Declarations"
+        private int _maxOperatorLength = 0;
         /// <summary>
         /// Maximum length in characters of a single operator
         /// </summary>
-        public const int MAX_OPERATOR_LENGTH = 8;
+        public int MaxOperatorLength { get { return _maxOperatorLength; } }
+
+        private int _maxSpaceLetterOperatorLength = 0;
+        /// <summary>
+        /// Maximum length in characters of an operator starting with a space or letter
+        /// </summary>
+        public int MaxSpaceLetterOperatorLength { get { return _maxSpaceLetterOperatorLength; } }
 
         private CantusEvaluator _eval;
         /// <summary>
@@ -559,8 +548,13 @@ namespace Cantus.Core
             {
                 Operators[(int)op.Precedence].Add(op);
             }
+
             foreach (string sign in op.Signs)
             {
+                if (sign.Length > 0 && (sign[0] == ' ' || char.IsLetter(sign[0])))
+                    _maxSpaceLetterOperatorLength = Math.Max(sign.Length, MaxSpaceLetterOperatorLength);
+                else _maxOperatorLength = Math.Max(sign.Length, MaxOperatorLength);
+
                 if (!_operatorSigns.ContainsKey(sign))
                     _operatorSigns[sign] = new List<Operator>();
 
@@ -1085,29 +1079,19 @@ private ObjectTypes.EvalObjectBase BinaryOperatorMultiply(ObjectTypes.EvalObject
         ObjectTypes.Lambda lambda = (ObjectTypes.Lambda)left;
         if (right == null || right is ObjectTypes.Number && double.IsNaN((double)(right.GetValue())))
         {
-            if (lambda.Args.Count()> 0)
-                throw new EvaluatorException("(Lambda): " + lambda.Args.Count()+ " parameters expected");
             return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>()));
         }
         else if (right is ObjectTypes.Tuple)
         {
-            if (lambda.Args.Count()!= ((ObjectTypes.Reference[])right.GetValue()).Length)
-            {
-                throw new EvaluatorException("(Lambda): " + lambda.Args.Count()+ " parameters expected");
-            }
             return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>((ObjectTypes.Reference[])right.GetValue())));
         }
         else if (right is ObjectTypes.Reference)
         {
-            if (lambda.Args.Count()> 1)
-                throw new EvaluatorException("(Lambda): " + lambda.Args.Count()+ " parameters expected");
-            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>(new[]{ (ObjectTypes.Reference)right })));
+            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>(new[] { (ObjectTypes.Reference)right })));
         }
         else
         {
-            if (lambda.Args.Count()> 1)
-                throw new EvaluatorException("(Lambda): " + lambda.Args.Count()+ " parameters expected");
-            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>(new[]{ new ObjectTypes.Reference(right) })));
+            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>(new[] { new ObjectTypes.Reference(right) })));
         }
     }
 
@@ -1341,7 +1325,10 @@ private ObjectTypes.EvalObjectBase BinaryOperatorExponent(ObjectTypes.EvalObject
         {
             return ObjectTypes.DetectType(_eval.Internals.Pow(left.GetValue(), right.GetValue()));
         }
-        //ex As Exception
+    }
+    catch (MathException ex)
+    {
+        throw ex;
     }
     catch
     {
@@ -1562,16 +1549,17 @@ private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBa
 {
     try
     {
-        if (ObjectTypes.Reference.IsType(left) && ObjectTypes.Reference.IsType(right) && ObjectTypes.Reference.IsType(((ObjectTypes.Reference)right).GetRefObject()))
+        if (ObjectTypes.Reference.IsType(left) && ObjectTypes.Reference.IsType(right) &&
+                    ObjectTypes.Reference.IsType(((ObjectTypes.Reference)right).GetRefObject()))
         {
             ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
             ObjectTypes.Reference rr = (ObjectTypes.Reference)right;
             // if we are assigning a reference
 
             // try to avoid circular references
-            if ((!object.ReferenceEquals(lr, rr)))
+            if (!object.ReferenceEquals(lr, rr))
             {
-                if ((rr.Node != null))
+                if (rr.Node != null)
                 {
                     // set node
                     lr.SetNode(rr.Node);
@@ -1583,6 +1571,10 @@ private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBa
                     left.SetValue(new ObjectTypes.Reference(rr.ResolveObj()));
                 }
             }
+        }
+        else if (ObjectTypes.Reference.IsType(left)){
+            ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
+            lr.ResolveRef().SetValue(right.GetValue());
         }
         else
         {

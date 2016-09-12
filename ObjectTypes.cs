@@ -3089,7 +3089,16 @@ namespace Cantus.Core
                 }
 
                 private string _value;
-                private bool _fnPtr;
+
+                /// <summary>
+                /// True if this lambda expression is considered to be a function pointer
+                /// </summary>
+                internal bool IsFunctionPtr { get; set; } = false;
+
+                /// <summary>
+                /// The name of the function this is pointing to
+                /// </summary>
+                internal string FunctionName  { get; set; } = "";
 
                 /// <summary>
                 /// Returns self
@@ -3104,13 +3113,14 @@ namespace Cantus.Core
                 {
                     if (obj is Lambda)
                     {
-                        if (obj.ToString().StartsWith("`"))
+                        if (((Lambda)obj).IsFunctionPtr)
                         {
-                            this.SetLambdaExprRaw(obj.ToString());
+                            this.SetFunctionPtr(obj.ToString(), ((Lambda)obj).Args);
+                            this.FunctionName = ((Lambda)obj).FunctionName;
                         }
                         else
                         {
-                            this.SetFunctionPtr(obj.ToString(), ((Lambda)obj).Args);
+                            this.SetLambdaExprRaw(obj.ToString());
                         }
                     }
                     else
@@ -3123,16 +3133,44 @@ namespace Cantus.Core
                 /// Run this function on the specified evaluator and return the result
                 /// </summary>
                 /// <returns></returns>
-                public object Execute(CantusEvaluator eval, IEnumerable<object> args, string executingScope = "")
+                public object Execute(CantusEvaluator eval, IEnumerable<object> args,
+                    IDictionary<string, object> kwargs = null, string executingScope = "")
                 {
-
                     CantusEvaluator tmpEval = eval.SubEvaluator();
                     if (!string.IsNullOrEmpty(executingScope))
                         tmpEval.Scope = executingScope;
 
-                    for (int i = 0; i <= _args.Count() - 1; i++)
+                    if (IsFunctionPtr)
+                    {
+                        string fnName = FunctionName;
+                        if (eval.UserFunctions.ContainsKey(fnName))
+                        {
+                            UserFunction uf = eval.GetUserFunction(fnName);
+                            for ( int i = 0; i< uf.Defaults.Count; ++i)
+                            {
+                                if (uf.Defaults[i] == null) continue;
+                                tmpEval.SetVariable(_args.ElementAt(i),  uf.Defaults[i]);
+                            }
+                        }
+                    }
+
+                    for (int i = 0; i <= args.Count() - 1; i++)
                     {
                         tmpEval.SetVariable(_args.ElementAt(i), args.ElementAt(i));
+                    }
+
+                    if (kwargs != null)
+                    {
+                        foreach (string k in kwargs.Keys)
+                        {
+                            tmpEval.SetVariable(k, kwargs[k]);
+                        }
+                    }
+
+                    for (int i=args.Count(); i< _args.Count(); ++i)
+                    {
+                        if (!tmpEval.HasVariable(_args.ElementAt(i)))  
+                            throw new EvaluatorException("(Lambda): " + _args.Count()+ " parameters expected");
                     }
 
                     object res = tmpEval.EvalRaw(_value, noSaveAns: true);
@@ -3151,10 +3189,23 @@ namespace Cantus.Core
 
                 public int ExecuteAsync(CantusEvaluator eval, IEnumerable<object> args, Lambda callBack = null, string executingScope = "")
                 {
-
                     CantusEvaluator tmpEval = eval.SubEvaluator();
                     if (!string.IsNullOrEmpty(executingScope))
                         tmpEval.Scope = executingScope;
+
+                    if (IsFunctionPtr)
+                    {
+                        string fnName = FunctionName;
+                        if (eval.UserFunctions.ContainsKey(fnName))
+                        {
+                            UserFunction uf = eval.GetUserFunction(fnName);
+                            for ( int i = 0; i< uf.Defaults.Count; ++i)
+                            {
+                                if (uf.Defaults[i] == null) continue;
+                                tmpEval.SetVariable(_args.ElementAt(i),  uf.Defaults[i]);
+                            }
+                        }
+                    }
 
                     for (int i = 0; i <= _args.Count() - 1; i++)
                     {
@@ -3196,7 +3247,8 @@ namespace Cantus.Core
                         this._value += a;
                     }
                     this._value += ")";
-                    this._fnPtr = true;
+                    this.IsFunctionPtr = true;
+                    this.FunctionName = uf;
                 }
 
                 /// <summary>
@@ -3206,7 +3258,8 @@ namespace Cantus.Core
                 {
                     this._args = args;
                     this._value = expr;
-                    this._fnPtr = false;
+                    this.IsFunctionPtr = false;
+                    this.FunctionName = "";
                 }
 
                 /// <summary>
@@ -3243,7 +3296,8 @@ namespace Cantus.Core
                         });
                             this.SetLambdaExpr(expr, args.Split(','));
                         }
-                        this._fnPtr = false;
+                        this.IsFunctionPtr = false;
+                        this.FunctionName = "";
                     }
                     else
                     {
@@ -3264,9 +3318,9 @@ namespace Cantus.Core
 
                 public override string ToString()
                 {
-                    if (this._fnPtr)
+                    if (this.IsFunctionPtr)
                     {
-                        return this._value.Remove(this._value.IndexOf("("));
+                        return this.FunctionName;
                     }
                     else
                     {
@@ -3314,6 +3368,8 @@ namespace Cantus.Core
                     if (flatten)
                     {
                         this.SetLambdaExpr(uf.Body, uf.Args);
+                        this.IsFunctionPtr = true;
+                        this.FunctionName = uf.FullName;
                     }
                     else
                     {
@@ -3343,7 +3399,7 @@ namespace Cantus.Core
 
                 protected override EvalObjectBase DeepCopy()
                 {
-                    return new Lambda(this._value, this.Args, this._fnPtr);
+                    return new Lambda(this._value, this.Args, this.IsFunctionPtr);
                 }
             }
 
@@ -3534,7 +3590,7 @@ namespace Cantus.Core
                         tmpEval.SubScope();
                         tmpEval.SetDefaultVariable(new Reference(this));
                         return UserClass.Evaluator.Internals.O(((Lambda)this.Fields["text"].ResolveObj()).Execute(tmpEval, new object[] { },
-                            tmpEval.Scope));
+                            executingScope: tmpEval.Scope));
                     }
                     else
                     {
@@ -3598,7 +3654,7 @@ namespace Cantus.Core
                     InitInstanceId();
                 }
 
-                public ClassInstance(UserClass uc, IEnumerable<object> args)
+                public ClassInstance(UserClass uc, IEnumerable<object> args, IDictionary<string, object> kwargs = null)
                 {
                     this._fields = new Dictionary<string, Reference>();
                     this._userClass = uc;
@@ -3620,15 +3676,10 @@ namespace Cantus.Core
                     }
 
                     // run constructor
-                    if (constructor.Args.Count() != args.Count())
-                    {
-                        throw new EvaluatorException(string.Format("{0} parameters expected For \"{1}\" constructor", constructor.Args.Count(), uc.Name));
-                    }
-
                     tmpEval.SubScope();
                     tmpEval.SetDefaultVariable(new Reference(this));
 
-                    constructor.Execute(tmpEval, args, tmpEval.Scope);
+                    constructor.Execute(tmpEval, args, kwargs, tmpEval.Scope);
 
                     foreach (Variable var in tmpEval.Variables.Values)
                     {

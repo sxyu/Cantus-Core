@@ -782,7 +782,9 @@ function instanceid()
                     else
                     {
                         fn.Modifiers.Add("internal");
-                        this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn, true), tmpScope, fn.Modifiers);
+                        Lambda fl = new Lambda(fn, true);
+                        eval.UserFunctions[fn.FullName] = fn;
+                        this.Fields[fn.Name] = new Variable(fn.Name, fl, tmpScope, fn.Modifiers);
                     }
                 }
 
@@ -1901,6 +1903,7 @@ public void ReInitialize()
             if (Directory.Exists(cantusPath + "init/"))
                 initScripts.AddRange(Directory.GetFiles(cantusPath + "init/", "*.can", SearchOption.AllDirectories));
 
+            EvaluatorException exc = null;
             foreach (string file in initScripts)
             {
                 try
@@ -1919,14 +1922,15 @@ public void ReInitialize()
                 {
                     if (file == cantusPath + "init.can")
                     {
-                        throw new EvaluatorException("Error occurred while processing init.can.\nVariables and functions may not load.\n\nMessage:\n\n" + ex.Message);
+                        exc = new EvaluatorException("Error occurred while processing init.can.\nVariables and functions may not load.\n\nMessage:\n\n" + ex.Message);
                     }
                     else
                     {
-                        throw new EvaluatorException("Error occurred while loading \"" + file.Replace(Path.DirectorySeparatorChar, SCOPE_SEP).Remove(file.LastIndexOf(".")) + "\"\n" + ex.Message);
+                        exc= new EvaluatorException("Error occurred while loading \"" + file.Replace(Path.DirectorySeparatorChar, SCOPE_SEP).Remove(file.LastIndexOf(".")) + "\"\n" + ex.Message);
                     }
                 }
             }
+            if (exc != null) throw exc;
         }
 
         #endregion
@@ -3171,7 +3175,11 @@ public void ReInitialize()
 
             for (int i = 0; i <= expr.Length - 1; i++)
             {
-                for (int j = Math.Min(expr.Length, i + OperatorRegistar.MAX_OPERATOR_LENGTH); j >= i; j += -1)
+                for (int j =
+                    Math.Min(expr.Length,
+                    (expr[i] == ' ' || char.IsLetter(expr[i]) ?
+                    i + OperatorRegistar.MaxSpaceLetterOperatorLength : i + OperatorRegistar.MaxOperatorLength ));
+                    j >= i; j += -1)
                 {
                     string valueL = expr.Substring(i, j - i).Replace("  ", " ").ToLowerInvariant();
 
@@ -3636,7 +3644,7 @@ public void ReInitialize()
             {
                 List<Reference> tuple = new List<Reference>();
 
-                for (int i = 0; i <= args.Length; i++)
+                for (int i = 0; i <= args.Length; ++i)
                 {
                     char c = ',';
                     if (i < args.Length)
@@ -3653,12 +3661,14 @@ public void ReInitialize()
                         }
                     }
 
-                    if (c == ',')
+                    if (c == ',') 
                     {
-                        string lastSect = args.Substring(lastIdx, i - lastIdx);
+                        string lastSect = args.Substring(lastIdx, i - lastIdx).Trim();
+
                         lastIdx = i + 1;
                         string optVar = "";
-                        if (lastSect.Contains(":=") && IsValidIdentifier(lastSect.Remove(lastSect.IndexOf(":="))))
+                        if (lastSect.Contains(":=") &&
+                            IsValidIdentifier(lastSect.Remove(lastSect.IndexOf(":=")).Trim()))
                         {
                             optVar = lastSect.Remove(lastSect.IndexOf(":="));
                             if (lastSect.IndexOf(":=") + 2 == lastSect.Length)
@@ -3675,11 +3685,6 @@ public void ReInitialize()
                         if (!string.IsNullOrEmpty(optVar))
                         {
                             optDict[optVar] = resObj;
-                            // cannot have normal arguments after named ones
-                        }
-                        else if (optDict.Count > 0)
-                        {
-                            throw new SyntaxException("Unnamed parameters must precede all named parameters");
                         }
                         else
                         {
@@ -3742,20 +3747,13 @@ public void ReInitialize()
                         argLst.RemoveAt(0);
                         Lambda lambda = (Lambda)@ref.ResolveObj();
 
-                        if (lambda.Args.Count() != argLst.Count)
-                        {
-                            // incorrect parameter count
-                            throw new EvaluatorException(ci.UserClass.Name + SCOPE_SEP + fn + ": " + lambda.Args.Count() + " parameter(s) expected");
-                        }
-                        else
-                        {
-                            // execute
-                            CantusEvaluator tmpEvaluator = ci.UserClass.Evaluator.SubEvaluator();
-                            tmpEvaluator.Scope = ci.InnerScope;
-                            tmpEvaluator.SubScope();
-                            tmpEvaluator.SetDefaultVariable(new Reference(ci));
-                            lst.Add(DetectType(lambda.Execute(tmpEvaluator, argLst, tmpEvaluator.Scope), true));
-                        }
+                        // execute
+                        CantusEvaluator tmpEvaluator = ci.UserClass.Evaluator.SubEvaluator();
+                        tmpEvaluator.Scope = ci.InnerScope;
+                        tmpEvaluator.SubScope();
+                        tmpEvaluator.SetDefaultVariable(new Reference(ci));
+                        lst.Add(DetectType(lambda.Execute(tmpEvaluator, argLst, optDict, executingScope: tmpEvaluator.Scope), true));
+
                         return lst;
                     }
                     else
@@ -3776,14 +3774,14 @@ public void ReInitialize()
                 {
 
                     UserClass uc = GetUserClass(fn);
-                    if (uc.Constructor.Args.Count() > 0 && argLst.Count == 0)
+                    if (uc.Constructor.Args.Count() > 0 && argLst.Count == 0 && optDict.Count == 0)
                     {
-                        lst.Add(new ClassInstance(uc));
+                        lst.Add(new ClassInstance(uc,new object[] { }, optDict));
                         // support creating empty objects without running constructor
                     }
                     else
                     {
-                        lst.Add(new ClassInstance(uc, argLst));
+                        lst.Add(new ClassInstance(uc, argLst, optDict));
                     }
                     return lst;
 
@@ -3955,8 +3953,8 @@ public void ReInitialize()
                 //
                 foreach (KeyValuePair<string, Variable> var in Variables.ToArray())
                 {
+                    if (var.Value.Name == "this") continue; // do not save 'this'
                     EvalObjectBase def = var.Value.Reference.ResolveObj();
-
 
                     if ((def != null) && (!(def is Number) ||
                         !double.IsNaN((double)(def.GetValue()))) && !(def is Reference) &&
@@ -4537,7 +4535,7 @@ public void ReInitialize()
             else
             {
                 // default variable not set, we'll complain about the variable name
-                throw new EvaluatorException("Variable name \"" + DEFAULT_VAR_NAME + "\" is reserved by Cantus and may not be assigned to");
+                throw new EvaluatorException("Keyword \"" + DEFAULT_VAR_NAME + "\" may not be used in this scope");
             }
         }
 
@@ -4807,7 +4805,9 @@ public void ReInitialize()
 
                 List<string> argnames = uf.Args;
 
-                if (args.Count() <= argnames.Count && (args.Count() == argnames.Count || args.Count() >= uf.RequiredArgsCount && (optionalArgs != null)))
+                if (args.Count() <= argnames.Count && 
+                    (args.Count() == argnames.Count ||
+                    (optionalArgs != null) && args.Count() + optionalArgs.Count >= uf.RequiredArgsCount ))
                 {
                     var arglst = args.ToList();
                     for (int i = 0; i < args.Count(); i++)
@@ -4816,23 +4816,29 @@ public void ReInitialize()
                     }
 
                     // named/optional args
-                    for (int i = args.Count(); i <= argnames.Count - 1; i++)
+                    for (int i = 0; i <= argnames.Count - 1; i++)
                     {
                         if (optionalArgs.ContainsKey(argnames[i]))
                         {
-                            tmpEval.SetVariable(argnames[i], optionalArgs[argnames[i]]);
                             // use provided value
+                            tmpEval.SetVariable(argnames[i], optionalArgs[argnames[i]]);
                         }
-                        else
+                        else if (uf.RequiredArgsCount <= i)
                         {
-                            tmpEval.SetVariable(argnames[i], uf.Defaults[i]);
                             // use default value
+                            tmpEval.SetVariable(argnames[i], uf.Defaults[i]);
+                        }
+                        else if (uf.Args.Count <= i)
+                        {
+                            throw new EvaluatorException(name + " : " + argnames.Count +
+                                " parameter(s) expected");
                         }
                     }
                 }
                 else
                 {
-                    throw new EvaluatorException(name + " : " + argnames.Count + " parameter(s) expected");
+                    throw new EvaluatorException(name + " : " + argnames.Count +
+                        " parameter(s) expected");
                 }
 
                 // execute the function in a new scope
@@ -4870,7 +4876,7 @@ public void ReInitialize()
         /// Execute an internal function with the given name and arguments
         /// </summary>
         /// <returns></returns>
-        public object ExecInternalFunction(string name, List<object> args)
+        public object ExecInternalFunction(string name, IList<object> args)
         {
             MethodInfo info = null;
 
@@ -4889,7 +4895,7 @@ public void ReInitialize()
                 {
                     if (!paraminfo.IsOptional)
                         minParamCt += 1;
-                    if (maxParamCt >= args.Count)
+                    if (maxParamCt >= args.Count())
                     {
                         if (paraminfo.IsOptional)
                         {

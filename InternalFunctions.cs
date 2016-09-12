@@ -264,35 +264,230 @@ namespace Cantus.Core
                 return _eval.Scope;
             }
 
+            // reflection
+
             /// <summary>
             /// Read the definition of a User Functions
             /// </summary>
-            /// <param name="name"></param>
-            public string _RecallUF(string name)
+            public string _FunctionDef(string fullName)
             {
                 try
                 {
-                    return _eval.UserFunctions[name].ToString(_eval.Scope);
+                    return _eval.UserFunctions[fullName].ToString(_eval.Scope);
                 }
                 catch
                 {
-                    return "Function \"" + name + "\" is undefined";
+                    if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
+                        return "(Internal Code)";
+                    else throw new EvaluatorException("Function \"" + fullName + "\" is undefined");
                 }
             }
 
             /// <summary>
-            /// Copy onto the clipboard the definition of a User Functions
+            /// Get the parameters of the specified function
             /// </summary>
-            public object _CopyUF(string name)
+            public IEnumerable<Reference> _FunctionParams(string fullName)
             {
-                try
+                if (_eval.UserFunctions.ContainsKey(fullName))
                 {
-                    return Clip(_eval.UserFunctions[name].ToString(_eval.Scope));
-                }
-                catch
+                    return (_eval.UserFunctions[fullName].Args.Select(
+                        new Func<string, Reference>((x) => new Reference(x)))).ToList();
+                } 
+                else if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
                 {
-                    return "Function \"" + name + "\"is undefined";
+                    MethodInfo mi = typeof(InternalFunctions).GetMethod(
+                        Scoping.RemoveRedundantScope(fullName, ROOT_NAMESPACE),
+                        BindingFlags.IgnoreCase | BindingFlags.Public | 
+                        BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                    return (from x in mi.GetParameters() select
+                         new Reference(new Text(x.Name))).ToList();
                 }
+                else
+                {
+                    throw new EvaluatorException("Function " + fullName + " is undefined.");
+                }
+            }
+
+
+
+            /// <summary>
+            /// Get a pointer to the function with the specified name
+            /// </summary>
+            public Lambda _FunctionPtr(string fullName)
+            {
+                if (_eval.UserFunctions.ContainsKey(fullName))
+                {
+                    return new Lambda(_eval.UserFunctions[fullName]);
+                } 
+                else if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
+                {
+                    MethodInfo mi = typeof(InternalFunctions).GetMethod(
+                        Scoping.RemoveRedundantScope(fullName, ROOT_NAMESPACE),
+                        BindingFlags.IgnoreCase | BindingFlags.Public | 
+                        BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                    return new Lambda(fullName,
+                        mi.GetParameters().Select(new Func<ParameterInfo, string>((x)=>x.Name)),  true);
+                }
+                else
+                {
+                    throw new EvaluatorException("Function " + fullName + " is undefined.");
+                }
+            }
+
+            /// <summary>
+            /// Execute a function by full name
+            /// </summary>
+            public object _FunctionExec(string fullName, IList<Reference> args=null,
+                IDictionary<Reference,Reference> kwargs = null)
+            {
+                if (args == null) args = new List<Reference>();
+                if (_eval.UserFunctions.ContainsKey(fullName))
+                {
+                    if (kwargs != null)
+                    {
+                        Dictionary<string, object> skwargs = new Dictionary<string, object>();
+                        foreach (KeyValuePair<Reference, Reference> p in kwargs)
+                        {
+                            skwargs[p.Key.ToString()] = p.Value.Resolve();
+                        }
+
+                        return _eval.ExecUserFunction(fullName,
+                            args.Select(new Func<Reference, object>((x) => x.Resolve())),
+                            skwargs);
+                    }
+                    else
+                    {
+                        return _eval.ExecUserFunction(fullName,
+                            args.Select(new Func<Reference, object>((x) => x.Resolve())));
+                    }
+                } 
+                else if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
+                {
+                   return _eval.ExecInternalFunction(fullName,
+                        args.Select(new Func<Reference, object>((x) => x.Resolve())).ToList());
+                }
+                else
+                {
+                    throw new EvaluatorException("Function " + fullName + " is undefined.");
+                }
+            }
+
+            /// <summary>
+            /// Returns true if function with specified name exists
+            /// </summary>
+            public bool _FunctionDefined(string fullName)
+            {
+                if (_eval.UserFunctions.ContainsKey(fullName)) return true;
+                if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
+                    return true;
+                return false;
+            }
+
+            /// <summary>
+            /// List functions in the scope. By default, lists all in current scope.
+            /// </summary>
+            public List<Reference> _FunctionList(string scope = "")
+            {
+                if (scope == "") scope = _eval.Scope;
+                List<Reference> lst = new List<Reference>();
+                foreach (UserFunction fn in _eval.UserFunctions.Values)
+                {
+                    if (fn.FullName.StartsWith(scope) )
+                    {
+                        lst.Add(new Reference(fn.FullName));
+                    }
+                }
+                if (scope == ROOT_NAMESPACE)
+                {
+                    MethodInfo[] infoset = typeof(InternalFunctions).GetMethods(
+                        BindingFlags.IgnoreCase | BindingFlags.Public | 
+                        BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                    foreach (MethodInfo mi in infoset)
+                    {
+                        lst.Add(new Reference(Scoping.CombineScope(ROOT_NAMESPACE, mi.Name)));
+                    }
+                }
+                return lst;
+            }
+
+            /// <summary>
+            /// Get the value of the variable with the name
+            /// </summary>
+            public object _VariableValue(string fullName)
+            {
+                if (!_VariableDefined(fullName)) throw new EvaluatorException("Variable " + fullName + " is undefined.");
+                return _eval.Variables[fullName].Value;
+            }
+
+            /// <summary>
+            /// Get a reference to the variable with the name
+            /// </summary>
+            public Reference _VariableRef(string fullName)
+            {
+                if (!_VariableDefined(fullName)) throw new EvaluatorException("Variable " + fullName + " is undefined.");
+                return new Reference(_eval.Variables[fullName].Reference);
+            }
+
+            /// <summary>
+            /// Returns true if the variable with the given name is defined
+            /// </summary>
+            public bool _VariableDefined(string fullName) { return _eval.Variables.ContainsKey(fullName);  }
+
+            /// <summary>
+            /// List variables in the scope. By default, lists all in current scope.
+            /// </summary>
+            public List<Reference> _VariableList(string scope = "")
+            {
+                if (scope == "") scope = _eval.Scope;
+                List<Reference> lst = new List<Reference>();
+                foreach (Variable var in _eval.Variables.Values)
+                {
+                    if (var.FullName.StartsWith(scope))
+                    {
+                        lst.Add(new Reference(var.FullName));
+                    }
+                }
+                return lst;
+            }
+
+            /// <summary>
+            /// Returns true if the class with the given name is defined
+            /// </summary>
+            public bool _ClassDefined(string fullName) { return _eval.UserClasses.ContainsKey(fullName);  }
+
+            /// <summary>
+            /// Returns true if the class with the given name is defined
+            /// </summary>
+            public ClassInstance _ClassInit(string fullName, IList<Reference> args=null, IDictionary<Reference,Reference> kwargs=null) {
+                if (!_ClassDefined(fullName)) throw new EvaluatorException("Class " + fullName + " is undefined.");
+                    if (args == null) args = new List<Reference>();
+                    UserClass uc = _eval.UserClasses[fullName];
+                    if (uc.Constructor.Args.Count() > 0 && args.Count == 0)
+                    {
+                        return new ClassInstance(uc);
+                    }
+                    else
+                    {
+                        return new ClassInstance(uc, args);
+                    }
+ 
+            }
+
+            /// <summary>
+            /// List classes in the scope. By default, lists all in current scope.
+            /// </summary>
+            public List<Reference> _ClassList(string scope = "")
+            {
+                if (scope == "") scope = _eval.Scope;
+                List<Reference> lst = new List<Reference>();
+                foreach (UserClass cls in _eval.UserClasses.Values)
+                {
+                    if (cls.FullName.StartsWith(scope))
+                    {
+                        lst.Add(new Reference(cls.FullName));
+                    }
+                }
+                return lst;
             }
 
             /// <summary>
@@ -926,11 +1121,30 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Calculates the factorial of a number using an approximation of the gamma function
+            /// Calculates the factorial of a number within the double range
+            /// using an approximation of the gamma function
             /// </summary>
-            public BigDecimal Factorial(double value)
+            public double Factorial(double value)
             {
-                return RoundSF(Gamma(value + 1), 3);
+                return (double)RoundSF((BigDecimal)Gamma(value + 1), 3);
+            }
+
+            /// <summary>
+            /// Calculates the precise integer factorial of any number
+            /// </summary>
+            public BigDecimal FactBigInt(BigDecimal value)
+            {
+                BigDecimal total = value.TruncateInt();
+                total.Normalize();
+                for (BigDecimal i=value-1; i > 1; i = i - 1)
+                {
+                    total = total * i;
+                    total.Normalize();
+                    total = total.Truncate();
+                }
+                total.Normalize();
+                total = total.Truncate();
+                return total;
             }
 
             /// Gamma function (Use Lanczos approximation)
@@ -941,7 +1155,7 @@ namespace Cantus.Core
                 System.Numerics.Complex z;
                 if (val is System.Numerics.Complex) z = (System.Numerics.Complex)val;
                 else if (val is BigDecimal) z = (double)(BigDecimal)val;
-                else if (val is Double) z = (double)val;
+                else if (val is double) z = (double)val;
                 else return double.NaN;
 
                 try
@@ -974,7 +1188,8 @@ namespace Cantus.Core
                         }
 
                         System.Numerics.Complex t = z + p.Length - 0.5;
-                        result = Math.Sqrt(2 * Math.PI) * System.Numerics.Complex.Pow(t, (z + 0.5)) * System.Numerics.Complex.Exp(-t) * x;
+                        result = Math.Sqrt(2 * Math.PI) * System.Numerics.Complex.Pow(t, (z + 0.5)) *
+                            System.Numerics.Complex.Exp(-t) * x;
                     }
                     if (CmpDbl(result.Imaginary, 0, epsi) == 0)
                     {
@@ -1236,9 +1451,11 @@ namespace Cantus.Core
             /// <summary>
             /// Round the number to the specified number of significant figures
             /// </summary>
-            public BigDecimal RoundSF(double value, double sigfigs = 1)
+            public BigDecimal RoundSF(BigDecimal value, BigDecimal sigfigs)
             {
-                return new BigDecimal(value, sigFigs: Int(sigfigs)).Truncate(Int(sigfigs));
+                value.SigFigs = (int)sigfigs;
+                value.Normalize();
+                return value.Truncate(Int(sigfigs));
             }
 
             /// <summary>
@@ -3095,6 +3312,10 @@ namespace Cantus.Core
                 {
                     return sign + rad[0];
                 }
+                else if (rad[1] == 0)
+                {
+                    return "0";
+                }
                 else
                 {
                     return sign + rad[0] + textbefore + "√" + textafter + rad[1];
@@ -3136,10 +3357,11 @@ namespace Cantus.Core
             private string ToFrac(BigDecimal d)
             {
                 int sign = Int(Sgn(d));
-                BigDecimal[] res = CFrac((BigDecimal)Abs(d), Min(1E-13 * (BigDecimal)Pow(10, Round((BigDecimal)Pow((BigDecimal)Abs(d), 0.1))), 0.001));
+                BigDecimal[] res = CFrac((BigDecimal)Abs(d), Min(1E-9 * (BigDecimal)Pow(10, Round((BigDecimal)Pow((BigDecimal)Abs(d), 0.1))), 0.001));
+                string lft = (sign * res[0]).ToString();
                 if (res[1] == 1)
                 {
-                    return (sign * res[0]).ToString();
+                    return lft;
                 }
                 else if (res[1] == 0)
                 {
@@ -3147,7 +3369,8 @@ namespace Cantus.Core
                 }
                 else if (res[1] < 50000)
                 {
-                    return (sign * res[0]) + "/" + res[1];
+                    if (lft.Contains(' ')) lft = '(' + lft + ')';
+                    return lft + "/" + res[1];
                 }
                 else
                 {
@@ -3187,7 +3410,7 @@ namespace Cantus.Core
                 BigDecimal middle_d = 0;
 
                 int runtimes = 0;
-                while (runtimes < 100000000)
+                while (runtimes < 1000000)
                 {
                     middle_n = lower_n + upper_n;
                     middle_d = lower_d + upper_d;
@@ -3229,7 +3452,7 @@ namespace Cantus.Core
             /// </summary>
             public bool IsInteger(BigDecimal d)
             {
-                return CmpDbl(d, Round(d), 1E-09) == 0;
+                return CmpDbl(d, Round(d), 1E-08) == 0;
             }
 
             /// <summary>
@@ -3696,24 +3919,22 @@ namespace Cantus.Core
                     IList<Reference> list = (IList<Reference>)lst;
                     for (int i=0; i<list.Count(); i++)
                     {
-                        object x = list[i].GetRefObject();
+                        object x = list[i].ResolveObj();
                         _eval.SetDefaultVariable(new Reference(x));
                         object res;
                         if (x is ObjectTypes.Tuple)
                         {
-                             res = function.Execute(_eval, (Reference[])(((ObjectTypes.Tuple)x).GetValue()));
+                             res = function.Execute(_eval,
+                                 ((Reference[])(((ObjectTypes.Tuple)x).GetValue())).
+                                 Select(new Func<Reference, object>(r => r.Resolve())));
                         }
                         else if (x is Matrix)
                         {
                              res = Select(((Matrix)x).GetValue(), function);
                         }
-                        else if (x is Reference)
-                        {
-                             res = function.Execute(_eval, new[] { (Reference)x });
-                        }
                         else
                         {
-                           res = function.Execute(_eval, new[] { new Reference(x) });
+                           res = function.Execute(_eval, new[] { x });
                         }
                         if (res is Reference)
                         {
@@ -7546,7 +7767,7 @@ namespace Cantus.Core
                 if (!File.Exists(path) && !Directory.Exists(path))
                     throw new EvaluatorException("Error: script does not exist");
                 CantusEvaluator tmp = _eval.DeepCopy();
-                tmp.EvalComplete += (object sender, AnswerEventArgs e) => { callback.Execute( _eval, new []{ e.Result }); };
+                tmp.EvalComplete += (object sender, AnswerEventArgs e) => { callback.Execute(_eval, new[] { e.Result }); };
                 string prevDir = _eval.ExecDir[Thread.CurrentThread.ManagedThreadId];
                 string prevPath = _eval.ExecPath[Thread.CurrentThread.ManagedThreadId];
                 try {
