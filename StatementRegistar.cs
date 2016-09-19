@@ -817,8 +817,8 @@ namespace Cantus.Core
             if (blocks.Count != 1)
                 throw new SyntaxException("Case statement is invalid");
             _eval.SetVariable("__case", _eval.EvalExprRaw(blocks[0].Argument, true));
-            object varcheck = _eval.GetVariable("__case");
-            object varval = _eval.GetVariable("__switch");
+            object varcheck = _eval.GetVariableObj("__case");
+            object varval = _eval.GetVariableObj("__switch");
             if (varcheck.GetType() == varval.GetType() && varcheck.ToString() == varval.ToString())
             {
                 StatementResult res = Run(blocks[0].Content);

@@ -54,13 +54,18 @@ namespace Cantus.Core
             /// </summary>
             mul_div,
             /// <summary>
-            /// Represents the precedence of the ^ operator
+            /// Represents the precedence of the unary minus operator
+            /// </summary>
+            unaryminus,
+            /// <summary>
+            /// Represents the precedence of the ^ operator (EVALUATED RTL)
             /// </summary>
             exponent,
             /// <summary>
-            /// Represents the precedence of some very high precedence operators like !, %, and E, evaluated first
+            /// Represents the precedence of some very high precedence operators like !, %, and E,
+            /// evaluated first
             /// </summary>
-            fact_pct
+            factorial_percent
         }
         #endregion
 
@@ -187,7 +192,7 @@ namespace Cantus.Core
             public override Precedence Precedence
             {
                 // not used
-                get { return Precedence.fact_pct; }
+                get { return Precedence.factorial_percent; }
             }
             public delegate ObjectTypes.EvalObjectBase BracketDelegate(string inner, ref ObjectTypes.EvalObjectBase left);
 
@@ -417,6 +422,7 @@ namespace Cantus.Core
             // Register(New [Type]Operator(new[]{[List of signs to register]}, Precedence.[Precedence], AddressOf [Definition]))
 
             Register(new BinaryOperator(new[]{ "+" }, Precedence.add_sub, BinaryOperatorAdd));
+            Register(new BinaryOperator(new[]{ "-" }, Precedence.unaryminus, BinaryOperatorUnaryMinus));
             Register(new BinaryOperator(new[]{ "-" }, Precedence.add_sub, BinaryOperatorSubtract));
 
             Register(new BinaryOperator(new[]{ "*" }, Precedence.mul_div, BinaryOperatorMultiply));
@@ -447,7 +453,7 @@ namespace Cantus.Core
                 " choose ",
                 " c "
             }, Precedence.mul_div, BinaryOperatorChoose));
-            Register(new BinaryOperator(new[]{ " e " }, Precedence.fact_pct, BinaryOperatorExp10));
+            Register(new BinaryOperator(new[]{ " e " }, Precedence.factorial_percent, BinaryOperatorExp10));
 
             RegisterByRef(new BinaryOperator(new[]{ "=" }, Precedence.comparison, BinaryOperatorAutoEqual));
             Register(new BinaryOperator(new[]{ "==" }, Precedence.comparison, BinaryOperatorEqualTo));
@@ -491,16 +497,16 @@ namespace Cantus.Core
 
             // unary
 
-            Register(new UnaryOperatorBefore(new[]{ "!" }, Precedence.fact_pct, UnaryOperatorFactorial));
-            Register(new UnaryOperatorBefore(new[]{ "%" }, Precedence.fact_pct, UnaryOperatorPercent));
+            Register(new UnaryOperatorBefore(new[]{ "!" }, Precedence.factorial_percent, UnaryOperatorFactorial));
+            Register(new UnaryOperatorBefore(new[]{ "%" }, Precedence.factorial_percent, UnaryOperatorPercent));
             Register(new UnaryOperatorAfter(new[]{ "not " }, Precedence.not, UnaryOperatorNot));
-            Register(new UnaryOperatorAfter(new[]{ "~" }, Precedence.fact_pct, UnaryOperatorBitwiseNot));
+            Register(new UnaryOperatorAfter(new[]{ "~" }, Precedence.factorial_percent, UnaryOperatorBitwiseNot));
 
             // ref keyword: create reference to object (reference not saved after session)
-            RegisterByRef(new UnaryOperatorAfter(new[]{ "ref " }, Precedence.fact_pct, UnaryOperatorReference));
+            RegisterByRef(new UnaryOperatorAfter(new[]{ "ref " }, Precedence.factorial_percent, UnaryOperatorReference));
 
             // deref keyword: dereference the reference
-            RegisterByRef(new UnaryOperatorAfter(new[]{ "deref " }, Precedence.fact_pct, UnaryOperatorDereference));
+            RegisterByRef(new UnaryOperatorAfter(new[]{ "deref " }, Precedence.factorial_percent, UnaryOperatorDereference));
 
             // Brackets:
             // Register(New Bracket([start], [end], AddressOf [Definition]))
@@ -588,8 +594,18 @@ namespace Cantus.Core
         // format is always: Private Function BracketOperator[name](inner As String, left As EvalTypes.IEvalObject) As EvalTypes.IEvalObject
         private ObjectTypes.EvalObjectBase BracketOperatorRoundBracket(string inner, ref ObjectTypes.EvalObjectBase left)
         {
-            object res = _eval.EvalExprRaw(inner, true);
-            return ObjectTypes.DetectType(res, true);
+            if (left is ObjectTypes.Lambda)
+            {
+                ObjectTypes.Lambda lambda = (ObjectTypes.Lambda)left;
+                
+                left = ObjectTypes.DetectType(lambda.Execute(_eval, inner));
+                return left;
+            }
+            else
+            {
+                object res = _eval.EvalExprRaw(inner, true);
+                return ObjectTypes.DetectType(res, true);
+            }
         }
 
         private ObjectTypes.EvalObjectBase BracketOperatorAbsoluteValue(string inner, ref ObjectTypes.EvalObjectBase left)
@@ -652,7 +668,9 @@ namespace Cantus.Core
                         object result = _eval.EvalExprRaw(inner, true);
                         if (!(result is BigDecimal))
                             throw new EvaluatorException("Invalid index");
-                        left = ObjectTypes.DetectType(_eval.Internals.Index((List<ObjectTypes.Reference>)left.GetValue(), (int)((BigDecimal)result)), true);
+                        left = ObjectTypes.DetectType(_eval.Internals.Index(
+                            (List<ObjectTypes.Reference>)left.GetValue(),
+                            (int)((BigDecimal)result)), true);
                     }
 
                     // lists
@@ -792,7 +810,10 @@ namespace Cantus.Core
             object v = value.GetValue();
             if (ObjectTypes.Number.IsType(value))
             {
-                return new ObjectTypes.Number((double)(v) / 100);
+                BigDecimal bn = ((ObjectTypes.Number)value).BigDecValue();
+                bn = new BigDecimal(bn.Mantissa, bn.Exponent - 2, sigFigs:bn.SigFigs);
+                bn.Normalize();
+                return new ObjectTypes.Number(bn);
             }
             else
             {
@@ -992,11 +1013,66 @@ lst.AddLast(new ObjectTypes.Reference(right));
 			}
 		}
 
-		private ObjectTypes.EvalObjectBase BinaryOperatorSubtract(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+private ObjectTypes.EvalObjectBase BinaryOperatorUnaryMinus(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
 {
     if (left == null)
-        left = new ObjectTypes.Number(0);
+    {
+        object rv = right.GetValue();
+        if (ObjectTypes.Number.IsType(right))
+        {
+            return new ObjectTypes.Number(-((ObjectTypes.Number)right).BigDecValue());
+        }
+        else if ( ObjectTypes.Complex.IsType(right))
+        {
+            return new ObjectTypes.Complex(-(System.Numerics.Complex)rv);
+        }
+        else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
+        {
+            return new ObjectTypes.Complex(-(double)(rv));
+        }
+        else if (ObjectTypes.Number.IsType(left) & ObjectTypes.Complex.IsType(right))
+        {
+            return new ObjectTypes.Complex(-(System.Numerics.Complex)rv);
 
+        }
+        else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
+        {
+            List<ObjectTypes.Reference> lstr = (List<ObjectTypes.Reference>)rv;
+            for (int i = 0; i < lstr.Count; i++)
+            {
+                ObjectTypes.EvalObjectBase neg = BinaryOperatorUnaryMinus(null, lstr[i].ResolveObj());
+                if (ObjectTypes.Reference.IsType(neg))
+                {
+                    lstr[i] = (ObjectTypes.Reference)neg;
+                }
+                else
+                {
+                    lstr[i] = new ObjectTypes.Reference(neg);
+                }
+            }
+            ObjectTypes.Matrix mat = new ObjectTypes.Matrix(lstr);
+            return mat;
+
+        }
+        else if (ObjectTypes.DateTime.IsType(right))
+        {
+            if (rv is DateTime)
+                rv = new TimeSpan(-Convert.ToDateTime(rv).Ticks);
+            return new ObjectTypes.DateTime(- (TimeSpan)rv);
+        }
+        else
+        {
+            return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
+        }
+    }
+    else
+    {
+        return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
+    }
+}
+
+private ObjectTypes.EvalObjectBase BinaryOperatorSubtract(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+{
     object lv = left.GetValue();
     object rv = right.GetValue();
     if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
@@ -1006,7 +1082,7 @@ lst.AddLast(new ObjectTypes.Reference(right));
     }
     else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
     {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv - (System.Numerics.Complex)lv);
+        return new ObjectTypes.Complex((System.Numerics.Complex)lv - (System.Numerics.Complex)rv);
     }
     else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
     {
@@ -1073,27 +1149,6 @@ lst.AddLast(new ObjectTypes.Reference(right));
 
 private ObjectTypes.EvalObjectBase BinaryOperatorMultiply(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
 {
-    //MsgBox(left.GetType.ToString & " " & left.ToString & " " & right.GetType.ToString & " " & right.ToString)
-    if (left is ObjectTypes.Lambda)
-    {
-        ObjectTypes.Lambda lambda = (ObjectTypes.Lambda)left;
-        if (right == null || right is ObjectTypes.Number && double.IsNaN((double)(right.GetValue())))
-        {
-            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>()));
-        }
-        else if (right is ObjectTypes.Tuple)
-        {
-            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>((ObjectTypes.Reference[])right.GetValue())));
-        }
-        else if (right is ObjectTypes.Reference)
-        {
-            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>(new[] { (ObjectTypes.Reference)right })));
-        }
-        else
-        {
-            return ObjectTypes.DetectType(lambda.Execute(_eval, new List<ObjectTypes.Reference>(new[] { new ObjectTypes.Reference(right) })));
-        }
-    }
 
     if (left == null)
         throw new SyntaxException("Invalid Multiplication");
@@ -1572,14 +1627,12 @@ private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBa
                 }
             }
         }
-        else if (ObjectTypes.Reference.IsType(left)){
-            ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
-            lr.ResolveRef().SetValue(right.GetValue());
-        }
         else
         {
             if (ObjectTypes.Reference.IsType(right))
                 right = ((ObjectTypes.Reference)right).ResolveObj();
+            if (ObjectTypes.Reference.IsType(left))
+                left =  ((ObjectTypes.Reference)left).ResolveRef();
             // if we are assigning a plain value
             if (right is ObjectTypes.Number)
                 left.SetValue(((ObjectTypes.Number)right.GetDeepCopy()).BigDecValue());
@@ -1948,7 +2001,8 @@ private ObjectTypes.EvalObjectBase BinaryOperatorExp10(ObjectTypes.EvalObjectBas
         BigDecimal rv = ((ObjectTypes.Number)right).BigDecValue();
         if (rv.Exponent >= 0)
         {
-            return new ObjectTypes.Number(new BigDecimal(mantissa: lv.Mantissa, exponent: (int)(lv.Exponent + rv)));
+            return new ObjectTypes.Number(new BigDecimal(mantissa: lv.Mantissa,
+                exponent: (int)(lv.Exponent + rv), sigFigs: lv.SigFigs));
         }
         else
         {

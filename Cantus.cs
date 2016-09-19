@@ -1545,34 +1545,154 @@ function instanceid()
         /// The output mode of the evaluator
         /// </summary>
         /// <returns></returns>
-        public OutputFormat OutputMode { get; set; }
+        public OutputFormat OutputMode {
+            get {
+                if (!Variables.ContainsKey("cantus.OUTPUT"))
+                    Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "math", ROOT_NAMESPACE, new[] { "internal"});
+
+                string val = Variables["cantus.OUTPUT"].Value.ToString();
+                if (val.StartsWith("'")) val = val.Remove(val.Length - 1).Substring(1);
+                val = val.ToLowerInvariant().Trim();
+                switch (val)
+                {
+                    case "scientific":
+                    case "sci":
+                        return OutputFormat.Scientific;
+                    case "math":
+                        return OutputFormat.Math;
+                    case "raw":
+                        return OutputFormat.Raw;
+                    default:
+                        throw new EvaluatorException("Invalid output format: " + val);
+                }
+            }
+            set
+            {
+                switch (value)
+                {
+                    case OutputFormat.Scientific:
+                        Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "scientific", ROOT_NAMESPACE, new []{"internal"});
+                        break;
+                    case OutputFormat.Math:
+                        Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "math", ROOT_NAMESPACE, new []{"internal"});
+                        break;
+                    case OutputFormat.Raw:
+                        Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "raw", ROOT_NAMESPACE, new []{"internal"});
+                        break;
+                    default:
+                        throw new EvaluatorException("Invalid output format: " + value);
+                }
+            }
+        }
 
         /// <summary>
         /// The angle representation mode of the evaluator (radians, degrees, gradians)
         /// </summary>
         /// <returns></returns>
-        public AngleRepresentation AngleMode { get; set; }
+        public AngleRepresentation AngleMode {
+            get {
+                if (!Variables.ContainsKey("cantus.ANGLEREPR"))
+                    Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "radian", ROOT_NAMESPACE, new[] { "internal"});
+
+                string val = Variables["cantus.ANGLEREPR"].Value.ToString();
+                if (val.StartsWith("'")) val = val.Remove(val.Length - 1).Substring(1);
+                val = val.ToLowerInvariant().Trim();
+                switch (val)
+                {
+                    case "radian":
+                    case "rad":
+                        return AngleRepresentation.Radian;
+                    case "degree":
+                    case "deg":
+                        return AngleRepresentation.Radian;
+                    case "gradian":
+                    case "grad":
+                        return AngleRepresentation.Gradian;
+                    default:
+                        throw new EvaluatorException("Invalid angle representation: " + val);
+                }
+            }
+            set
+            {
+                switch (value)
+                {
+                    case AngleRepresentation.Radian:
+                        Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "radian", ROOT_NAMESPACE, new []{"internal"});
+                        break;
+                    case AngleRepresentation.Degree:
+                        Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "degree", ROOT_NAMESPACE, new []{"internal"});
+                        break;
+                    case AngleRepresentation.Gradian:
+                        Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "gradian", ROOT_NAMESPACE, new []{"internal"});
+                        break;
+                    default:
+                        throw new EvaluatorException("Invalid angle representation: " + value);
+                }
+            }
+        }
 
         /// <summary>
         /// The number of spaces that would represent a tab. Default is 4.
         /// </summary>
         /// <returns></returns>
-        public int SpacesPerTab { get; set; }
+        public int SpacesPerTab {
+            get
+            {
+                if (!Variables.ContainsKey("cantus.SPACESPERTAB"))
+                    Variables["cantus.SPACESPERTAB"] = new Variable("SPACESPERTAB", 4, ROOT_NAMESPACE, new[] { "internal"});
+                EvalObjectBase eo = Variables["cantus.SPACESPERTAB"].Reference.ResolveObj();
+                if (eo is Number && Internals.IsInteger(((Number)eo).BigDecValue()))
+                    return (int)((Number)eo).BigDecValue();
+                else
+                {
+                    throw new EvaluatorException("Invalid number of spaces per tab: must be an integral number");
+                }
+            }
+            set
+            {
+                Variables["cantus.SPACESPERTAB"] = new Variable("SPACESPERTAB", (BigDecimal)value, ROOT_NAMESPACE, new[] { "internal" });
+            }
+        }
 
         /// <summary>
         /// If true, force explicit declaration of variables
         /// </summary>
-        public bool ExplicitMode { get; set; }
+        public bool ExplicitMode {
+            get
+            {
+                if (!Variables.ContainsKey("cantus.EXPLICIT"))
+                    Variables["cantus.EXPLICIT"] = new Variable("EXPLICIT", true, ROOT_NAMESPACE, new[] { "internal"});
+                EvalObjectBase eo = Variables["cantus.EXPLICIT"].Reference.ResolveObj();
+                if (eo is ObjectTypes.Boolean)
+                    return (bool)((ObjectTypes.Boolean)eo).GetValue();
+                else
+                {
+                    throw new EvaluatorException("Invalid explicit mode specification: must be a boolean value");
+                }
+            }
+            set {
+                Variables["cantus.EXPLICIT"] = new Variable("EXPLICIT", value, ROOT_NAMESPACE, new[] { "internal"});
+            }
+        }
 
-        private bool _significantMode;
         /// <summary>
         /// If true, try to preserve sig figs whenever possible.
         /// </summary>
         public bool SignificantMode {
-            get { return _significantMode; }
+            get {
+                if (!Variables.ContainsKey("cantus.SIGFIGS"))
+                    Variables["cantus.SIGFIGS"] = new Variable("SIGFIGS", false, ROOT_NAMESPACE, new[] { "internal"});
+                EvalObjectBase eo = Variables["cantus.SIGFIGS"].Reference.ResolveObj();
+                if (eo is ObjectTypes.Boolean)
+                    return (bool)((ObjectTypes.Boolean)eo).GetValue();
+                else
+                {
+                    throw new EvaluatorException("Invalid explicit mode specification: must be a boolean value");
+                }
+            }
             set {
-                _significantMode = value;
-                if (_significantMode)
+                Variables["cantus.SIGFIGS"] = new Variable("SIGFIGS", value, ROOT_NAMESPACE, new[] { "internal"});
+                if (value)
                 {
                     foreach (string n in Variables.Keys.ToArray())
                     {
@@ -1600,7 +1720,7 @@ function instanceid()
         /// <summary>
         /// A list of previous answers (last item is the last answer)
         /// </summary>
-        public List<EvalObjectBase> PrevAns { get; } = new List<EvalObjectBase>();
+        public List<EvalObjectBase> PrevAns { get; set; } = new List<EvalObjectBase>();
 
         // composition
         /// <summary>
@@ -1856,7 +1976,7 @@ function instanceid()
         private static HashSet<string> _reserved { get; } = new HashSet<string>(
             new string[]{DEFAULT_VAR_NAME, "if", "else", "not", "and", "or", "xor",
             "while", "for", "in", "to", "step", "until", "repeat", "run", "import", "function", "let", "global",
-            "undefined", "null", "switch", "case", "load", "prototype", "namespace"});
+            "undefined", "null", "switch", "case", "load", "prototype", "namespace", "ans", "prevans"});
 
         /// <summary>
         /// Reload the default constants into variable storage (accessible via Reload() in execution)
@@ -1884,18 +2004,18 @@ function instanceid()
             }
         }
 
-           
-/// <summary>
-/// Reload initialization files
-/// </summary>
-public void ReInitialize()
-{
-    string cantusPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar;
-	List<string> initScripts = new List<string>();
-    if (Directory.Exists(cantusPath + "plugin/"))
-    {
-        initScripts.AddRange(Directory.GetFiles(cantusPath + "plugin/", "*.can", SearchOption.AllDirectories));
-    }
+
+        /// <summary>
+        /// Reload initialization files
+        /// </summary>
+        public void ReInitialize()
+        {
+            string cantusPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar;
+            List<string> initScripts = new List<string>();
+            if (Directory.Exists(cantusPath + "plugin/"))
+            {
+                initScripts.AddRange(Directory.GetFiles(cantusPath + "plugin/", "*.can", SearchOption.AllDirectories));
+            }
 
             // initialization files: init.can and init ran in root scope on startup
             if (File.Exists(cantusPath + "init.can"))
@@ -1916,6 +2036,11 @@ public void ReInitialize()
                         SignificantMode = false;
                         ExplicitMode = false;
                     }
+
+                    if (! ExecPath.ContainsKey(Thread.CurrentThread.ManagedThreadId))
+                        ExecPath[Thread.CurrentThread.ManagedThreadId] = Internals.CantusPath();
+                    if (! ExecDir.ContainsKey(Thread.CurrentThread.ManagedThreadId))
+                        ExecDir[Thread.CurrentThread.ManagedThreadId] = Internals.CantusDir();
                     Load(file, file == cantusPath + "init.can" || file.ToLower().StartsWith(cantusPath + "init" + Path.DirectorySeparatorChar));
                 }
                 catch (Exception ex)
@@ -2091,7 +2216,7 @@ public void ReInitialize()
                 }
 
                 path = path.Replace(SCOPE_SEP, System.IO.Path.DirectorySeparatorChar);
-                if (path.EndsWith(System.IO.Path.DirectorySeparatorChar + "can"))
+                if (path.EndsWith(Path.DirectorySeparatorChar + "can"))
                     path = path.Remove(path.Length - 4);
                 if (!path.EndsWith(".can"))
                     path += ".can";
@@ -2105,7 +2230,7 @@ public void ReInitialize()
                         return;
                     }
                     // if still not found look in the include directory
-                    if (!path.StartsWith("include" + System.IO.Path.DirectorySeparatorChar))
+                    if (!path.StartsWith("include" + Path.DirectorySeparatorChar))
                     {
                         path = "include" + Path.DirectorySeparatorChar + path;
                     }
@@ -2152,7 +2277,7 @@ public void ReInitialize()
                 if (uf.Modifiers.Contains("private") || uf.Modifiers.Contains("internal"))
                     continue;
                 // ignore private functions
-                UserFunctions[uf.FullName] = (uf);
+                UserFunctions[uf.FullName] = uf;
             }
 
             // load new variables
@@ -2576,9 +2701,13 @@ public void ReInitialize()
                                         {
                                             case StatementResult.ExecCode.@break:
                                             case StatementResult.ExecCode.@continue:
+                                                // return the code with the value
+                                                return res;
                                             case StatementResult.ExecCode.@return:
                                                 // return the code with the value
-
+                                                // save answer
+                                                if (!noSaveAns && !Internals.IsUndefined(res.Value))
+                                                    PrevAns.Add(DetectType(res.Value, true));
                                                 return res;
                                             case StatementResult.ExecCode.breakLevel:
                                                 // break level and resume
@@ -2593,9 +2722,13 @@ public void ReInitialize()
                                     }
                                     else
                                     {
-                                        // if we're at the top (non-internal) level and get the return code, directly return the value
+                                        // if we're at the top (non-internal) level and get the return code,
+                                        // directly return the value
                                         if (res.Code == StatementResult.ExecCode.@return)
                                         {
+                                            // save answer if not undefined
+                                            if (!noSaveAns && !Internals.IsUndefined(res.Value))
+                                                PrevAns.Add(DetectType(res.Value, true));
                                             return res.Value;
                                         }
                                         else if (!(res.Code == StatementResult.ExecCode.resume))
@@ -2682,21 +2815,15 @@ public void ReInitialize()
                     lineNum += 1;
                 }
 
+                // save answer if not undefined
+                if (!noSaveAns && !Internals.IsUndefined(lastVal))
+                    PrevAns.Add(DetectType(lastVal, true));
                 if (@internal)
                 {
                     return new StatementResult(lastVal);
                 }
                 else
                 {
-                    // save answer
-                    if (!noSaveAns)
-                    {
-                        // do not save if undefined
-                        if ((!(lastVal is BigDecimal) || !((BigDecimal)lastVal).IsUndefined) && (!(lastVal is double) || !double.IsNaN((double)(lastVal))))
-                        {
-                            PrevAns.Add(DetectType(lastVal, true));
-                        }
-                    }
                     return lastVal;
                 }
 
@@ -2888,8 +3015,9 @@ public void ReInitialize()
                     List<int> preclst = tokens.OperatorsWithPrecedence(cur_precedence);
                     prevct = tokens.OperatorsWithPrecedenceCount(cur_precedence);
 
-                    // RTL evaluation for assignment operators so you can chain them
-                    if (cur_precedence == OperatorRegistar.Precedence.assignment)
+                    // RTL evaluation for assignment operators and the exponent operator
+                    if (cur_precedence == OperatorRegistar.Precedence.assignment || 
+                        cur_precedence == OperatorRegistar.Precedence.exponent)
                         preclst.Reverse();
 
 
@@ -3752,7 +3880,8 @@ public void ReInitialize()
                         tmpEvaluator.Scope = ci.InnerScope;
                         tmpEvaluator.SubScope();
                         tmpEvaluator.SetDefaultVariable(new Reference(ci));
-                        lst.Add(DetectType(lambda.Execute(tmpEvaluator, argLst, optDict, executingScope: tmpEvaluator.Scope), true));
+                        lst.Add(DetectType(lambda.Execute(
+                            tmpEvaluator, argLst, optDict, executingScope: tmpEvaluator.Scope), true));
 
                         return lst;
                     }
@@ -3800,13 +3929,13 @@ public void ReInitialize()
                     // lambda expression/function pointer
 
                     Lambda lambda = (Lambda)GetVariableRef(fn).ResolveObj();
-                    if (lambda.Args.Count() != argLst.Count())
+                    if (lambda.Args.Count() + optDict.Count() < argLst.Count())
                     {
                         throw new EvaluatorException(fn + ": " + lambda.Args.Count() + " parameter(s) expected" + ((baseObj != null) ? "(self-referring resolution on)" : ""));
                     }
                     else
                     {
-                        lst.Add(DetectType(lambda.Execute(this, argLst), true));
+                        lst.Add(DetectType(lambda.Execute(this, argLst, optDict), true));
                     }
                     return lst;
 
@@ -4268,20 +4397,24 @@ public void ReInitialize()
 
         #region "User Data: Evaluator Variables, Functions, Classes, Past Answers"
         /// <summary>
-        /// Get the value of the variable with the name specified as an IEvalObject
+        /// Get the value of the variable with the name specified
         /// </summary>
         /// <param name="name">Name of the variable</param>
         /// <param name="explicit">If true, simulates explicit mode even when not set on the evaluator</param>
         /// <returns></returns>
-        internal Reference GetVariableRef(string name, bool @explicit = false)
+        public Variable GetVariable(string name, bool @explicit = false)
         {
             if (name == "ans")
-                return new Reference(GetLastAns());
+                return new Variable("ans",
+                    new Reference(GetLastAns()), ROOT_NAMESPACE, new[] { "internal" });
+            if (name == "prevans")
+                return new Variable("prevans",
+                    new Reference(new Matrix(PrevAns)), ROOT_NAMESPACE, new[] { "internal" });
             string scope = _scope;
             name = RemoveRedundantScope(name, scope);
 
             if (Variables.ContainsKey(name))
-                return Variables[name].Reference;
+                return Variables[name];
 
             foreach (string sc in GetAllAccessibleScopes())
             {
@@ -4295,7 +4428,9 @@ public void ReInitialize()
                         Reference v = Variables[s + SCOPE_SEP + temp].Reference;
                         if (v.ResolveObj() is ClassInstance)
                         {
-                            return ((ClassInstance)v.ResolveObj()).ResolveField(name.Substring(temp.Length + 1), scope);
+                            return new Variable("__anonymous", 
+                                ((ClassInstance)v.ResolveObj()).ResolveField(name.Substring(temp.Length + 1),
+                                scope), scope);
                         }
                     }
                 }
@@ -4311,11 +4446,11 @@ public void ReInitialize()
                     if (scope != s && IsParentScopeOf(s, scope))
                     {
                         SetVariable(temp, Variables[s + SCOPE_SEP + temp].Reference);
-                        return Variables[scope + SCOPE_SEP + temp].Reference;
+                        return Variables[scope + SCOPE_SEP + temp];
                     }
                     else
                     {
-                        return Variables[s + SCOPE_SEP + temp].Reference;
+                        return Variables[s + SCOPE_SEP + temp];
                     }
                 }
             }
@@ -4353,7 +4488,20 @@ public void ReInitialize()
             Variable var = new Variable(name, new Reference(double.NaN), scope);
             Variables[var.FullName] = var;
 
-            return Variables[scope + SCOPE_SEP + name].Reference;
+            return Variables[scope + SCOPE_SEP + name];
+        }
+
+
+
+        /// <summary>
+        /// Get the value of the variable with the name specified as an IEvalObject
+        /// </summary>
+        /// <param name="name">Name of the variable</param>
+        /// <param name="explicit">If true, simulates explicit mode even when not set on the evaluator</param>
+        /// <returns></returns>
+        internal Reference GetVariableRef(string name, bool @explicit = false)
+        {
+            return GetVariable(name, @explicit).Reference;
         }
 
         /// <summary>
@@ -4373,85 +4521,9 @@ public void ReInitialize()
         /// </summary>
         /// <param name="name">Name of the variable</param>
         /// <param name="explicit">If true, simulates explicit mode even when not set on the evaluator</param>
-        public object GetVariable(string name, bool @explicit = false)
+        public object GetVariableObj(string name, bool @explicit = false)
         {
-            if (name == "ans")
-                return GetLastAns();
-            string scope = _scope;
-            name = RemoveRedundantScope(name, scope);
-
-            if (Variables.ContainsKey(name))
-                return Variables[name].Reference;
-
-            foreach (string sc in GetAllAccessibleScopes())
-            {
-                string s = sc;
-                string temp = name;
-                while (temp.Contains(SCOPE_SEP))
-                {
-                    temp = temp.Remove(temp.LastIndexOf(SCOPE_SEP));
-                    if (HasVariable(scope + SCOPE_SEP + temp))
-                    {
-                        // ignore if private
-                        if (!IsParentScopeOf(s, scope) && Variables[s + SCOPE_SEP + name].Modifiers.Contains("private"))
-                            continue;
-                        Reference v = Variables[scope + SCOPE_SEP + temp].Reference;
-                        if (v.ResolveObj() is ClassInstance)
-                        {
-                            return ((ClassInstance)v.ResolveObj()).ResolveField(name.Substring(temp.Length + 1), scope).Resolve();
-                        }
-                    }
-                }
-                temp = name;
-                NormalizeScope(ref temp, ref s);
-                if (Variables.ContainsKey(s + SCOPE_SEP + temp))
-                {
-                    // ignore if private
-                    if (!IsParentScopeOf(s, scope) && Variables[s + SCOPE_SEP + temp].Modifiers.Contains("private"))
-                        continue;
-                    if (scope != s && IsParentScopeOf(s, scope))
-                    {
-                        SetVariable(temp, Variables[s + SCOPE_SEP + temp].Reference);
-                        return Variables[scope + SCOPE_SEP + temp].Reference.Resolve();
-                    }
-                    else
-                    {
-                        return Variables[s + SCOPE_SEP + temp].Reference.Resolve();
-                    }
-                }
-            }
-
-            // variable not found, implicit declaration?
-
-            // explicit mode: disallow
-            if (ExplicitMode || @explicit)
-                throw new EvaluatorException("Variable " + name + " is undefined. (Explicit mode disallows implicit declaration)");
-
-            NormalizeScope(ref name, ref scope);
-
-            // classes: disallow any declarations within a class scope (unless specified in the class)
-            string tmp = scope;
-
-            while (true)
-            {
-                if (HasUserClass(tmp))
-                {
-                    UserClass uc = GetUserClass(scope);
-                    string subName = name;
-                    if (subName.Contains(SCOPE_SEP))
-                        subName = subName.Remove(subName.IndexOf(SCOPE_SEP));
-                    if (!uc.AllFields.ContainsKey(subName))
-                    {
-                        throw new EvaluatorException("Cannot declare variable " + name + " inside class " + UserClasses[scope].Name);
-                    }
-                }
-                if (!tmp.Contains(SCOPE_SEP))
-                    break;
-                tmp = tmp.Remove(tmp.LastIndexOf(SCOPE_SEP));
-            }
-
-            Variables[scope + SCOPE_SEP + name] = new Variable(name, new Reference(double.NaN), scope);
-            return Variables[scope + SCOPE_SEP + name].Value;
+            return GetVariable(name, @explicit).Value;
         }
 
         /// <summary>
@@ -4608,7 +4680,7 @@ public void ReInitialize()
         {
             if (PrevAns.Count > 0)
                 return PrevAns[PrevAns.Count - 1].GetValue();
-            return 0;
+            return BigDecimal.Undefined;
         }
 
         /// <summary>
@@ -4910,7 +4982,10 @@ public void ReInitialize()
                     {
                         // maintain support for legacy functions where BigDecimals are not supported
                         // list of exceptions
-                        string[] exceptions = { "Log", "Print", "PrintLine", "ReadLine", "Read", "ReadChar", "Max", "Min", "Abs" };
+                        string[] exceptions = {
+                            "Log", "Print", "PrintLine", "ReadLine", "Read",
+                            "ReadChar", "Max", "Min", "Abs" ,"Text", "IsUndefined",
+                            "Index", "At", "IndexCircular", "SetAt", "SetAtCircular"};
                         if (!(paraminfo.ParameterType == typeof(BigDecimal)) &&
                             args[maxParamCt].GetType() == typeof(BigDecimal) && !exceptions.Contains(info.Name))
                         {
@@ -5188,6 +5263,8 @@ public void ReInitialize()
             }
             if (newScope.EndsWith(".can"))
                 newScope = newScope.Remove(newScope.Length - 4);
+            if (newScope.EndsWith(".init"))
+                newScope = newScope.Remove(newScope.Length - 5);
             newScope = newScope.Trim(SCOPE_SEP);
             return newScope;
         }

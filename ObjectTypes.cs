@@ -790,7 +790,7 @@ namespace Cantus.Core
                 /// The length of time in days after which absolute datetimes are returned instead of timespans
                 /// </summary>
                 /// <returns></returns>
-                public static int TIMESPAN_DIVIDER { get; }
+                public static int TIMESPAN_DIVIDER { get; } = 36500;
 
                 public override object GetValue()
                 {
@@ -3130,9 +3130,73 @@ namespace Cantus.Core
                 }
 
                 /// <summary>
+                /// Run this function on the specified evaluator,
+                /// automatically parsing the text in the format 1,2,a=3,b=4 as arguments
+                /// and return the result
+                /// </summary>
+                public object Execute(CantusEvaluator eval, string inner, string executingScope = "")
+                {
+                    List<object> args = new List<object>();
+                    Dictionary<string, object> kwargs = new Dictionary<string, object>();
+
+                    int lastIdx = 0;
+                    for (int i = 0; i <= inner.Length; ++i)
+                    {
+                        char c = ',';
+                        if (i < inner.Length)
+                        {
+                            c = inner[i];
+                            if (eval.OperatorRegistar.OperatorExists(c.ToString()))
+                            {
+                                OperatorRegistar.Operator op = eval.OperatorRegistar.OperatorWithSign(c.ToString());
+                                if (op is OperatorRegistar.Bracket &&
+                                    ((OperatorRegistar.Bracket)op).OpenBracket == c.ToString())
+                                {
+                                    i += ((OperatorRegistar.Bracket)op).FindCloseBracket(
+                                        inner.Substring(i + 1), eval.OperatorRegistar) +
+                                        ((OperatorRegistar.Bracket)op).CloseBracket.Length;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        if (c == ',')
+                        {
+                            string lastSect = inner.Substring(lastIdx, i - lastIdx).Trim();
+
+                            lastIdx = i + 1;
+                            string optVar = "";
+                            if (lastSect.Contains(":=") &&
+                                IsValidIdentifier(lastSect.Remove(lastSect.IndexOf(":=")).Trim()))
+                            {
+                                optVar = lastSect.Remove(lastSect.IndexOf(":="));
+                                if (lastSect.IndexOf(":=") + 2 == lastSect.Length)
+                                {
+                                    lastSect = "";
+                                }
+                                else
+                                {
+                                    lastSect = lastSect.Substring(lastSect.IndexOf(":=") + 2);
+                                }
+                            }
+
+                            object resObj = eval.EvalExprRaw(lastSect, true, true);
+                            if (!string.IsNullOrEmpty(optVar))
+                            {
+                                kwargs[optVar] = resObj;
+                            }
+                            else
+                            {
+                                args.Add(new ObjectTypes.Reference(resObj));
+                            }
+                        }
+                    }
+                    return Execute(eval, args, kwargs, executingScope);
+                }
+
+                /// <summary>
                 /// Run this function on the specified evaluator and return the result
                 /// </summary>
-                /// <returns></returns>
                 public object Execute(CantusEvaluator eval, IEnumerable<object> args,
                     IDictionary<string, object> kwargs = null, string executingScope = "")
                 {
@@ -3187,7 +3251,8 @@ namespace Cantus.Core
                     }
                 }
 
-                public int ExecuteAsync(CantusEvaluator eval, IEnumerable<object> args, Lambda callBack = null, string executingScope = "")
+                public int ExecuteAsync(CantusEvaluator eval, IEnumerable<object> args, 
+                   IDictionary<string, object> kwargs = null, Lambda callBack = null, string executingScope = "")
                 {
                     CantusEvaluator tmpEval = eval.SubEvaluator();
                     if (!string.IsNullOrEmpty(executingScope))
@@ -3210,6 +3275,14 @@ namespace Cantus.Core
                     for (int i = 0; i <= _args.Count() - 1; i++)
                     {
                         tmpEval.SetVariable(_args.ElementAt(i), args.ElementAt(i));
+                    }
+
+                    if (kwargs != null)
+                    {
+                        foreach (string k in kwargs.Keys)
+                        {
+                            tmpEval.SetVariable(k, kwargs[k]);
+                        }
                     }
 
                     tmpEval.EvalComplete += (object sender, AnswerEventArgs e) =>

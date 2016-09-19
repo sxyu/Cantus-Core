@@ -104,9 +104,17 @@ namespace Cantus.Core
             // evaluator management
 
             /// <summary>
-            /// Exit the evaluator
+            /// Exit the evaluator (deprecated 2.5)
             /// </summary>
             public void _Exit()
+            {
+                Environment.Exit(0);
+            }
+
+            /// <summary>
+            /// Exit the evaluator
+            /// </summary>
+            public void Exit()
             {
                 Environment.Exit(0);
             }
@@ -155,7 +163,7 @@ namespace Cantus.Core
 
             // modes
             /// <summary>
-            /// Get or set the output format of this evaluator
+            /// Get or set the output format of this evaluator (deprecated 2.5, use OUTPUT variable)
             /// </summary>
             public string _Output(string val = "")
             {
@@ -184,7 +192,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get or set the angle representation mode of this evaluator
+            /// Get or set the angle representation mode of this evaluator (deprecated 2.5, use ANGLEREPR variable)
             /// </summary>
             public string _AngleRepr(string val = "")
             {
@@ -217,7 +225,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get or set the number of spaces per tab of this evaluator
+            /// Get or set the number of spaces per tab of this evaluator (deprecated 2.5, use SPACESPERTAB variable)
             /// </summary>
             public double _SpacesPerTab(double val = double.NaN)
             {
@@ -233,7 +241,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get or set the explicit mode
+            /// Get or set the explicit mode (deprecated 2.5, use EXPLICIT variable)
             /// </summary>
             public bool _Explicit(bool? val = null)
             {
@@ -245,7 +253,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get or set the significant mode of the evaluator
+            /// Get or set the significant mode of the evaluator (deprecated 2.5, use SIGFIGS variable)
             /// </summary>
             public bool _SigFigs(bool? val = null)
             {
@@ -257,7 +265,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the scope
+            /// Get the current scope
             /// </summary>
             public string _Scope()
             {
@@ -265,19 +273,27 @@ namespace Cantus.Core
             }
 
             // reflection
+            /// <summary>
+            /// Get the full name of a function from a partial name
+            /// </summary>
+            public object _FnFullName(string relativeName)
+            {
+                return _eval.GetUserFunction(relativeName).FullName;
+            }
 
             /// <summary>
             /// Read the definition of a User Functions
             /// </summary>
-            public string _FunctionDef(string fullName)
+            public string _FnDef(string fullName)
             {
                 try
                 {
-                    return _eval.UserFunctions[fullName].ToString(_eval.Scope);
+                    return _eval.UserFunctions[fullName].Body;
                 }
                 catch
                 {
-                    if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
+                    if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) &&
+                        _eval.HasFunction(fullName))
                         return "(Internal Code)";
                     else throw new EvaluatorException("Function \"" + fullName + "\" is undefined");
                 }
@@ -286,7 +302,7 @@ namespace Cantus.Core
             /// <summary>
             /// Get the parameters of the specified function
             /// </summary>
-            public IEnumerable<Reference> _FunctionParams(string fullName)
+            public IEnumerable<Reference> _FnParams(string fullName)
             {
                 if (_eval.UserFunctions.ContainsKey(fullName))
                 {
@@ -313,7 +329,7 @@ namespace Cantus.Core
             /// <summary>
             /// Get a pointer to the function with the specified name
             /// </summary>
-            public Lambda _FunctionPtr(string fullName)
+            public Lambda _FnPtr(string fullName)
             {
                 if (_eval.UserFunctions.ContainsKey(fullName))
                 {
@@ -337,7 +353,7 @@ namespace Cantus.Core
             /// <summary>
             /// Execute a function by full name
             /// </summary>
-            public object _FunctionExec(string fullName, IList<Reference> args=null,
+            public object _FnExec(string fullName, IList<Reference> args=null,
                 IDictionary<Reference,Reference> kwargs = null)
             {
                 if (args == null) args = new List<Reference>();
@@ -375,7 +391,7 @@ namespace Cantus.Core
             /// <summary>
             /// Returns true if function with specified name exists
             /// </summary>
-            public bool _FunctionDefined(string fullName)
+            public bool _FnDefined(string fullName)
             {
                 if (_eval.UserFunctions.ContainsKey(fullName)) return true;
                 if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
@@ -386,15 +402,15 @@ namespace Cantus.Core
             /// <summary>
             /// List functions in the scope. By default, lists all in current scope.
             /// </summary>
-            public List<Reference> _FunctionList(string scope = "")
+            public List<Reference> _FnList(string scope = "")
             {
                 if (scope == "") scope = _eval.Scope;
-                List<Reference> lst = new List<Reference>();
+                List<Reference> collection = new List<Reference>();
                 foreach (UserFunction fn in _eval.UserFunctions.Values)
                 {
                     if (fn.FullName.StartsWith(scope) )
                     {
-                        lst.Add(new Reference(fn.FullName));
+                        collection.Add(new Reference(fn.FullName));
                     }
                 }
                 if (scope == ROOT_NAMESPACE)
@@ -404,62 +420,78 @@ namespace Cantus.Core
                         BindingFlags.Instance | BindingFlags.DeclaredOnly);
                     foreach (MethodInfo mi in infoset)
                     {
-                        lst.Add(new Reference(Scoping.CombineScope(ROOT_NAMESPACE, mi.Name)));
+                        collection.Add(new Reference(Scoping.CombineScope(ROOT_NAMESPACE, mi.Name)));
                     }
                 }
-                return lst;
+                return collection;
+            }
+
+            /// <summary>
+            /// Get the full name of a variable from a partial name
+            /// </summary>
+            public object _VarFullName(string relativeName)
+            {
+                return _eval.GetVariable(relativeName, true).FullName;
             }
 
             /// <summary>
             /// Get the value of the variable with the name
             /// </summary>
-            public object _VariableValue(string fullName)
+            public object _VarValue(string fullName)
             {
-                if (!_VariableDefined(fullName)) throw new EvaluatorException("Variable " + fullName + " is undefined.");
+                if (!_VarDefined(fullName)) throw new EvaluatorException("Variable " + fullName + " is undefined.");
                 return _eval.Variables[fullName].Value;
             }
 
             /// <summary>
             /// Get a reference to the variable with the name
             /// </summary>
-            public Reference _VariableRef(string fullName)
+            public Reference _VarRef(string fullName)
             {
-                if (!_VariableDefined(fullName)) throw new EvaluatorException("Variable " + fullName + " is undefined.");
+                if (!_VarDefined(fullName)) throw new EvaluatorException("Variable " + fullName + " is undefined.");
                 return new Reference(_eval.Variables[fullName].Reference);
             }
 
             /// <summary>
             /// Returns true if the variable with the given name is defined
             /// </summary>
-            public bool _VariableDefined(string fullName) { return _eval.Variables.ContainsKey(fullName);  }
+            public bool _VarDefined(string fullName) { return _eval.Variables.ContainsKey(fullName);  }
 
             /// <summary>
             /// List variables in the scope. By default, lists all in current scope.
             /// </summary>
-            public List<Reference> _VariableList(string scope = "")
+            public List<Reference> _VarList(string scope = "")
             {
                 if (scope == "") scope = _eval.Scope;
-                List<Reference> lst = new List<Reference>();
+                List<Reference> collection = new List<Reference>();
                 foreach (Variable var in _eval.Variables.Values)
                 {
                     if (var.FullName.StartsWith(scope))
                     {
-                        lst.Add(new Reference(var.FullName));
+                        collection.Add(new Reference(var.FullName));
                     }
                 }
-                return lst;
+                return collection;
+            }
+
+            /// <summary>
+            /// Get the full name of a class from a partial name
+            /// </summary>
+            public object _ClsFullName(string relativeName)
+            {
+                return _eval.GetUserClass(relativeName).FullName;
             }
 
             /// <summary>
             /// Returns true if the class with the given name is defined
             /// </summary>
-            public bool _ClassDefined(string fullName) { return _eval.UserClasses.ContainsKey(fullName);  }
+            public bool _ClsDefined(string fullName) { return _eval.UserClasses.ContainsKey(fullName);  }
 
             /// <summary>
             /// Returns true if the class with the given name is defined
             /// </summary>
-            public ClassInstance _ClassInit(string fullName, IList<Reference> args=null, IDictionary<Reference,Reference> kwargs=null) {
-                if (!_ClassDefined(fullName)) throw new EvaluatorException("Class " + fullName + " is undefined.");
+            public ClassInstance _ClsInit(string fullName, IList<Reference> args=null, IDictionary<Reference,Reference> kwargs=null) {
+                if (!_ClsDefined(fullName)) throw new EvaluatorException("Class " + fullName + " is undefined.");
                     if (args == null) args = new List<Reference>();
                     UserClass uc = _eval.UserClasses[fullName];
                     if (uc.Constructor.Args.Count() > 0 && args.Count == 0)
@@ -476,18 +508,18 @@ namespace Cantus.Core
             /// <summary>
             /// List classes in the scope. By default, lists all in current scope.
             /// </summary>
-            public List<Reference> _ClassList(string scope = "")
+            public List<Reference> _ClsList(string scope = "")
             {
                 if (scope == "") scope = _eval.Scope;
-                List<Reference> lst = new List<Reference>();
+                List<Reference> collection = new List<Reference>();
                 foreach (UserClass cls in _eval.UserClasses.Values)
                 {
                     if (cls.FullName.StartsWith(scope))
                     {
-                        lst.Add(new Reference(cls.FullName));
+                        collection.Add(new Reference(cls.FullName));
                     }
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
@@ -1063,6 +1095,10 @@ namespace Cantus.Core
                     {
                         return new System.Numerics.Complex(0, System.Numerics.Complex.Sqrt((double)(x)).Imaginary);
                     }
+                }
+                else if (x is BigDecimal)
+                {
+                    return BigDecimal.Pow((BigDecimal)x, 0.5);
                 }
                 else if (x is System.Numerics.Complex)
                 {
@@ -1745,13 +1781,13 @@ namespace Cantus.Core
             /// <returns></returns>
             public double Median(object value1)
             {
-                List<double> lst = new List<double>();
+                List<double> collection = new List<double>();
                 if (value1 is IEnumerable<Reference>)
                 {
                     IEnumerable<Reference> tmp = (IEnumerable<Reference>)value1;
                     foreach (Reference r in tmp)
                     {
-                        lst.Add((double)(r.Resolve()));
+                        collection.Add((double)(r.Resolve()));
                     }
                 }
                 else if (value1 is Reference[])
@@ -1759,7 +1795,7 @@ namespace Cantus.Core
                     IEnumerable<Reference> tmp = ((Reference[])value1).ToList();
                     foreach (Reference r in tmp)
                     {
-                        lst.Add((double)(r.Resolve()));
+                        collection.Add((double)(r.Resolve()));
                     }
                 }
                 else if (value1 is BigDecimal || value1 is double)
@@ -1770,14 +1806,14 @@ namespace Cantus.Core
                 {
                     return double.NaN;
                 }
-                lst.Sort();
-                if (lst.Count % 2 == 1)
+                collection.Sort();
+                if (collection.Count % 2 == 1)
                 {
-                    return lst[Int(lst.Count / 2)];
+                    return collection[Int(collection.Count / 2)];
                 }
                 else
                 {
-                    return lst[Int(lst.Count / 2)] / 2 + lst[Int(lst.Count / 2 - 1)] / 2;
+                    return collection[Int(collection.Count / 2)] / 2 + collection[Int(collection.Count / 2 - 1)] / 2;
                 }
             }
 
@@ -1788,7 +1824,7 @@ namespace Cantus.Core
             /// <returns></returns>
             public double Mode(object value1)
             {
-                List<double> lst = new List<double>();
+                List<double> collection = new List<double>();
                 Dictionary<double, int> count = new Dictionary<double, int>();
                 Dictionary<int, int> countfreq = new Dictionary<int, int>();
 
@@ -1797,7 +1833,7 @@ namespace Cantus.Core
                     IEnumerable<Reference> tmp = (IEnumerable<Reference>)value1;
                     foreach (Reference r in tmp)
                     {
-                        lst.Add((double)(r.Resolve()));
+                        collection.Add((double)(r.Resolve()));
                     }
                 }
                 else if (value1 is Reference[])
@@ -1805,7 +1841,7 @@ namespace Cantus.Core
                     IEnumerable<Reference> tmp = ((Reference[])value1).ToList();
                     foreach (Reference r in tmp)
                     {
-                        lst.Add((double)(r.Resolve()));
+                        collection.Add((double)(r.Resolve()));
                     }
                 }
                 else if (value1 is BigDecimal || value1 is double)
@@ -1817,12 +1853,12 @@ namespace Cantus.Core
                     return double.NaN;
                 }
 
-                if (lst.Count == 0)
+                if (collection.Count == 0)
                     return double.NaN;
 
                 count[0] = 0;
                 double highCount = 0;
-                foreach (double item in lst)
+                foreach (double item in collection)
                 {
                     double x = Math.Round(item, 10);
                     if (!count.ContainsKey(x))
@@ -2276,7 +2312,7 @@ namespace Cantus.Core
                     }
                     if (!string.IsNullOrEmpty(subopt))
                         return subopt;
-                    return "XEcryption: Auto Decryption Failed";
+                    throw new EvaluatorException("XEcryption: Auto Decryption Failed");
                 }
                 for (int i = 2; i <= spl.Length - 1; i += 3)
                 {
@@ -2529,7 +2565,7 @@ namespace Cantus.Core
                         dgt = 0;
                     }
                     if (dgt >= frombase)
-                        return "Undefined";
+                        throw new MathException(dgtc + " is not a valid digit for base " + frombase);
                     qo += dgt * Math.Pow(frombase, i);
                 }
                 while (CmpDbl(qo, 0) != 0)
@@ -2587,9 +2623,20 @@ namespace Cantus.Core
                 return Convert.ToString(Int(Math.Truncate(value)), 16).ToUpper();
             }
 
-            public bool IsUndefined(double val)
+            public bool IsUndefined(object val)
             {
-                return double.IsNaN(val);
+                if (val is BigDecimal)
+                {
+                    return ((BigDecimal)val).IsUndefined;
+                }
+                else if (val is double)
+                {
+                    return double.IsNaN((double)val);
+                }
+                else
+                {
+                    return val == null;
+                }
             }
 
             // dates
@@ -2636,7 +2683,7 @@ namespace Cantus.Core
             }
             public TimeSpan Time(double hour = 0, double minute = 0, double second = 0, double millisecond = 0)
             {
-                return new TimeSpan(Int(hour), Int(minute), Int(second), Int(millisecond));
+                return new TimeSpan(0, Int(hour), Int(minute), Int(second), Int(millisecond));
             }
 
             public System.DateTime Now()
@@ -2652,7 +2699,24 @@ namespace Cantus.Core
                 return System.DateTime.Today;
             }
 
-            // datetime modification
+            // datetime components/modification
+
+            public double TotalYears(object dt)
+            {
+                if (dt is System.DateTime)
+                {
+                    return new TimeSpan(((System.DateTime)dt).Ticks).TotalDays / 365.0;
+                }
+                else if (dt is System.TimeSpan)
+                {
+                    return ((System.TimeSpan)dt).TotalDays / 365.0;
+                }
+                else
+                {
+                    return double.NaN;
+                }
+            }
+ 
             public double Year(object dt)
             {
                 if (dt is System.DateTime)
@@ -2661,16 +2725,33 @@ namespace Cantus.Core
                 }
                 else if (dt is System.TimeSpan)
                 {
-                    return ((System.TimeSpan)dt).Days / 365;
+                    return ((System.TimeSpan)dt).Days / 365.0;
                 }
                 else
                 {
                     return double.NaN;
                 }
             }
+
             public double Years(object dt)
             {
                 return Year(dt);
+            }
+
+            public double TotalMonths(object dt)
+            {
+                if (dt is System.DateTime)
+                {
+                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalDays / 30.0;
+                }
+                else if (dt is System.TimeSpan)
+                {
+                    return ((System.TimeSpan)dt).TotalDays / 30.0;
+                }
+                else
+                {
+                    return double.NaN;
+                }
             }
 
             public double Month(object dt)
@@ -2681,7 +2762,7 @@ namespace Cantus.Core
                 }
                 else if (dt is System.TimeSpan)
                 {
-                    return ((System.TimeSpan)dt).Days / 30;
+                    return ((System.TimeSpan)dt).Days / 30.0;
                 }
                 else
                 {
@@ -2693,6 +2774,21 @@ namespace Cantus.Core
                 return Month(dt);
             }
 
+            public double TotalDays(object dt)
+            {
+                if (dt is System.DateTime)
+                {
+                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalDays;
+                }
+                else if (dt is System.TimeSpan)
+                {
+                    return ((System.TimeSpan)dt).TotalDays;
+                }
+                else
+                {
+                    return double.NaN;
+                }
+            }
             public double Day(object dt)
             {
                 if (dt is System.DateTime)
@@ -2730,6 +2826,22 @@ namespace Cantus.Core
                 return double.NaN;
             }
 
+            public double TotalHours(object dt)
+            {
+                if (dt is System.DateTime)
+                {
+                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalHours;
+                }
+                else if (dt is System.TimeSpan)
+                {
+                    return ((System.TimeSpan)dt).TotalHours;
+                }
+                else
+                {
+                    return double.NaN;
+                }
+            }
+
             public double Hour(object dt)
             {
                 if (dt is System.DateTime)
@@ -2748,6 +2860,22 @@ namespace Cantus.Core
             public double Hours(object dt)
             {
                 return Hour(dt);
+            }
+
+            public double TotalMinutes(object dt)
+            {
+                if (dt is System.DateTime)
+                {
+                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalMinutes;
+                }
+                else if (dt is System.TimeSpan)
+                {
+                    return ((System.TimeSpan)dt).TotalMinutes;
+                }
+                else
+                {
+                    return double.NaN;
+                }
             }
 
             public double Minute(object dt)
@@ -2788,6 +2916,22 @@ namespace Cantus.Core
             public double Seconds(object dt)
             {
                 return Second(dt);
+            }
+
+            public double TotalSeconds(object dt)
+            {
+                if (dt is System.DateTime)
+                {
+                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalSeconds;
+                }
+                else if (dt is System.TimeSpan)
+                {
+                    return ((System.TimeSpan)dt).TotalSeconds;
+                }
+                else
+                {
+                    return double.NaN;
+                }
             }
 
             public double Millisecond(object dt)
@@ -3070,9 +3214,9 @@ namespace Cantus.Core
             /// <summary>
             /// Get the length of a piece of text or a collection
             /// </summary>
-            public double Length(object lst)
+            public double Length(object collection)
             {
-                return Len(lst);
+                return Len(collection);
             }
 
             /// <summary>
@@ -3159,7 +3303,7 @@ namespace Cantus.Core
                 }
                 else
                 {
-                    List<char> lst = new List<char>();
+                    List<char> collection = new List<char>();
                     IEnumerable<Reference> refLst = null;
                     if (chars is IEnumerable<Reference>)
                     {
@@ -3180,10 +3324,10 @@ namespace Cantus.Core
                         {
                             if (Convert.ToString(res).Length != 1)
                                 throw new EvaluatorException("Character expected");
-                            lst.Add(Convert.ToString(res)[0]);
+                            collection.Add(Convert.ToString(res)[0]);
                         }
                     }
-                    return lst.ToArray();
+                    return collection.ToArray();
                 }
             }
 
@@ -3260,27 +3404,27 @@ namespace Cantus.Core
             /// <summary>
             /// Solve a quadratic equation with coefficients a, b, and c
             /// </summary>
-            public IEnumerable<Reference> Quadratic(double a, double b, double c)
+            public IEnumerable<Reference> Quadratic(BigDecimal a, BigDecimal b, BigDecimal c)
             {
-                double tort = Math.Pow(b, 2) - 4 * a * c;
-                HashSet<Reference> resultLst = new HashSet<Reference>();
+                BigDecimal tort = (BigDecimal)Pow(b, (BigDecimal)2.0) - 4.0 * a * c;
+                HashSet<Reference> resultLst = new HashSet<Reference>(new ObjectComparer());
                 if (tort >= 0)
                 {
-                    resultLst.Add(new Reference((-b + Math.Sqrt(tort)) / (2 * a)));
-                    resultLst.Add(new Reference((-b - Math.Sqrt(tort)) / (2 * a)));
+                    resultLst.Add(new Reference((-b + (BigDecimal)Sqrt(tort)) / (2.0 * a)));
+                    resultLst.Add(new Reference((-b - (BigDecimal)Sqrt(tort)) / (2.0 * a)));
                 }
                 else
                 {
-                    resultLst.Add(new Reference((-b + System.Numerics.Complex.Sqrt(tort)) / (2 * a)));
-                    resultLst.Add(new Reference((-b - System.Numerics.Complex.Sqrt(tort)) / (2 * a)));
+                    resultLst.Add(new Reference((-(double)b + System.Numerics.Complex.Sqrt((double)tort)) / (2 * (double)a)));
+                    resultLst.Add(new Reference((-(double)b - System.Numerics.Complex.Sqrt((double)tort)) / (2 * (double)a)));
                 }
-                return new List<Reference>(resultLst);
+                return resultLst.ToList();
             }
 
             /// <summary>
             /// Solve a quadratic equation with coefficients a, b, and c (shorthand for quadratic())
             /// </summary>
-            public IEnumerable<Reference> Qdtc(double a, double b, double c)
+            public IEnumerable<Reference> Qdtc(BigDecimal a, BigDecimal b, BigDecimal c)
             {
                 //shorthand for quadratic
                 return Quadratic(a, b, c);
@@ -3356,9 +3500,9 @@ namespace Cantus.Core
             /// </summary>
             private string ToFrac(BigDecimal d)
             {
-                int sign = Int(Sgn(d));
-                BigDecimal[] res = CFrac((BigDecimal)Abs(d), Min(1E-9 * (BigDecimal)Pow(10, Round((BigDecimal)Pow((BigDecimal)Abs(d), 0.1))), 0.001));
-                string lft = (sign * res[0]).ToString();
+                BigDecimal[] res = CFrac((BigDecimal)d,
+                    Min(1E-11 * (BigDecimal)Pow(10, Round((BigDecimal)Pow((BigDecimal)d, 0.1))), 0.001));
+                string lft = res[0].ToString();
                 if (res[1] == 1)
                 {
                     return lft;
@@ -3383,20 +3527,26 @@ namespace Cantus.Core
             /// </summary>
             private BigDecimal[] CFrac(BigDecimal d, BigDecimal? epsi = null)
             {
+                BigDecimal sign = 1.0;
+                if (d < 0)
+                {
+                    sign = -1;
+                    d = -d;
+                }
                 if (epsi == null) epsi = 1E-16;
                 BigDecimal n = Floor(d);
                 d -= n;
                 if (d < epsi)
                 {
                     return new[]{
-                    n,
+                    n * sign,
                     1
                 };
                 }
                 else if (1 - epsi < d)
                 {
                     return new[]{
-                    n + 1,
+                    (n + 1) * sign,
                     1
                 };
                 }
@@ -3410,7 +3560,8 @@ namespace Cantus.Core
                 BigDecimal middle_d = 0;
 
                 int runtimes = 0;
-                while (runtimes < 1000000)
+                const int MAX_RUNS = 1000000;
+                while (runtimes < MAX_RUNS)
                 {
                     middle_n = lower_n + upper_n;
                     middle_d = lower_d + upper_d;
@@ -3427,16 +3578,16 @@ namespace Cantus.Core
                     else
                     {
                         return new[]{
-                        n * middle_d + middle_n,
-                        middle_d
-                    };
+                            n * middle_d + middle_n,
+                            middle_d
+                        };
                     }
                     runtimes += 1;
                 }
                 return new[]{
-                d,
-                1
-            };
+                    d * sign,
+                    1
+                };
             }
 
             /// <summary>
@@ -3456,78 +3607,41 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Trinomial factoring Function (needs improvement)
+            /// Trinomial factoring Function
             /// </summary>
-            public string TriFact(double a, double b, double c)
+            public List<Reference> TriFact(BigDecimal a,BigDecimal b, BigDecimal c)
             {
-                double fact = GCF(GCF(a, b), c);
-                if (a < 0)
+                IEnumerable<Reference> rlst = Quadratic(a, b, c);
+                List<BigDecimal[]> lst = new List<BigDecimal[]>();
+                foreach (Reference r in rlst)
                 {
-                    a = -a;
-                    b = -b;
-                    c = -c;
-                    fact = -fact;
-                }
-                a /= fact;
-                b /= fact;
-                c /= fact;
-                double ac = a * c;
-                int stp = 1;
-                int fa1 = -1;
-                int fa2 = -1;
-                bool found = false;
-                if ((b < 0))
-                    stp = -1;
-                for (int i = -Int(b); i <= Int(b); i += stp)
-                {
-                    //trifact(2,9,-5)
-                    if (i * Int(b - i) == Int(ac))
+                    if (r.ResolveObj() is Number)
                     {
-                        fa1 = i;
-                        fa2 = Int(b - i);
-                        found = true;
-                        break;
+                        lst.Add(CFrac(-((Number)r.ResolveObj()).BigDecValue(),
+                        Min(1E-11 * (BigDecimal)Pow(10, Round((BigDecimal)Pow(
+                            (BigDecimal)Abs(((Number)r.ResolveObj()).BigDecValue()), 0.1))), 0.001)));
                     }
                 }
-                if (!found)
+
+                if (lst.Count() == 0)
                 {
-                    return "Not Factorable";
+                    throw new MathException("Not factorable");
+                }
+                else if (lst.Count() == 1)
+                {
+                    BigDecimal l = lst.ElementAt(0)[1];
+                    BigDecimal r = lst.ElementAt(0)[0];
+                    return new List<Reference> { new Reference(l), new Reference(r), new Reference(l), new Reference(r) };
                 }
                 else
                 {
-                    int ff1 = Int(GCF(fa1, a));
-                    int ff2 = Int(GCF(fa2, a));
-                    int fm1 = Int(a / ff1);
-                    int fm2 = Int(a / ff2);
-                    fa1 /= ff1;
-                    fa2 /= ff2;
+                    BigDecimal l1 = lst.ElementAt(0)[1];
+                    BigDecimal r1 = lst.ElementAt(0)[0];
+                    BigDecimal l2 = lst.ElementAt(1)[1];
+                    BigDecimal r2 = lst.ElementAt(1)[0];
 
-                    string facttxt = null;
-                    if (fact == 1)
-                    {
-                        facttxt = "(";
-                    }
-                    else if (fact == -1)
-                    {
-                        facttxt = "-(";
-                    }
-                    else
-                    {
-                        facttxt = fact + "(";
-                    }
-
-                    string fm1txt = SignText(fm1);
-                    string fm2txt = SignText(fm2);
-                    string fa1sgn = fa1 > 0 ? "+" : "";
-                    string fa2sgn = fa2 > 0 ? "+" : "";
-                    if (fm2txt + fa2sgn + fa2 == fm1txt + fa1sgn + fa1)
-                    {
-                        return facttxt + fm1txt + "x" + fa1sgn + fa1 + ")^2";
-                    }
-                    else
-                    {
-                        return facttxt + fm1txt + "x" + fa1sgn + fa1 + ")(" + fm2txt + "x" + fa2sgn + fa2 + ")";
-                    }
+                    return new List<Reference> { new Reference(l1), new Reference(r1),
+                        new Reference(l2), new Reference(r2) };
                 }
             }
 
@@ -3646,6 +3760,7 @@ namespace Cantus.Core
                                 return s;
                         }
                     }
+
                     try
                     {
                         // radicals
@@ -3663,6 +3778,7 @@ namespace Cantus.Core
                                 return SimpRadical(sq, i);
                             }
                         }
+                        
                         for (int i = 2; i <= 3; i++)
                         {
                             for (int j = 1; j <= 40; j++)
@@ -3689,6 +3805,7 @@ namespace Cantus.Core
                                 }
                             }
                         }
+
                         for (int i = 2; i <= 3; i++)
                         {
                             for (int j = 0; j <= 40; j++)
@@ -3706,13 +3823,18 @@ namespace Cantus.Core
                                         sq *= Sgn(ba);
                                     if (IsInteger(sq))
                                     {
-                                        if (j == 0)
+                                        string res = SimpRadical(sq, i);
+                                        if (res == "0")
                                         {
-                                            return (SimpRadical(sq, i)).Replace("+ -", "- ") + "/" + k;
+                                            return value.ToString();
+                                        }
+                                        else if (j == 0)
+                                        {
+                                            return res.Replace("+ -", "- ") + "/" + k;
                                         }
                                         else
                                         {
-                                            return ("(" + j + " + " + SimpRadical(sq, i)).Replace("+ -", "- ") + ")/" + k;
+                                            return ("(" + j + " + " + res ).Replace("+ -", "- ") + ")/" + k;
                                         }
                                     }
                                     sq = (value * k + j);
@@ -3727,18 +3849,24 @@ namespace Cantus.Core
                                         sq *= Sgn(value + j);
                                     if (IsInteger(sq))
                                     {
-                                        if (j == 0)
+                                        string res = SimpRadical(sq, i);
+                                        if (res == "0")
                                         {
-                                            return SimpRadical(sq, i) + "/" + k;
+                                            return value.ToString();
+                                        }
+                                        else if (j == 0)
+                                        {
+                                            return res + "/" + k;
                                         }
                                         else
                                         {
-                                            return "(" + SimpRadical(sq, i) + " - " + j + ")/" + k;
+                                            return "(" + res + " - " + j + ")/" + k;
                                         }
                                     }
                                 }
                             }
                         }
+
                     }
                     catch (Exception) { }
 
@@ -3877,16 +4005,16 @@ namespace Cantus.Core
             /// <summary>
             /// Loop over a collection and apply an operation
             /// </summary>
-            public object Each(object lst, Lambda operation)
+            public object Each(object collection, Lambda operation)
             {
                 List<Reference> loopLst = new List<Reference>();
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    loopLst.AddRange((IEnumerable<Reference>)lst);
+                    loopLst.AddRange((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)lst));
+                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)collection));
                 }
                 foreach (Reference r in loopLst)
                 {
@@ -3905,18 +4033,18 @@ namespace Cantus.Core
                         operation.Execute(_eval, new[] { new Reference(x) });
                     }
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Loop over a collection, apply an operation, and replace the original values with the returned values 
             /// </summary>
-            public object Select(object lst, Lambda function)
+            public object Select(object collection, Lambda function)
             {
                 List<Reference> loopLst = new List<Reference>();
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    IList<Reference> list = (IList<Reference>)lst;
+                    IList<Reference> list = (IList<Reference>)collection;
                     for (int i=0; i<list.Count(); i++)
                     {
                         object x = list[i].ResolveObj();
@@ -3947,9 +4075,9 @@ namespace Cantus.Core
                     }
                     return list;
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    IDictionary<Reference, Reference> dict = (IDictionary<Reference, Reference>)lst;
+                    IDictionary<Reference, Reference> dict = (IDictionary<Reference, Reference>)collection;
                     IDictionary<Reference, Reference> newDict = new SortedDictionary<Reference, Reference>();
 
                     foreach (Reference k in dict.Keys)
@@ -3982,7 +4110,7 @@ namespace Cantus.Core
                 }
                 else
                 {
-                    return lst;
+                    return collection;
                 }
             }
 
@@ -3990,21 +4118,21 @@ namespace Cantus.Core
             /// <summary>
             /// Flatten the matrix to a list
             /// </summary>
-            public List<Reference> Flatten(IList<Reference> lst)
+            public List<Reference> Flatten(IList<Reference> collection)
             {
                 List<Reference> newLst = new List<Reference>();
-                for (int i=0; i < lst.Count; ++i)
+                for (int i=0; i < collection.Count; ++i)
                 {
-                    if (lst[i].GetRefObject() is Matrix)
+                    if (collection[i].GetRefObject() is Matrix)
                     {
-                        foreach (Reference r in Flatten((List<Reference>)lst[i].GetValue()))
+                        foreach (Reference r in Flatten((List<Reference>)collection[i].GetValue()))
                         {
                             newLst.Add(r);
                         }
                     }
                     else
                     {
-                        newLst.Add(lst[i]);
+                        newLst.Add(collection[i]);
                     }
                 }
                 return newLst;
@@ -4013,16 +4141,16 @@ namespace Cantus.Core
             /// <summary>
             /// Loop over a collection and select items that pass a predicate
             /// </summary>
-            public List<Reference> Filter(object lst, Lambda predicate)
+            public List<Reference> Filter(object collection, Lambda predicate)
             {
                 List<Reference> loopLst = new List<Reference>();
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    loopLst.AddRange((IEnumerable<Reference>)lst);
+                    loopLst.AddRange((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)lst));
+                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)collection));
                 }
 
                 List<Reference> ret = new List<Reference>();
@@ -4048,16 +4176,16 @@ namespace Cantus.Core
                 return ret;
             }
 
-            public List<Reference> FilterIndex(object lst, Lambda predicate)
+            public List<Reference> FilterIndex(object collection, Lambda predicate)
             {
                 List<Reference> loopLst = new List<Reference>();
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    loopLst.AddRange((IEnumerable<Reference>)lst);
+                    loopLst.AddRange((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)lst));
+                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)collection));
                 }
 
                 List<Reference> ret = new List<Reference>();
@@ -4076,16 +4204,16 @@ namespace Cantus.Core
             /// <summary>
             /// Loop over a collection and select items that do not pass a predicate
             /// </summary>
-            public List<Reference> Exclude(object lst, Lambda predicate)
+            public List<Reference> Exclude(object collection, Lambda predicate)
             {
                 List<Reference> loopLst = new List<Reference>();
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    loopLst.AddRange((IEnumerable<Reference>)lst);
+                    loopLst.AddRange((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)lst));
+                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)collection));
                 }
 
                 List<Reference> ret = new List<Reference>();
@@ -4114,16 +4242,16 @@ namespace Cantus.Core
             /// <summary>
             /// Loop over a collection and return the first item that passes a predicate, or undefined if nothing does.
             /// </summary>
-            public object Get(object lst, Lambda predicate)
+            public object Get(object collection, Lambda predicate)
             {
                 List<Reference> loopLst = new List<Reference>();
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    loopLst.AddRange((IEnumerable<Reference>)lst);
+                    loopLst.AddRange((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)lst));
+                    loopLst.AddRange(ToList((IDictionary<Reference, Reference>)collection));
                 }
 
                 foreach (Reference r in loopLst)
@@ -4152,12 +4280,12 @@ namespace Cantus.Core
             /// Loop over a list, starting at index 0 and incrementing the index by interval each time. Adds the item at
             /// each index to a new list and returns the new list when done.
             /// </summary>
-            public object Every(List<Reference> lst, BigDecimal interval)
+            public object Every(List<Reference> collection, BigDecimal interval)
             {
                 List<Reference> newLst = new List<Reference>();
-                for (BigDecimal i=0; i<lst.Count; i+=interval)
+                for (BigDecimal i=0; i<collection.Count; i+=interval)
                 {
-                    newLst.Add(lst[Int((double)i)]);
+                    newLst.Add(collection[Int((double)i)]);
                 }
                 return newLst;
             }
@@ -4176,7 +4304,7 @@ namespace Cantus.Core
             // lines and points for graphing
             public double LineSeg(double x1, double y1, double x2, double y2)
             {
-                double var = (double)(_eval.GetVariable("x"));
+                double var = (double)(_eval.GetVariableObj("x"));
                 if ((var < x1 && var < x2) || (var > x1 && var > x2))
                 {
                     return double.NaN;
@@ -4186,13 +4314,13 @@ namespace Cantus.Core
 
             public double Line(double x1, double y1, double x2, double y2)
             {
-                double var = (double)(_eval.GetVariable("x"));
+                double var = (double)(_eval.GetVariableObj("x"));
                 return (y2 - y1) * (var - x1) / (x2 - x1) + y1;
             }
 
             public double RayFrom(double x1, double y1, double x2, double y2)
             {
-                double var = (double)(_eval.GetVariable("x"));
+                double var = (double)(_eval.GetVariableObj("x"));
                 if ((x2 - x1) * (x1 - var) < 0)
                 {
                     return double.NaN;
@@ -4202,7 +4330,7 @@ namespace Cantus.Core
 
             public double RayTo(double x1, double y1, double x2, double y2)
             {
-                double var = (double)(_eval.GetVariable("x"));
+                double var = (double)(_eval.GetVariableObj("x"));
                 if ((x1 - x2) * (x2 - var) < 0)
                 {
                     return double.NaN;
@@ -4514,22 +4642,22 @@ namespace Cantus.Core
             /// Join the matrix, set, or tuple with the specified separator
             /// </summary>
             /// <returns></returns>
-            public string Join(string sep, object lst, bool ignoreEmpty = false)
+            public string Join(string sep, object collection, bool ignoreEmpty = false)
             {
                 StringBuilder res = new StringBuilder();
 
-                IEnumerable<Reference> lstc = null;
-                if (lst is IEnumerable<Reference>)
+                IEnumerable<Reference> collectionc = null;
+                if (collection is IEnumerable<Reference>)
                 {
-                    lstc = (IEnumerable<Reference>)lst;
+                    collectionc = (IEnumerable<Reference>)collection;
                 }
-                else if (lst is Reference[])
+                else if (collection is Reference[])
                 {
-                    lstc = (Reference[])lst;
+                    collectionc = (Reference[])collection;
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    lstc = ((IDictionary<Reference, Reference>)lst).Keys;
+                    collectionc = ((IDictionary<Reference, Reference>)collection).Keys;
                 }
                 else
                 {
@@ -4538,7 +4666,7 @@ namespace Cantus.Core
 
                 bool init = true;
 
-                foreach (Reference r in lstc)
+                foreach (Reference r in collectionc)
                 {
                     string cur = null;
                     if (r.Resolve() is string)
@@ -4619,15 +4747,15 @@ namespace Cantus.Core
                     // if failed, skip
                     if (match.Groups.Count > 1)
                     {
-                        SortedDictionary<Reference, Reference> curlst = new SortedDictionary<Reference, Reference>();
+                        SortedDictionary<Reference, Reference> curcollection = new SortedDictionary<Reference, Reference>();
                         for (int i = 1; i <= match.Groups.Count - 1; i++)
                         {
                             if (!match.Groups[i].Success)
                                 continue;
                             // if failed, skip
-                            curlst[new Reference(regex.GroupNameFromNumber(i))] = (new Reference(match.Groups[i].Value));
+                            curcollection[new Reference(regex.GroupNameFromNumber(i))] = (new Reference(match.Groups[i].Value));
                         }
-                        result.Add(new Reference(new Set(curlst)));
+                        result.Add(new Reference(new Set(curcollection)));
                     }
                     else
                     {
@@ -4653,30 +4781,35 @@ namespace Cantus.Core
             /// <summary>
             /// Get the item at the index, wrapping around if out of range
             /// </summary>
-            public object Index(object lst, object val)
+            public object Index(object collection, object val)
             {
-                if (lst is IList<Reference>)
+                if (val is int) val = (BigDecimal)(int)val;
+                if (val is double) val = (BigDecimal)(double)val;
+
+                if (collection is IList<Reference>)
                 {
-                    if ((val is double || val is BigDecimal || val is int) && (Len(lst) > (double)(val) && -Len(lst) <= (double)(val)))
+                    if (val is BigDecimal &&
+                        (Len(collection) > (BigDecimal)(val) && -Len(collection) <= (BigDecimal)(val)))
                     {
-                        if ((double)(val) < 0)
-                            val = ((IEnumerable<Reference>)lst).Count() + (double)(val);
-                        return ((IEnumerable<Reference>)lst).ElementAt(Int((double)(val)));
+                        if ((BigDecimal)(val) < 0)
+                            val = ((IEnumerable<Reference>)collection).Count() + (BigDecimal)(val);
+                        return ((IEnumerable<Reference>)collection).ElementAt(Int((BigDecimal)(val)));
                     }
                     else
                     {
-                        return "Index Is Out Of Range";
+                        throw new EvaluatorException("Index is out of range");
                     }
                     // WARNING: inefficient
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    if ((val is double || val is BigDecimal || val is int) && (Len(lst) > (double)(val) && -Len(lst) <= (double)(val)))
+                    if (val is BigDecimal &&
+                        (Len(collection) > (BigDecimal)(val) && -Len(collection) <= (BigDecimal)(val)))
                     {
-                        if ((double)(val) < 0)
-                            val = ((LinkedList<Reference>)lst).Count + (double)(val);
-                        LinkedListNode<Reference> first = ((LinkedList<Reference>)lst).First;
-                        for (int i = 1; i <= Int((double)(val)); i++)
+                        if ((BigDecimal)(val) < 0)
+                            val = ((LinkedList<Reference>)collection).Count + (BigDecimal)(val);
+                        LinkedListNode<Reference> first = ((LinkedList<Reference>)collection).First;
+                        for (int i = 1; i <= Int((BigDecimal)(val)); i++)
                         {
                             first = first.Next;
                         }
@@ -4684,27 +4817,27 @@ namespace Cantus.Core
                     }
                     else
                     {
-                        return "Index Is Out Of Range";
+                        throw new EvaluatorException("Index is out of range");
                     }
                 }
-                else if (lst is Reference[])
+                else if (collection is Reference[])
                 {
-                    if ((val is double || val is BigDecimal || val is int) && (Len(lst) > (double)(val) && -Len(lst) <= (double)(val)))
+                    if (val is BigDecimal && (Len(collection) > (BigDecimal)(val) && -Len(collection) <= (BigDecimal)(val)))
                     {
-                        if ((double)(val) < 0)
-                            val = ((Reference[])lst).Length + (double)(val);
-                        return ((Reference[])lst)[Int((double)(val))];
+                        if ((BigDecimal)(val) < 0)
+                            val = ((Reference[])collection).Length + (BigDecimal)(val);
+                        return ((Reference[])collection)[Int((BigDecimal)(val))];
                     }
                     else
                     {
-                        return "Index Is Out Of Range";
+                        throw new EvaluatorException("Index is out of range");
                     }
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
                     try
                     {
-                        object res = ((IDictionary<Reference, Reference>)lst)[new Reference(ObjectTypes.DetectType(val))];
+                        object res = ((IDictionary<Reference, Reference>)collection)[new Reference(ObjectTypes.DetectType(val))];
                         if (res == null)
                             return double.NaN;
                         return res;
@@ -4714,17 +4847,17 @@ namespace Cantus.Core
                         return double.NaN;
                     }
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    if ((val is double || val is BigDecimal || val is int) && (Len(lst) > (double)(val) && -Len(lst) <= (double)(val)))
+                    if (val is BigDecimal && (Len(collection) > (BigDecimal)(val) && -Len(collection) <= (BigDecimal)(val)))
                     {
-                        if ((double)(val) < 0)
-                            val = ((Reference[])lst).Length + (double)(val);
-                        return ((string)lst)[Int((double)(val))].ToString();
+                        if ((BigDecimal)(val) < 0)
+                            val = ((Reference[])collection).Length + (BigDecimal)(val);
+                        return ((string)collection)[Int((BigDecimal)(val))].ToString();
                     }
                     else
                     {
-                        return "Index Is Out Of Range";
+                        throw new EvaluatorException("Index is out of range");
                     }
                 }
                 else
@@ -4736,28 +4869,31 @@ namespace Cantus.Core
             /// <summary>
             /// Get the item at the index, wrapping around if out of range
             /// </summary>
-            public object IndexCircular(object lst, object val)
+            public object IndexCircular(object collection, object val)
             {
-                if (lst is IList<Reference>)
+                if (val is int) val = (BigDecimal)(int)val;
+                if (val is double) val = (BigDecimal)(double)val;
+
+                if (collection is IList<Reference>)
                 {
-                    if ((val is double || val is BigDecimal || val is int))
+                    if (val is BigDecimal)
                     {
-                        val = Modulo(Int((double)(val)), Len(lst));
-                        return ((IEnumerable<Reference>)lst).ElementAt(Int((double)(val)));
+                        val = Modulo(Int((BigDecimal)(val)), Len(collection));
+                        return ((IEnumerable<Reference>)collection).ElementAt(Int((BigDecimal)(val)));
                     }
                     else
                     {
-                        return "Index Must Be A Number";
+                        throw new EvaluatorException("Index must be a number");
                     }
                     // WARNING: inefficient
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    if ((val is double || val is BigDecimal || val is int))
+                    if (val is BigDecimal)
                     {
-                        val = Modulo(Int((double)(val)), Len(lst));
-                        LinkedListNode<Reference> first = ((LinkedList<Reference>)lst).First;
-                        for (int i = 1; i <= Int((double)(val)); i++)
+                        val = Modulo(Int((BigDecimal)(val)), Len(collection));
+                        LinkedListNode<Reference> first = ((LinkedList<Reference>)collection).First;
+                        for (int i = 1; i <= Int((BigDecimal)(val)); i++)
                         {
                             first = first.Next;
                         }
@@ -4765,26 +4901,26 @@ namespace Cantus.Core
                     }
                     else
                     {
-                        return "Index Is Out Of Range";
+                        throw new EvaluatorException("Index is out of range");
                     }
                 }
-                else if (lst is Reference[])
+                else if (collection is Reference[])
                 {
-                    if ((val is double || val is BigDecimal || val is int))
+                    if (val is BigDecimal)
                     {
-                        val = Modulo(Int((double)(val)), Len(lst));
-                        return ((Reference[])lst)[Int((double)(val))];
+                        val = Modulo(Int((BigDecimal)(val)), Len(collection));
+                        return ((Reference[])collection)[Int((BigDecimal)(val))];
                     }
                     else
                     {
-                        return "Index Must Be A Number";
+                        throw new EvaluatorException("Index must be a number");
                     }
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
                     try
                     {
-                        object res = ((IDictionary<Reference, Reference>)lst)[new Reference(ObjectTypes.DetectType(val))];
+                        object res = ((IDictionary<Reference, Reference>)collection)[new Reference(ObjectTypes.DetectType(val))];
                         if (res == null)
                             return double.NaN;
                         return res;
@@ -4794,16 +4930,16 @@ namespace Cantus.Core
                         return double.NaN;
                     }
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    if ((val is double || val is BigDecimal || val is int))
+                    if (val is BigDecimal)
                     {
-                        val = Modulo(Int((double)(val)), Len(lst));
-                        return ((string)lst)[Int((double)(val))].ToString();
+                        val = Modulo(Int((BigDecimal)(val)), Len(collection));
+                        return ((string)collection)[Int((BigDecimal)(val))].ToString();
                     }
                     else
                     {
-                        return "Index Must Be A Number";
+                        throw new EvaluatorException("Index must be a number");
                     }
                 }
                 else
@@ -4812,71 +4948,77 @@ namespace Cantus.Core
                 }
             }
 
-            public object At(object lst, object val)
+            public object At(object collection, object val)
             {
-                return IndexCircular(lst, val);
+                return IndexCircular(collection, val);
             }
 
-            public object SetAt(object lst, object idx, object val)
+            public object SetAt(object collection, object idx, object val)
             {
-                if (lst is IList<Reference>)
+                if (val is int) val = (BigDecimal)(int)val;
+                if (val is double) val = (BigDecimal)(double)val;
+
+                if (collection is IList<Reference>)
                 {
-                    if (idx is double && (Len(lst) > (double)(idx) && (double)(idx) >= 0))
+                    if (idx is BigDecimal && (Len(collection) > (BigDecimal)(idx) && (BigDecimal)(idx) >= 0))
                     {
-                        ((IList<Reference>)lst)[Int((double)(idx))] = new Reference(ObjectTypes.DetectType(val));
+                        ((IList<Reference>)collection)[Int((BigDecimal)(idx))] = new Reference(ObjectTypes.DetectType(val));
                     }
                 }
-                else if (lst is Reference[])
+                else if (collection is Reference[])
                 {
-                    if (idx is double && (Len(lst) > (double)(idx) && (double)(idx) >= 0))
+                    if (idx is BigDecimal && (Len(collection) > (BigDecimal)(idx) && (BigDecimal)(idx) >= 0))
                     {
-                        ((Reference[])lst)[Int((double)(idx))] = new Reference(ObjectTypes.DetectType(val));
+                        ((Reference[])collection)[Int((BigDecimal)(idx))] = new Reference(ObjectTypes.DetectType(val));
                     }
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    ((IDictionary<Reference, Reference>)lst)[new Reference(ObjectTypes.DetectType(idx))] = new Reference(ObjectTypes.DetectType(val));
+                    ((IDictionary<Reference, Reference>)collection)[new Reference(ObjectTypes.DetectType(idx))] = new Reference(ObjectTypes.DetectType(val));
                 }
                 else
                 {
-                    return "Index Out Of Range";
+                    throw new EvaluatorException("Index is out of range");
                 }
-                return lst;
+                return collection;
             }
 
-            public object SetAtCircular(object lst, object idx, object val)
+            public object SetAtCircular(object collection, object idx, object val)
             {
-                if (lst is IList<Reference>)
+                if (val is int) val = (BigDecimal)(int)val;
+                if (val is double) val = (BigDecimal)(double)val;
+
+                if (collection is IList<Reference>)
                 {
-                    if (idx is double)
+                    if (idx is BigDecimal)
                     {
-                        idx = Modulo((double)(idx), ((IList<Reference>)lst).Count);
-                        ((IList<Reference>)lst)[Int((double)(idx))] = new Reference(ObjectTypes.DetectType(val));
+                        idx = Modulo((BigDecimal)(idx), ((IList<Reference>)collection).Count);
+                        ((IList<Reference>)collection)[Int((BigDecimal)(idx))] = new Reference(ObjectTypes.DetectType(val));
                     }
                 }
-                else if (lst is Reference[])
+                else if (collection is Reference[])
                 {
-                    if (idx is double && (Len(lst) > (double)(idx) && (double)(idx) >= 0))
+                    if (idx is BigDecimal && (Len(collection) > (BigDecimal)(idx) && (BigDecimal)(idx) >= 0))
                     {
-                        ((Reference[])lst)[Int((double)(idx))] = new Reference(ObjectTypes.DetectType(val));
+                        ((Reference[])collection)[Int((BigDecimal)(idx))] = new Reference(ObjectTypes.DetectType(val));
                     }
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    ((IDictionary<Reference, Reference>)lst)[new Reference(ObjectTypes.DetectType(idx))] = new Reference(ObjectTypes.DetectType(val));
+                    ((IDictionary<Reference, Reference>)collection)[new Reference(ObjectTypes.DetectType(idx))] = new Reference(ObjectTypes.DetectType(val));
                 }
                 else
                 {
-                    return "Index Out Of Range";
+                    throw new EvaluatorException("Index is out of range");
                 }
-                return lst;
+                return collection;
             }
 
-            public object Slice(object lst, double a = double.NaN, double b = double.NaN)
+            public object Slice(object collection, double a = double.NaN, double b = double.NaN)
             {
                 bool reverse = false;
                 if (double.IsNaN(b))
-                    b = Len(lst);
+                    b = Len(collection);
                 if (double.IsNaN(a))
                     a = 0;
 
@@ -4884,9 +5026,9 @@ namespace Cantus.Core
                 b = Math.Truncate(b);
 
                 if (b < 0)
-                    b = Len(lst) + b;
+                    b = Len(collection) + b;
                 if (a < 0)
-                    a = Len(lst) + a;
+                    a = Len(collection) + a;
 
                 if (b < a)
                 {
@@ -4897,39 +5039,39 @@ namespace Cantus.Core
                 }
 
                 // allow out of range
-                if (b > Len(lst))
-                    b = Len(lst);
+                if (b > Len(collection))
+                    b = Len(collection);
                 if (a < 0)
                     a = 0;
 
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    List<Reference> rlst = new List<Reference>((IEnumerable<Reference>)lst);
-                    rlst.RemoveRange(Int(b), Int(Len(rlst) - b));
-                    rlst.RemoveRange(0, Int(a));
+                    List<Reference> rcollection = new List<Reference>((IEnumerable<Reference>)collection);
+                    rcollection.RemoveRange(Int(b), Int(Len(rcollection) - b));
+                    rcollection.RemoveRange(0, Int(a));
                     if (reverse)
-                        rlst.Reverse();
-                    return rlst;
+                        rcollection.Reverse();
+                    return rcollection;
                 }
-                else if (lst is Reference[])
+                else if (collection is Reference[])
                 {
-                    List<Reference> lst2 = new List<Reference>((Reference[])lst);
-                    lst2.RemoveRange(Int(b), Int(Len(lst2) - b));
-                    lst2.RemoveRange(0, Int(a));
+                    List<Reference> collection2 = new List<Reference>((Reference[])collection);
+                    collection2.RemoveRange(Int(b), Int(Len(collection2) - b));
+                    collection2.RemoveRange(0, Int(a));
                     if (reverse)
-                        lst2.Reverse();
-                    return lst2;
+                        collection2.Reverse();
+                    return collection2;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
                     string text = null;
-                    if (b == Convert.ToString(lst).Length)
+                    if (b == Convert.ToString(collection).Length)
                     {
-                        text = Convert.ToString(lst).Substring(Int(a));
+                        text = Convert.ToString(collection).Substring(Int(a));
                     }
                     else
                     {
-                        text = Convert.ToString(lst).Remove(Int(b)).Substring(Int(a));
+                        text = Convert.ToString(collection).Remove(Int(b)).Substring(Int(a));
                     }
                     if (reverse)
                         return this.Reverse(text);
@@ -4944,45 +5086,45 @@ namespace Cantus.Core
             /// <summary>
             /// Add an item to a list-matrix or setionary-set
             /// </summary>
-            public object Add(object lst, object val)
+            public object Add(object collection, object val)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    ((IList<Reference>)lst).Add(new Reference(ObjectTypes.DetectType(val)));
+                    ((IList<Reference>)collection).Add(new Reference(ObjectTypes.DetectType(val)));
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    ((LinkedList<Reference>)lst).AddLast(new Reference(ObjectTypes.DetectType(val)));
+                    ((LinkedList<Reference>)collection).AddLast(new Reference(ObjectTypes.DetectType(val)));
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
                     if (val is IEnumerable<Reference> && ((IEnumerable<Reference>)val).Count() == 2)
                     {
                         IEnumerable<Reference> valLst = (IEnumerable<Reference>)val;
-                        ((IDictionary<Reference, Reference>)lst).Add(valLst.ElementAt(0), valLst.ElementAt(1));
+                        ((IDictionary<Reference, Reference>)collection).Add(valLst.ElementAt(0), valLst.ElementAt(1));
                     }
                     else if (val is IDictionary<Reference, Reference>)
                     {
-                        lst = Union((IDictionary<Reference, Reference>)lst, (IDictionary<Reference, Reference>)val);
+                        collection = Union((IDictionary<Reference, Reference>)collection, (IDictionary<Reference, Reference>)val);
                     }
                     else
                     {
-                        ((IDictionary<Reference, Reference>)lst)[new Reference(ObjectTypes.DetectType(val))] = null;
+                        ((IDictionary<Reference, Reference>)collection)[new Reference(ObjectTypes.DetectType(val))] = null;
                     }
                 }
                 else
                 {
                     return null;
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Add a vector as a row in the matrix. If no vector is specified, adds a blank row.
             /// </summary>
-            public IEnumerable<Reference> AddRow(IEnumerable<Reference> lst, IEnumerable<Reference> vec = null)
+            public IEnumerable<Reference> AddRow(IEnumerable<Reference> collection, IEnumerable<Reference> vec = null)
             {
-                Matrix mat = new Matrix(lst);
+                Matrix mat = new Matrix(collection);
                 mat.Resize(mat.Height + 1, mat.Width);
 
                 if ((vec != null))
@@ -5000,9 +5142,9 @@ namespace Cantus.Core
             /// <summary>
             /// Add a vector as a column in the matrix. If no vector is specified, adds a blank column.
             /// </summary>
-            public IEnumerable<Reference> AddCol(IEnumerable<Reference> lst, IEnumerable<Reference> vec = null)
+            public IEnumerable<Reference> AddCol(IEnumerable<Reference> collection, IEnumerable<Reference> vec = null)
             {
-                Matrix mat = new Matrix(lst);
+                Matrix mat = new Matrix(collection);
                 mat.Resize(mat.Height, mat.Width + 1);
 
                 if ((vec != null))
@@ -5020,17 +5162,17 @@ namespace Cantus.Core
             /// <summary>
             /// Append the second list onto the first list
             /// </summary>
-            public IEnumerable<Reference> Append(IEnumerable<Reference> lst, IEnumerable<Reference> val)
+            public IEnumerable<Reference> Append(IEnumerable<Reference> collection, IEnumerable<Reference> val)
             {
-                if (lst is List<Reference>)
+                if (collection is List<Reference>)
                 {
-                    ((List<Reference>)lst).AddRange(val.ToArray());
+                    ((List<Reference>)collection).AddRange(val.ToArray());
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
                     foreach (Reference r in val)
                     {
-                        ((LinkedList<Reference>)lst).AddLast(r);
+                        ((LinkedList<Reference>)collection).AddLast(r);
                     }
                 }
                 else
@@ -5038,18 +5180,18 @@ namespace Cantus.Core
                     return null;
                     // not supported
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Remove the first object matching the specified object within the list
             /// </summary>
-            public object Remove(object lst, object val = null)
+            public object Remove(object collection, object val = null)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
                     int i = 0;
-                    IList<Reference> tmp = (IList<Reference>)lst;
+                    IList<Reference> tmp = (IList<Reference>)collection;
                     while (i < tmp.Count)
                     {
                         if (CommonTypes.ObjectComparer.CompareObjs(tmp[i], val) == 0)
@@ -5061,9 +5203,9 @@ namespace Cantus.Core
                     }
                     return tmp;
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedListNode<Reference> tmp = ((LinkedList<Reference>)lst).First;
+                    LinkedListNode<Reference> tmp = ((LinkedList<Reference>)collection).First;
                     while ((tmp != null))
                     {
                         if (ObjectComparer.CompareObjs(tmp.Value, val) == 0)
@@ -5075,24 +5217,24 @@ namespace Cantus.Core
                     }
                     return tmp.List;
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    IDictionary<Reference, Reference> tmp = (IDictionary<Reference, Reference>)lst;
+                    IDictionary<Reference, Reference> tmp = (IDictionary<Reference, Reference>)collection;
                     tmp.Remove(new Reference(ObjectTypes.DetectType(val)));
                     return tmp;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    if (Convert.ToString(lst).Contains(val.ToString()))
+                    if (Convert.ToString(collection).Contains(val.ToString()))
                     {
-                        lst = Convert.ToString(lst).Remove(Convert.ToString(lst).IndexOf(val.ToString())) + Convert.ToString(lst).Substring(Convert.ToString(lst).IndexOf(val.ToString()) + val.ToString().Length);
+                        collection = Convert.ToString(collection).Remove(Convert.ToString(collection).IndexOf(val.ToString())) + Convert.ToString(collection).Substring(Convert.ToString(collection).IndexOf(val.ToString()) + val.ToString().Length);
                     }
-                    return lst;
+                    return collection;
                 }
-                else if (lst is Reference)
+                else if (collection is Reference)
                 {
-                    ((Reference)lst).NodeRemove();
-                    return (Reference)lst;
+                    ((Reference)collection).NodeRemove();
+                    return (Reference)collection;
                 }
                 else
                 {
@@ -5103,12 +5245,12 @@ namespace Cantus.Core
             /// <summary>
             /// Remove all objects matching the specified object within the list
             /// </summary>
-            public object RemoveAll(object lst, object val)
+            public object RemoveAll(object collection, object val)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
                     int i = 0;
-                    IList<Reference> tmp = (IList<Reference>)lst;
+                    IList<Reference> tmp = (IList<Reference>)collection;
                     while (i < tmp.Count)
                     {
                         if (ObjectComparer.CompareObjs(tmp[i], val) == 0)
@@ -5119,9 +5261,9 @@ namespace Cantus.Core
                         i += 1;
                     }
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedListNode<Reference> tmp = ((LinkedList<Reference>)lst).First;
+                    LinkedListNode<Reference> tmp = ((LinkedList<Reference>)collection).First;
                     while ((tmp != null))
                     {
                         if (ObjectComparer.CompareObjs(tmp.Value, val) == 0)
@@ -5134,40 +5276,40 @@ namespace Cantus.Core
                     }
                     return tmp.List;
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    return Remove(lst, val);
+                    return Remove(collection, val);
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    while (Convert.ToString(lst).Contains(val.ToString()))
+                    while (Convert.ToString(collection).Contains(val.ToString()))
                     {
-                        lst = Convert.ToString(lst).Remove(Convert.ToString(lst).IndexOf(val.ToString())) + Convert.ToString(lst).Substring(Convert.ToString(lst).IndexOf(val.ToString()) + 1);
+                        collection = Convert.ToString(collection).Remove(Convert.ToString(collection).IndexOf(val.ToString())) + Convert.ToString(collection).Substring(Convert.ToString(collection).IndexOf(val.ToString()) + 1);
                     }
                 }
                 else
                 {
                     return null;
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Reverse the entire dimension of the matrix
             /// </summary>
             /// <returns></returns>
-            public object Reverse(object lst)
+            public object Reverse(object collection)
             {
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    ((IEnumerable<Reference>)lst).Reverse();
+                    ((IEnumerable<Reference>)collection).Reverse();
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    IEnumerable<char> slst = Convert.ToString(lst).ToList();
-                    slst.Reverse();
+                    IEnumerable<char> scollection = Convert.ToString(collection).ToList();
+                    scollection.Reverse();
                     StringBuilder s = new StringBuilder();
-                    foreach (char c in slst)
+                    foreach (char c in scollection)
                     {
                         s.Append(c);
                     }
@@ -5177,23 +5319,23 @@ namespace Cantus.Core
                 {
                     return null;
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Return a reference to the first item in the linked list
             /// </summary>
-            public Reference First(LinkedList<Reference> lst)
+            public Reference First(LinkedList<Reference> collection)
             {
-                return new Reference(((LinkedList<Reference>)lst).First);
+                return new Reference(((LinkedList<Reference>)collection).First);
             }
 
             /// <summary>
             /// Return a reference to the last item in the linked list
             /// </summary>
-            public Reference Last(LinkedList<Reference> lst)
+            public Reference Last(LinkedList<Reference> collection)
             {
-                return new Reference(((LinkedList<Reference>)lst).Last);
+                return new Reference(((LinkedList<Reference>)collection).Last);
             }
 
             /// <summary>
@@ -5241,32 +5383,32 @@ namespace Cantus.Core
             /// <summary>
             /// Take an item from the end of the list, remove it and return it.
             /// </summary>
-            public object Pop(object lst)
+            public object Pop(object collection)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    IList<Reference> lr = (IList<Reference>)lst;
+                    IList<Reference> lr = (IList<Reference>)collection;
                     if (lr.Count == 0)
                         return double.NaN;
                     object last = lr[lr.Count - 1];
                     lr.RemoveAt(lr.Count - 1);
                     return last;
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedList<Reference> lr = (LinkedList<Reference>)lst;
+                    LinkedList<Reference> lr = (LinkedList<Reference>)collection;
                     if (lr.Count == 0)
                         return double.NaN;
                     object last = lr.Last.Value.Resolve();
                     lr.RemoveLast();
                     return last;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    if (Convert.ToString(lst).Length == 0)
+                    if (Convert.ToString(collection).Length == 0)
                         return double.NaN;
-                    string last = Convert.ToString(lst).Substring(Convert.ToString(lst).Length - 1);
-                    lst = Convert.ToString(lst).Remove(Convert.ToString(lst).Length - 1);
+                    string last = Convert.ToString(collection).Substring(Convert.ToString(collection).Length - 1);
+                    collection = Convert.ToString(collection).Remove(Convert.ToString(collection).Length - 1);
                     return last;
                 }
                 else
@@ -5278,40 +5420,40 @@ namespace Cantus.Core
             /// <summary>
             /// Take an item from the end of the list, remove it and return it.
             /// </summary>
-            public object PopLast(object lst)
+            public object PopLast(object collection)
             {
-                return Pop(lst);
+                return Pop(collection);
             }
 
             /// <summary>
             /// Take an item from the start of the list, remove it and return it.
             /// </summary>
-            public object PopFirst(object lst)
+            public object PopFirst(object collection)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    IList<Reference> lr = (IList<Reference>)lst;
+                    IList<Reference> lr = (IList<Reference>)collection;
                     if (lr.Count == 0)
                         return double.NaN;
                     object first = lr[0];
                     lr.RemoveAt(0);
                     return first;
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedList<Reference> lr = (LinkedList<Reference>)lst;
+                    LinkedList<Reference> lr = (LinkedList<Reference>)collection;
                     if (lr.Count == 0)
                         return double.NaN;
                     object first = lr.First.Value.Resolve();
                     lr.RemoveFirst();
                     return first;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    if (Convert.ToString(lst).Length == 0)
+                    if (Convert.ToString(collection).Length == 0)
                         return double.NaN;
-                    string first = Convert.ToString(lst).Remove(1);
-                    lst = Convert.ToString(lst).Substring(1);
+                    string first = Convert.ToString(collection).Remove(1);
+                    collection = Convert.ToString(collection).Substring(1);
                     return first;
                 }
                 else
@@ -5323,24 +5465,24 @@ namespace Cantus.Core
             /// <summary>
             /// Push an item to the end of the list
             /// </summary>
-            public object Push(object lst, object obj)
+            public object Push(object collection, object obj)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    IList<Reference> lr = (IList<Reference>)lst;
+                    IList<Reference> lr = (IList<Reference>)collection;
                     lr.Add(new Reference(obj));
                     return lr;
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedList<Reference> lr = (LinkedList<Reference>)lst;
+                    LinkedList<Reference> lr = (LinkedList<Reference>)collection;
                     lr.AddLast(new Reference(obj));
                     return lr;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    lst = Convert.ToString(lst) + obj.ToString();
-                    return lst;
+                    collection = Convert.ToString(collection) + obj.ToString();
+                    return collection;
                 }
                 else
                 {
@@ -5351,32 +5493,32 @@ namespace Cantus.Core
             /// <summary>
             /// Push an item to the end of the list
             /// </summary>
-            public object PushLast(object lst, object obj)
+            public object PushLast(object collection, object obj)
             {
-                return Push(lst, obj);
+                return Push(collection, obj);
             }
 
             /// <summary>
             /// Push an item to the beginning of the list
             /// </summary>
-            public object PushFirst(object lst, object obj)
+            public object PushFirst(object collection, object obj)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    IList<Reference> lr = (IList<Reference>)lst;
+                    IList<Reference> lr = (IList<Reference>)collection;
                     lr.Insert(0, new Reference(obj));
                     return lr;
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedList<Reference> lr = (LinkedList<Reference>)lst;
+                    LinkedList<Reference> lr = (LinkedList<Reference>)collection;
                     lr.AddFirst(new Reference(obj));
                     return lr;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    lst = obj.ToString() + Convert.ToString(lst);
-                    return lst;
+                    collection = obj.ToString() + Convert.ToString(collection);
+                    return collection;
                 }
                 else
                 {
@@ -5387,7 +5529,7 @@ namespace Cantus.Core
             /// <summary>
             /// Cycle the list forwards: [1,2,3]->[3,1,2]
             /// </summary>
-            public object Cycle(object lst, double times = 1)
+            public object Cycle(object collection, double times = 1)
             {
                 bool reverse = false;
                 if (times < 0)
@@ -5399,52 +5541,52 @@ namespace Cantus.Core
                 {
                     if (reverse)
                     {
-                        Push(lst, PopFirst(lst));
+                        Push(collection, PopFirst(collection));
                     }
                     else
                     {
-                        PushFirst(lst, Pop(lst));
+                        PushFirst(collection, Pop(collection));
                     }
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Cycle the list backwards: [1,2,3]->[2,3,1]
             /// </summary>
-            public object CycleReverse(object lst, double times = 1)
+            public object CycleReverse(object collection, double times = 1)
             {
-                return Cycle(lst, -times);
+                return Cycle(collection, -times);
             }
 
             /// <summary>
             /// Remove at the index in the matrix-list
             /// </summary>
-            public object RemoveAt(object lst, double val)
+            public object RemoveAt(object collection, double val)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    ((IList<Reference>)lst).RemoveAt(Int(val));
+                    ((IList<Reference>)collection).RemoveAt(Int(val));
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    LinkedListNode<Reference> tmp = ((LinkedList<Reference>)lst).First;
+                    LinkedListNode<Reference> tmp = ((LinkedList<Reference>)collection).First;
                     for (int i = 1; i <= Int(val); i++)
                     {
                         tmp = tmp.Next;
                     }
                     tmp.List.Remove(tmp);
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    int idx = Convert.ToString(lst).IndexOf(val.ToString());
-                    lst = Convert.ToString(lst).Remove(idx) + Convert.ToString(lst).Substring(idx + 1);
+                    int idx = Convert.ToString(collection).IndexOf(val.ToString());
+                    collection = Convert.ToString(collection).Remove(idx) + Convert.ToString(collection).Substring(idx + 1);
                 }
                 else
                 {
                     return null;
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
@@ -5454,48 +5596,48 @@ namespace Cantus.Core
             /// Otherwise, this simply returns one because elements of the set are unique.
             /// Note2: Regex enabled for textings
             /// </summary>
-            public double Count(object lst, object val)
+            public double Count(object collection, object item)
             {
                 int ct = 0;
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    foreach (object i in (IEnumerable)lst)
+                    foreach (object i in (IEnumerable)collection)
                     {
-                        if (O(i) == O(val))
+                        if (O(i) == O(item))
                         {
                             ct += 1;
                         }
                     }
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    foreach (object i in (LinkedList<Reference>)lst)
+                    foreach (object i in (LinkedList<Reference>)collection)
                     {
-                        if (O(i) == O(val))
+                        if (O(i) == O(item))
                         {
                             ct += 1;
                         }
                     }
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
                     int notNullCt = 0;
-                    foreach (KeyValuePair<Reference, Reference> i in (IDictionary<Reference, Reference>)lst)
+                    foreach (KeyValuePair<Reference, Reference> i in (IDictionary<Reference, Reference>)collection)
                     {
                         if (i.Value == null)
                             continue;
-                        if (O(i.Value) == O(val))
+                        if (O(i.Value) == O(item))
                             ct += 1;
                         notNullCt += 1;
                     }
                     if (notNullCt <= 0)
                         return 1;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    for (int i = 0; i <= Convert.ToString(lst).Length; i++)
+                    for (int i = 0; i <= Convert.ToString(collection).Length; i++)
                     {
-                        if (StartsWith(Convert.ToString(lst).Substring(i), val.ToString()))
+                        if (StartsWith(Convert.ToString(collection).Substring(i), item.ToString()))
                             ct += 1;
                     }
                 }
@@ -5509,43 +5651,43 @@ namespace Cantus.Core
             /// <summary>
             /// Clear the matrix or set
             /// </summary>
-            public object Clear(object lst)
+            public object Clear(object collection)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    ((IList<Reference>)lst).Clear();
+                    ((IList<Reference>)collection).Clear();
                 }
-                else if (lst is LinkedList<Reference>)
+                else if (collection is LinkedList<Reference>)
                 {
-                    ((LinkedList<Reference>)lst).Clear();
+                    ((LinkedList<Reference>)collection).Clear();
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    ((IDictionary<Reference, Reference>)lst).Clear();
+                    ((IDictionary<Reference, Reference>)collection).Clear();
                 }
                 else
                 {
                     return null;
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Returns true if the specified matrix, text, or set contains the value. (regex enabled for texting)
             /// </summary>
-            public bool Contains(object lst, object val)
+            public bool Contains(object collection, object val)
             {
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    return ((IEnumerable<Reference>)lst).Contains(new Reference(ObjectTypes.DetectType(val)));
+                    return ((IEnumerable<Reference>)collection).Contains(new Reference(ObjectTypes.DetectType(val)));
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    return ContainsKey((IDictionary<Reference, Reference>)lst, val);
+                    return ContainsKey((IDictionary<Reference, Reference>)collection, val);
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
-                    return !(RegexMatch(Convert.ToString(lst), val.ToString()).Count() == 0);
+                    return !(RegexMatch(Convert.ToString(collection), val.ToString()).Count() == 0);
                 }
                 else
                 {
@@ -5556,20 +5698,20 @@ namespace Cantus.Core
             /// <summary>
             /// find the specified object or subtexting within the array or texting from the beginning (regex enabled for textings)
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <param name="val"></param>
             /// <returns></returns>
-            public double Find(object lst, object val)
+            public double Find(object collection, object val)
             {
                 double res = 0;
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
-                    res = ((IList<Reference>)lst).IndexOf(new Reference(ObjectTypes.DetectType(val)));
+                    res = ((IList<Reference>)collection).IndexOf(new Reference(ObjectTypes.DetectType(val)));
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
                     Regex regex = new Regex(val.ToString());
-                    res = regex.Match(Convert.ToString(lst)).Index;
+                    res = regex.Match(Convert.ToString(collection)).Index;
                     if (res < 0)
                         res = double.NaN;
                 }
@@ -5585,20 +5727,20 @@ namespace Cantus.Core
             /// <summary>
             /// find the specified object or subtexting within the array or texting from the end (regex enabled for textings)
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <param name="val"></param>
             /// <returns></returns>
-            public double FindEnd(object lst, object val)
+            public double FindEnd(object collection, object val)
             {
                 double res = 0;
-                if (lst is List<Reference>)
+                if (collection is List<Reference>)
                 {
-                    res = ((List<Reference>)lst).LastIndexOf(new Reference(ObjectTypes.DetectType(val)));
+                    res = ((List<Reference>)collection).LastIndexOf(new Reference(ObjectTypes.DetectType(val)));
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
                     Regex regex = new Regex(val.ToString(), RegexOptions.RightToLeft);
-                    res = regex.Match(Convert.ToString(lst)).Index;
+                    res = regex.Match(Convert.ToString(collection)).Index;
                     if (res < 0)
                         res = double.NaN;
                 }
@@ -5714,27 +5856,27 @@ namespace Cantus.Core
             /// <summary>
             /// add to the left side of the texting or matrix/list until it is at least the specified length.
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <param name="length"></param>
             /// <returns></returns>
-            public object Pad(object lst, double length, object item = null)
+            public object Pad(object collection, double length, object item = null)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
                     if (item == null)
                         item = 0.0;
-                    IList<Reference> rlst = (IList<Reference>)lst;
-                    while (Len(rlst) < Int(length))
+                    IList<Reference> rcollection = (IList<Reference>)collection;
+                    while (Len(rcollection) < Int(length))
                     {
-                        rlst.Insert(0, new Reference(item));
+                        rcollection.Insert(0, new Reference(item));
                     }
-                    return rlst;
+                    return rcollection;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
                     if (item == null)
                         item = " ";
-                    return Convert.ToString(lst).PadLeft(Int(length), item.ToString()[0]);
+                    return Convert.ToString(collection).PadLeft(Int(length), item.ToString()[0]);
                 }
                 else
                 {
@@ -5745,27 +5887,27 @@ namespace Cantus.Core
             /// <summary>
             /// add to the right side of the texting or matrix/list until it is at least the specified length.
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <param name="length"></param>
             /// <returns></returns>
-            public object PadEnd(object lst, double length, object item = null)
+            public object PadEnd(object collection, double length, object item = null)
             {
-                if (lst is IList<Reference>)
+                if (collection is IList<Reference>)
                 {
                     if (item == null)
                         item = 0.0;
-                    IList<Reference> rlst = (IList<Reference>)lst;
-                    while (Len(rlst) < Int(length))
+                    IList<Reference> rcollection = (IList<Reference>)collection;
+                    while (Len(rcollection) < Int(length))
                     {
-                        rlst.Add(new Reference(item));
+                        rcollection.Add(new Reference(item));
                     }
-                    return rlst;
+                    return rcollection;
                 }
-                else if (lst is string)
+                else if (collection is string)
                 {
                     if (item == null)
                         item = " ";
-                    return Convert.ToString(lst).PadRight(Int(length), item.ToString()[0]);
+                    return Convert.ToString(collection).PadRight(Int(length), item.ToString()[0]);
                 }
                 else
                 {
@@ -5825,18 +5967,18 @@ namespace Cantus.Core
             /// <summary>
             /// Internal function using quicksort to sort a list in-place
             /// </summary>
-            /// <param name="lst">List to sort</param>
+            /// <param name="collection">List to sort</param>
             /// <param name="l">Left limit of range to sort (inclusive)</param>
             /// <param name="r">Right limit of range to sort (exclusive)</param>
-            private void QSort(IList<Reference> lst, int l, int r, Lambda comparer = null)
+            private void QSort(IList<Reference> collection, int l, int r, Lambda comparer = null)
             {
                 if (l + 1 >= r)
                     return;
 
-                //MsgBox(String.Join(",", lst))
+                //MsgBox(String.Join(",", collection))
                 int pivot = Int(l + (r - l) / 2);
                 // choose middle element as pivot
-                InplaceSwap(lst, pivot, r - 1);
+                InplaceSwap(collection, pivot, r - 1);
                 // move pivot to end
 
                 pivot = r - 1;
@@ -5848,128 +5990,128 @@ namespace Cantus.Core
                 for (int i = l; i <= pivot - 1; i++)
                 {
                     // if less than pivot, swap
-                    if ((comparer == null && ObjectComparer.CompareObjs(lst[i], lst[pivot]) < 0) || ((comparer != null) && (double)(comparer.Execute(_eval, new[]{
-                    lst[i],
-                    lst[pivot]
+                    if ((comparer == null && ObjectComparer.CompareObjs(collection[i], collection[pivot]) < 0) || ((comparer != null) && (double)(comparer.Execute(_eval, new[]{
+                    collection[i],
+                    collection[pivot]
                 })) < 0))
                     {
-                        InplaceSwap(lst, i, mid);
+                        InplaceSwap(collection, i, mid);
                         mid += 1;
                         // this index is full, go to next
                     }
                 }
 
-                InplaceSwap(lst, mid, pivot);
+                InplaceSwap(collection, mid, pivot);
                 // swap pivot back to where it should belong
 
                 // divide and conquer
-                QSort(lst, l, mid);
-                QSort(lst, mid + 1, r);
+                QSort(collection, l, mid);
+                QSort(collection, mid + 1, r);
             }
 
             /// <summary>
             /// Sort a list using the generic comparer, returning true on success
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public IList<Reference> Sort(IList<Reference> lst, Lambda comparer = null)
+            public IList<Reference> Sort(IList<Reference> collection, Lambda comparer = null)
             {
-                QSort(lst, 0, lst.Count, comparer);
-                return lst;
+                QSort(collection, 0, collection.Count, comparer);
+                return collection;
             }
 
             /// <summary>
             /// Randomly shuffle a list
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public IList<Reference> Shuffle(IList<Reference> lst)
+            public IList<Reference> Shuffle(IList<Reference> collection)
             {
                 Random rnd = new Random();
-                for (int i = 0; i <= lst.Count - 1; i++)
+                for (int i = 0; i <= collection.Count - 1; i++)
                 {
-                    int r = rnd.Next(i, lst.Count);
-                    InplaceSwap(lst, i, r);
+                    int r = rnd.Next(i, collection.Count);
+                    InplaceSwap(collection, i, r);
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Get the height of the matrix
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public double Height(IEnumerable<Reference> lst)
+            public double Height(IEnumerable<Reference> collection)
             {
-                return new Matrix(lst).Height;
+                return new Matrix(collection).Height;
             }
 
             /// <summary>
             /// Alias for matrix height
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public double Rows(IEnumerable<Reference> lst)
+            public double Rows(IEnumerable<Reference> collection)
             {
-                return Height(lst);
+                return Height(collection);
             }
 
             /// <summary>
             /// Get the width of the matrix
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public double Width(IEnumerable<Reference> lst)
+            public double Width(IEnumerable<Reference> collection)
             {
-                return new Matrix(lst).Width;
+                return new Matrix(collection).Width;
             }
 
             /// <summary>
             /// Alias for matrix width
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public double Cols(IEnumerable<Reference> lst)
+            public double Cols(IEnumerable<Reference> collection)
             {
-                return Width(lst);
+                return Width(collection);
             }
 
             /// <summary>
             /// Give the matrix a standard width and height
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public IEnumerable<Reference> Normalize(IEnumerable<Reference> lst)
+            public IEnumerable<Reference> Normalize(IEnumerable<Reference> collection)
             {
-                return (IEnumerable<Reference>)new Matrix(lst).GetValue();
+                return (IEnumerable<Reference>)new Matrix(collection).GetValue();
             }
 
             /// <summary>
             /// Get a row of the matrix as a 1-column matrix/vector
             /// </summary>
             /// <returns></returns>
-            public IEnumerable<Reference> Row(IEnumerable<Reference> lst, double id)
+            public IEnumerable<Reference> Row(IEnumerable<Reference> collection, double id)
             {
-                return (IEnumerable<Reference>)new Matrix(lst).Row(Int(id)).GetValue();
+                return (IEnumerable<Reference>)new Matrix(collection).Row(Int(id)).GetValue();
             }
 
             /// <summary>
             /// Get a column of the matrix as a 1-column matrix/vector
             /// </summary>
             /// <returns></returns>
-            public IEnumerable<Reference> Col(IEnumerable<Reference> lst, double id)
+            public IEnumerable<Reference> Col(IEnumerable<Reference> collection, double id)
             {
-                return (IEnumerable<Reference>)new Matrix(lst).Col(Int(id)).GetValue();
+                return (IEnumerable<Reference>)new Matrix(collection).Col(Int(id)).GetValue();
             }
 
             /// <summary>
             /// Resize a matrix
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public IEnumerable<Reference> Resize(List<Reference> lst, double height, double width = double.NaN)
+            public IEnumerable<Reference> Resize(List<Reference> collection, double height, double width = double.NaN)
             {
-                Matrix mat = new Matrix(lst);
+                Matrix mat = new Matrix(collection);
                 if (width == double.NaN)
                     width = mat.Width;
                 mat.Resize(Int(height), Int(width));
@@ -5993,7 +6135,7 @@ namespace Cantus.Core
                     try {
                         return Inner(A, B);
                     }
-                    catch (MathException)
+                    catch
                     {
                         throw ex;
                     }
@@ -6311,9 +6453,9 @@ namespace Cantus.Core
             /// <summary>
             /// Get a basis for the null space of a matrix, obtained with rref
             /// </summary>
-            public List<Reference> NullSpace(List<Reference> lst)
+            public List<Reference> NullSpace(List<Reference> collection)
             {
-                Matrix mat = new Matrix(lst);
+                Matrix mat = new Matrix(collection);
                 mat = mat.Rref();
 
                 Matrix ker = new Matrix(mat.Width, mat.Width - mat.Height + 1);
@@ -6349,9 +6491,9 @@ namespace Cantus.Core
             /// <summary>
             /// Get the main diagonal of a matrix
             /// </summary>
-            public List<Reference> Diag(List<Reference> lst)
+            public List<Reference> Diag(List<Reference> collection)
             {
-                Matrix mat = new Matrix(lst);
+                Matrix mat = new Matrix(collection);
                 List<Reference> diagonal = new List<Reference>(Math.Min(mat.Width, mat.Height));
                 for (int i = 0; i <= Math.Min(mat.Width - 1, mat.Height - 1); i++)
                 {
@@ -6363,9 +6505,9 @@ namespace Cantus.Core
             /// <summary>
             /// Get a square matrix with the specified vector as its diagonal
             /// </summary>
-            public List<Reference> AsDiag(List<Reference> lst)
+            public List<Reference> AsDiag(List<Reference> collection)
             {
-                Matrix vec = new Matrix(lst);
+                Matrix vec = new Matrix(collection);
                 if (vec.Width != 1)
                     throw new EvaluatorException("Matrix is not a column vector");
 
@@ -6380,34 +6522,34 @@ namespace Cantus.Core
             /// <summary>
             /// Fill a collection with 0's
             /// </summary>
-            public object Fill(object lst, object val = null)
+            public object Fill(object collection, object val = null)
             {
                 if (val == null) val = 0.0;
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    foreach (Reference r in (IEnumerable<Reference>)lst)
+                    foreach (Reference r in (IEnumerable<Reference>)collection)
                     {
                         Fill(r, val);
                     }
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    foreach (Reference r in ((IDictionary<Reference, Reference>)lst).Keys)
+                    foreach (Reference r in ((IDictionary<Reference, Reference>)collection).Keys)
                     {
                         Fill(r, val);
                     }
 
                 }
-                else if (lst is Reference)
+                else if (collection is Reference)
                 {
-                    ((Reference)lst).SetValue(val);
+                    ((Reference)collection).SetValue(val);
                 }
                 else
                 {
-                    lst = val;
+                    collection = val;
                 }
 
-                return lst;
+                return collection;
             }
 
             /// <summary>
@@ -6446,20 +6588,20 @@ namespace Cantus.Core
             /// <summary>
             /// Convert to set
             /// </summary>
-            public SortedDictionary<Reference, Reference> ToSet(object lst)
+            public SortedDictionary<Reference, Reference> ToSet(object collection)
             {
                 Set tmp = default(Set);
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    tmp = new Set((IEnumerable<Reference>)lst);
+                    tmp = new Set((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    tmp = new Set((IDictionary<Reference, Reference>)lst);
+                    tmp = new Set((IDictionary<Reference, Reference>)collection);
                 }
                 else
                 {
-                    tmp = new Set(new[] { new Reference(lst) }.ToList());
+                    tmp = new Set(new[] { new Reference(collection) }.ToList());
                 }
                 return (SortedDictionary<Reference, Reference>)tmp.GetValue();
             }
@@ -6467,30 +6609,30 @@ namespace Cantus.Core
             /// <summary>
             /// Create a new set from any object
             /// </summary>
-            public SortedDictionary<Reference, Reference> Set(object lst = null)
+            public SortedDictionary<Reference, Reference> Set(object collection = null)
             {
-                if (lst == null)
+                if (collection == null)
                     return new SortedDictionary<Reference, Reference>();
-                return ToSet(lst);
+                return ToSet(collection);
             }
 
             /// <summary>
             /// Convert to hashset
             /// </summary>
-            public Dictionary<Reference, Reference> ToHashSet(object lst)
+            public Dictionary<Reference, Reference> ToHashSet(object collection)
             {
                 HashSet tmp = default(HashSet);
-                if (lst is IEnumerable<Reference>)
+                if (collection is IEnumerable<Reference>)
                 {
-                    tmp = new HashSet((IEnumerable<Reference>)lst);
+                    tmp = new HashSet((IEnumerable<Reference>)collection);
                 }
-                else if (lst is IDictionary<Reference, Reference>)
+                else if (collection is IDictionary<Reference, Reference>)
                 {
-                    tmp = new HashSet((IDictionary<Reference, Reference>)lst);
+                    tmp = new HashSet((IDictionary<Reference, Reference>)collection);
                 }
                 else
                 {
-                    tmp = new HashSet(new[] { new Reference(lst) }.ToList());
+                    tmp = new HashSet(new[] { new Reference(collection) }.ToList());
                 }
                 return (Dictionary<Reference, Reference>)tmp.GetValue();
             }
@@ -6498,11 +6640,11 @@ namespace Cantus.Core
             /// <summary>
             /// Create a new hashset from any object
             /// </summary>
-            public Dictionary<Reference, Reference> HashSet(object lst = null)
+            public Dictionary<Reference, Reference> HashSet(object collection = null)
             {
-                if (lst == null)
+                if (collection == null)
                     return new Dictionary<Reference, Reference>();
-                return ToHashSet(lst);
+                return ToHashSet(collection);
             }
 
             // setionary/set
@@ -6594,14 +6736,14 @@ namespace Cantus.Core
             /// <summary>
             /// Convert to a matrix
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public List<Reference> ToMatrix(object lst)
+            public List<Reference> ToMatrix(object collection)
             {
                 List<Reference> ret = new List<Reference>();
-                if (lst is IDictionary)
+                if (collection is IDictionary)
                 {
-                    foreach (KeyValuePair<Reference, Reference> k in (IDictionary<Reference, Reference>)lst)
+                    foreach (KeyValuePair<Reference, Reference> k in (IDictionary<Reference, Reference>)collection)
                     {
                         if (k.Value == null)
                         {
@@ -6616,58 +6758,58 @@ namespace Cantus.Core
                         }
                     }
                 }
-                else if (lst is IEnumerable<Reference>)
+                else if (collection is IEnumerable<Reference>)
                 {
-                    ret.AddRange((IEnumerable<Reference>)lst);
+                    ret.AddRange((IEnumerable<Reference>)collection);
                 }
                 else
                 {
-                    ret.Add(new Reference(lst));
+                    ret.Add(new Reference(collection));
                 }
                 return ret;
             }
 
             /// <summary>
-            /// Alias for ToMatrix(lst); Creates a matrix from another collection or object
+            /// Alias for ToMatrix(collection); Creates a matrix from another collection or object
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public List<Reference> ToList(object lst)
+            public List<Reference> ToList(object collection)
             {
-                return ToMatrix(lst);
+                return ToMatrix(collection);
             }
 
             /// <summary>
             /// Convert to a matrix or create a new matrix with a rows and b columns filled with 0
             /// </summary>
-            /// <param name="lstOrRows">either a collection or the number of rows</param>
+            /// <param name="collectionOrRows">either a collection or the number of rows</param>
             /// <param name="cols">number of columns</param>
             /// <returns></returns>
-            public List<Reference> Matrix(object lstOrRows = null, object cols = null)
+            public List<Reference> Matrix(object collectionOrRows = null, object cols = null)
             {
-                if (lstOrRows == null)
+                if (collectionOrRows == null)
                     return new List<Reference>();
                 if (cols == null)
                 {
-                    return ToMatrix(lstOrRows);
+                    return ToMatrix(collectionOrRows);
                 }
                 else
                 {
-                    return (List<Reference>)new Matrix(Int((double)(lstOrRows)), Int((double)(cols))).GetValue();
+                    return (List<Reference>)new Matrix(Int((double)(collectionOrRows)), Int((double)(cols))).GetValue();
                 }
             }
 
             /// <summary>
             /// Convert to a linked list
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public LinkedList<Reference> ToLinkedList(object lst)
+            public LinkedList<Reference> ToLinkedList(object collection)
             {
                 LinkedList<Reference> ret = new LinkedList<Reference>();
-                if (lst is IDictionary)
+                if (collection is IDictionary)
                 {
-                    foreach (KeyValuePair<Reference, Reference> k in (IDictionary<Reference, Reference>)lst)
+                    foreach (KeyValuePair<Reference, Reference> k in (IDictionary<Reference, Reference>)collection)
                     {
                         if (k.Value == null)
                         {
@@ -6682,30 +6824,30 @@ namespace Cantus.Core
                         }
                     }
                 }
-                else if (lst is IEnumerable<Reference>)
+                else if (collection is IEnumerable<Reference>)
                 {
-                    foreach (Reference r in (IEnumerable<Reference>)lst)
+                    foreach (Reference r in (IEnumerable<Reference>)collection)
                     {
                         ret.AddLast(r);
                     }
                 }
                 else
                 {
-                    ret.AddLast(new Reference(lst));
+                    ret.AddLast(new Reference(collection));
                 }
                 return ret;
             }
 
             /// <summary>
-            /// Alias for ToLinkedList(lst); Creates a new linked list 
+            /// Alias for ToLinkedList(collection); Creates a new linked list 
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public LinkedList<Reference> LinkedList(object lst = null)
+            public LinkedList<Reference> LinkedList(object collection = null)
             {
-                if (lst == null)
+                if (collection == null)
                     return new LinkedList<Reference>();
-                return ToLinkedList(lst);
+                return ToLinkedList(collection);
             }
 
             /// <summary>
@@ -6723,37 +6865,37 @@ namespace Cantus.Core
                     return new List<Reference>();
                 // empty
 
-                List<Reference> lst = new List<Reference>(new[] { new Reference(new Number(0.0)) });
+                List<Reference> collection = new List<Reference>(new[] { new Reference(new Number(0.0)) });
                 for (int i = 2; i <= d; i++)
                 {
-                    lst = new List<Reference>(new[] { new Reference(new Matrix(lst)) });
+                    collection = new List<Reference>(new[] { new Reference(new Matrix(collection)) });
                 }
-                return lst;
+                return collection;
             }
             
             public List<Reference> Range(BigDecimal a, BigDecimal b, double step = 1.0)
             {
-                List<Reference> lst = new List<Reference>();
+                List<Reference> collection = new List<Reference>();
                 for (BigDecimal d = a; d < b; d += step)
                 {
-                    lst.Add(new Reference(d));
+                    collection.Add(new Reference(d));
                 }
-                return lst;
+                return collection;
             }
 
             /// <summary>
             /// Convert to a tuple
             /// </summary>
-            /// <param name="lst"></param>
+            /// <param name="collection"></param>
             /// <returns></returns>
-            public Reference[] ToTuple(object lst)
+            public Reference[] ToTuple(object collection)
             {
                 List<Reference> ret = new List<Reference>();
-                if (lst is IDictionary)
+                if (collection is IDictionary)
                 {
                     try
                     {
-                        foreach (KeyValuePair<Reference, Reference> k in (IDictionary<Reference, Reference>)lst)
+                        foreach (KeyValuePair<Reference, Reference> k in (IDictionary<Reference, Reference>)collection)
                         {
                             if (k.Value == null)
                             {
@@ -6772,26 +6914,26 @@ namespace Cantus.Core
                     {
                     }
                 }
-                else if (lst is IEnumerable<Reference>)
+                else if (collection is IEnumerable<Reference>)
                 {
-                    ret.AddRange((IEnumerable<Reference>)lst);
+                    ret.AddRange((IEnumerable<Reference>)collection);
                 }
                 else
                 {
-                    ret.Add(new Reference(lst));
+                    ret.Add(new Reference(collection));
                 }
                 return ret.ToArray();
             }
 
             /// <summary>
-            /// Convert to a tuple; Alias for ToTuple(lst)
+            /// Convert to a tuple; Alias for ToTuple(collection)
             /// </summary>
             /// <returns></returns>
-            public Reference[] Tuple(object lst = null)
+            public Reference[] Tuple(object collection = null)
             {
-                if (lst == null)
+                if (collection == null)
                     return new Reference[] { };
-                return ToTuple(lst);
+                return ToTuple(collection);
             }
 
             // complex number stuff
@@ -6924,7 +7066,7 @@ namespace Cantus.Core
             {
                 try
                 {
-                    double varval = (double)(_eval.GetVariable(var));
+                    double varval = (double)(_eval.GetVariableObj(var));
                     if (varval >= left && varval <= right)
                     {
                         double ans = (double)(_eval.EvalExprRaw(text.ToString()));
@@ -7194,7 +7336,7 @@ namespace Cantus.Core
                 }
                 catch
                 {
-                    return "";
+                    throw new EvaluatorException("Failed to read file: " + path);
                 }
             }
 
@@ -7208,12 +7350,12 @@ namespace Cantus.Core
                 try
                 {
                     byte[] bytes = System.IO.File.ReadAllBytes(path);
-                    List<Reference> lst = new List<Reference>();
+                    List<Reference> collection = new List<Reference>();
                     foreach (byte b in bytes)
                     {
-                        lst.Add(new Reference((double)(Convert.ToInt32(b))));
+                        collection.Add(new Reference((double)(Convert.ToInt32(b))));
                     }
-                    return lst;
+                    return collection;
                     //ex As Exception
                 }
                 catch
@@ -7643,7 +7785,7 @@ namespace Cantus.Core
                 {
                     if (args == null)
                         args = new List<Reference>();
-                    return func.ExecuteAsync(_eval, args, callback);
+                    return func.ExecuteAsync(_eval, args, callBack:callback);
                 }
                 catch
                 {
@@ -7939,37 +8081,6 @@ namespace Cantus.Core
                 return Environment.OSVersion.ToString();
             }
 
-            // removed functions, kept to prevent upgrade errors. Will be deleted eventually
-            public string OMode(string val = "")
-            {
-                // older names to maintain compatibility
-                switch (val)
-                {
-                    case "MathO":
-                        val = "Math";
-                        break;
-                    case "SciO":
-                        val = "Scientific";
-                        break;
-                    case "LineO":
-                        val = "Raw";
-                        break;
-                }
-                _Output(val);
-                return "Removed in version 2.1. Please use _Output() instead";
-            }
-
-            public string AngleRep(string val = "")
-            {
-                _AngleRepr(val);
-                return "Removed in version 2.1. Please use _AngleRepr() instead";
-            }
-
-            public string SpacesPerTab(double val = double.NaN)
-            {
-                _SpacesPerTab(val);
-                return "Deprecated in version 2.1. Please use _SpacesPerTab() instead";
-            }
         }
     }
 }
