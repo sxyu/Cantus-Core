@@ -3500,8 +3500,8 @@ namespace Cantus.Core
             /// </summary>
             private string ToFrac(BigDecimal d)
             {
-                BigDecimal[] res = CFrac((BigDecimal)d,
-                    Min(1E-11 * (BigDecimal)Pow(10, Round((BigDecimal)Pow((BigDecimal)d, 0.1))), 0.001));
+                BigDecimal[] res = CFrac(d,
+                    Min(1E-11 * (BigDecimal)Abs(Pow(10, Round((BigDecimal)Pow((BigDecimal)d, 0.1)))), 0.001));
                 string lft = res[0].ToString();
                 if (res[1] == 1)
                 {
@@ -3578,7 +3578,7 @@ namespace Cantus.Core
                     else
                     {
                         return new[]{
-                            n * middle_d + middle_n,
+                            (n * middle_d + middle_n) * sign,
                             middle_d
                         };
                     }
@@ -3603,7 +3603,7 @@ namespace Cantus.Core
             /// </summary>
             public bool IsInteger(BigDecimal d)
             {
-                return CmpDbl(d, Round(d), 1E-08) == 0;
+                return CmpDbl(d, Round(d), 1E-09) == 0;
             }
 
             /// <summary>
@@ -3751,8 +3751,7 @@ namespace Cantus.Core
                     // multiples of PI
                     for (int j = -50; j <= 50; j++)
                     {
-                        if (j == 0)
-                            continue;
+                        if (j == 0) continue;
                         for (int k = -20; k <= 20; k++)
                         {
                             string s = SimpStr(value, Math.PI, j, "π", "+", k);
@@ -3784,8 +3783,7 @@ namespace Cantus.Core
                             for (int j = 1; j <= 40; j++)
                             {
                                 BigDecimal sq = (BigDecimal)Pow((value - j), i);
-                                if (sq > 15000)
-                                    break;
+                                if (sq > 15000 || (BigDecimal)Abs(sq) < 0.0001) break;
                                 // ignore excessively large roots
                                 if (i % 2 == 0)
                                     sq *= Sgn(value - j);
@@ -3871,9 +3869,9 @@ namespace Cantus.Core
                     catch (Exception) { }
 
                     // fractions of PI
-                    for (int j = 1; j <= 100; j++)
+                    for (int j = 1; j <= 100; ++j)
                     {
-                        for (int k = -20; k <= 20; k++)
+                        for (int k = -20; k <= 20; ++k)
                         {
                             string s = SimpStr(value, Math.PI, 1 / j, "π", "+", k);
                             if (!string.IsNullOrEmpty(s))

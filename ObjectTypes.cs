@@ -1889,7 +1889,7 @@ namespace Cantus.Core
                         if (k.GetRefObject() is Matrix)
                             maxLen = Math.Max(maxLen, MaxItemLen((Matrix)k.GetRefObject()));
                         else
-                            maxLen = Math.Max(maxLen, ef.O(k.GetRefObject()).Length);
+                            maxLen = Math.Max(maxLen, ef.O(k.GetValue()).Length);
                     }
 
                     return maxLen;
@@ -1904,7 +1904,8 @@ namespace Cantus.Core
 
                     StringBuilder str = new StringBuilder("[");
 
-                    InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                    InternalFunctions ef = new InternalFunctions(
+                        new CantusEvaluator(reloadDefault: false));
                     foreach (Reference k in m._value)
                     {
                         if (str.Length != 1)
@@ -1920,7 +1921,7 @@ namespace Cantus.Core
                         }
                         else
                         {
-                            tostr = ef.O(k.GetRefObject());
+                            tostr = ef.O(k.GetValue());
                         }
                         str.Append(tostr.PadRight(itemWid));
                     }
@@ -2267,10 +2268,10 @@ namespace Cantus.Core
                         if (!(str.Length == 1))
                             str.Append(", ");
                         InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
-                        str.Append(ef.O(k.Key.GetRefObject()));
+                        str.Append(ef.O(k.Key.GetValue()));
                         if ((k.Value != null))
                         {
-                            str.Append(":" + ef.O(k.Value.GetRefObject()));
+                            str.Append(":" + ef.O(k.Value.GetValue()));
                         }
                     }
                     str.Append("}");
@@ -2410,10 +2411,10 @@ namespace Cantus.Core
                         if (!(str[str.Length - 1] == '{'))
                             str.Append(", ");
                         InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
-                        str.Append(ef.O(k.Key.GetRefObject()));
+                        str.Append(ef.O(k.Key.GetValue()));
                         if ((k.Value != null))
                         {
-                            str.Append(":" + ef.O(k.Value.GetRefObject()));
+                            str.Append(":" + ef.O(k.Value.GetValue()));
                         }
                     }
                     str.Append("})");
@@ -2641,7 +2642,7 @@ namespace Cantus.Core
                         else
                             init = false;
                         InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
-                        str.Append(ef.O(r.GetRefObject()));
+                        str.Append(ef.O(r.GetValue()));
                     }
                     str.Append("])");
                     return str.ToString();

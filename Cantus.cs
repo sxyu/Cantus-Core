@@ -3519,7 +3519,7 @@ function instanceid()
                                     }
                                     else
                                     {
-                                        if ((!object.ReferenceEquals(left, orig)))
+                                        if (!object.ReferenceEquals(left, orig))
                                         {
                                             lst.SetObject(lst.ObjectCount - 1, left);
                                         }
@@ -3534,7 +3534,9 @@ function instanceid()
                                     }
 
                                     //advance the counters past the entire bracket set
-                                    i += brkt.Signs[0].Length - 1 + inner.Length + (brkt.Signs.Count == 1 ? brkt.Signs[0].Length : brkt.Signs[1].Length);
+                                    i += brkt.Signs[0].Length - 1 + inner.Length +
+                                        (brkt.Signs.Count == 1 ?
+                                        brkt.Signs[0].Length : brkt.Signs[1].Length);
 
                                     idx = i + 1;
 
@@ -3561,7 +3563,7 @@ function instanceid()
                 EvalObjectBase eo = ObjectTypes.Parse(expr.Substring(idx, expr.Length - idx).Trim(), numberPreserveSigFigs: SignificantMode);
 
                 // if the object we get is an identifier, we try to break it into variables which are resolved using ResolveVariables
-                if (ObjectTypes.Identifier.IsType(eo))
+                if (Identifier.IsType(eo))
                 {
                     List<EvalObjectBase> varlist = new List<EvalObjectBase>();
 
@@ -3598,13 +3600,14 @@ function instanceid()
                     if (varlist.Count > 0)
                     {
                         lst.AddObject(varlist[0]);
+                         if (lst.OperatorCount < lst.ObjectCount)
+                            // default operation is *
+                            lst.AddOperator(OperatorRegistar.DefaultOperator, "*");
                         for (int k = 1; k <= varlist.Count - 1; k++)
                         {
                             if (lst.OperatorCount <= lst.ObjectCount)
-                            {
                                 // default operation is *
                                 lst.AddOperator(OperatorRegistar.DefaultOperator, "*");
-                            }
                             lst.AddObject(varlist[k]);
                         }
                     }

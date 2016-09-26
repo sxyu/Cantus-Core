@@ -278,9 +278,9 @@ namespace Cantus.Core
                             // save the time we last found an escaped end sign
                             endIdx += 1;
                         }
-                        else if (Stackable)
+                        else 
                         {
-                            if (expr.Substring(endIdx).StartsWith(startSign))
+                            if (expr.Substring(endIdx).StartsWith(startSign) && Stackable)
                             {
                                 stackHeight += 1;
                                 endIdx += startSign.Length - 1;
@@ -293,7 +293,9 @@ namespace Cantus.Core
                                 {
                                     if (expr.Substring(endIdx).StartsWith(b.OpenBracket))
                                     {
-                                        endIdx += b.FindCloseBracket(expr.Substring(endIdx + b.OpenBracket.Length), opReg) + b.CloseBracket.Length;
+                                        endIdx +=
+                                            b.FindCloseBracket(expr.Substring(endIdx +
+                                            b.OpenBracket.Length), opReg) + b.CloseBracket.Length;
                                         break;
                                     }
                                 }
