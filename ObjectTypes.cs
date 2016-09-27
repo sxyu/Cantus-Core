@@ -1436,6 +1436,8 @@ namespace Cantus.Core
                             ans = (BigDecimal)ans + (BigDecimal)a * (BigDecimal)b;
                         }
                     }
+
+                    if (ans is double) ans = (BigDecimal)(double)ans;
                     return ans;
                 }
 
@@ -1534,15 +1536,15 @@ namespace Cantus.Core
                     }
                     else if (norm is BigDecimal)
                     {
-                        return Math.Sqrt((double)((BigDecimal)norm));
+                        return (BigDecimal)Math.Sqrt((double)((BigDecimal)norm));
                     }
                     else if (norm is double)
                     {
-                        return Math.Sqrt((double)(norm));
+                        return (BigDecimal)Math.Sqrt((double)(norm));
                     }
                     else
                     {
-                        return double.NaN;
+                        return BigDecimal.Undefined;
                     }
                 }
 

@@ -724,19 +724,19 @@ namespace Cantus.Core
             {
                 double deg = DToR(x);
                 deg = Math.Sin(deg);
-                return Math.Round(deg, 11);
+                return deg;
             }
             public double CosD(double x)
             {
                 double deg = DToR(x);
                 deg = Math.Cos(deg);
-                return Math.Round(deg, 11);
+                return deg;
             }
             public double TanD(double x)
             {
                 double deg = DToR(x);
                 deg = Math.Tan(deg);
-                return Math.Round(deg, 11);
+                return deg;
             }
             public double CotD(double x)
             {
@@ -752,15 +752,15 @@ namespace Cantus.Core
             }
             public double SinR(double x)
             {
-                return Math.Round(Math.Sin(x), 9);
+                return Math.Sin(x);
             }
             public double CosR(double x)
             {
-                return Math.Round(Math.Cos(x), 9);
+                return Math.Cos(x);
             }
             public double TanR(double x)
             {
-                return Math.Round(Math.Tan(x), 9);
+                return Math.Tan(x);
             }
             public double CotR(double x)
             {
@@ -776,15 +776,15 @@ namespace Cantus.Core
             }
             public double SinG(double x)
             {
-                return Math.Round(Math.Sin(GToR(x)), 11);
+                return Math.Sin(GToR(x));
             }
             public double CosG(double x)
             {
-                return Math.Round(Math.Cos(GToR(x)), 11);
+                return Math.Cos(GToR(x));
             }
             public double TanG(double x)
             {
-                return Math.Round(Math.Tan(GToR(x)), 11);
+                return Math.Tan(GToR(x));
             }
             public double CotG(double x)
             {
@@ -853,28 +853,28 @@ namespace Cantus.Core
             public double Asind(double x)
             {
                 double deg = Math.Asin(x) / Math.PI * 180;
-                return Math.Round(deg, 11);
+                return deg;
             }
             public double Acosd(double x)
             {
                 double deg = Math.Acos(x) / Math.PI * 180;
-                return Math.Round(deg, 11);
+                return deg;
             }
             public double Asinr(double x)
             {
-                return Math.Round(Math.Asin(x), 11);
+                return Math.Asin(x);
             }
             public double Acosr(double x)
             {
-                return Math.Round(Math.Acos(x), 11);
+                return Math.Acos(x);
             }
             public double Asing(double x)
             {
-                return Math.Round(RToG(Math.Asin(x)), 11);
+                return RToG(Math.Asin(x));
             }
             public double Acosg(double x)
             {
-                return Math.Round(RToG(Math.Acos(x)), 11);
+                return RToG(Math.Acos(x));
             }
 
             public object Atan(object x)
@@ -6117,7 +6117,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Multiply two matrices. If we're unable to do so, we try to take the inner product.
+            /// Multiply two matrices. If we're unable to do so, we try to take the dot product.
             /// </summary>
             /// <returns></returns>
             public object Multiply(List<Reference> A, List<Reference> B)
@@ -6131,7 +6131,7 @@ namespace Cantus.Core
                 catch (MathException ex)
                 {
                     try {
-                        return Inner(A, B);
+                        return Dot(A, B);
                     }
                     catch
                     {
@@ -6165,6 +6165,42 @@ namespace Cantus.Core
             public List<Reference> Cross(List<Reference> a, List<Reference> b)
             {
                 return (List<Reference>)new Matrix(a).Cross(new Matrix(b)).GetValue();
+            }
+
+            /// <summary>
+            /// Compute the projection of the first vector onto the second
+            /// </summary>
+            /// <returns></returns>
+            public List<Reference> Proj(List<Reference> a, List<Reference> b)
+            {
+                return Scale(b, (BigDecimal)Dot(a, b) / (BigDecimal)Pow(Magnitude(b),2));
+            }
+
+            /// <summary>
+            /// Compute the length of the projection of the first vector onto the second
+            /// </summary>
+            /// <returns></returns>
+            public BigDecimal ProjLen(List<Reference> a, List<Reference> b)
+            {
+                return (BigDecimal)Dot(a, b) / (BigDecimal)Magnitude(a);
+            }
+
+            /// <summary>
+            /// Returns true if the two vecotrs are orthogonal
+            /// </summary>
+            /// <returns></returns>
+            public bool Ortho(List<Reference> a, List<Reference> b)
+            {
+                return (BigDecimal)Abs(Dot(a, b)) < 1E-13;
+            }
+
+            /// <summary>
+            /// Returns true if the two vecotrs are parallel
+            /// </summary>
+            /// <returns></returns>
+            public bool Parallel(List<Reference> a, List<Reference> b)
+            {
+                return (BigDecimal)Abs(Cross(a, b)) < 1E-13;
             }
 
             /// <summary>

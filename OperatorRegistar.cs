@@ -202,6 +202,12 @@ namespace Cantus.Core
             /// <returns></returns>
             public bool Stackable { get; }
 
+            /// If true, ignores all brackets inside the bracket 
+            /// (i.e. "hello(wo" + "rld)" should give 'hello(world)' not 'hello(wo" + "rld' )
+            /// </summary>
+            /// <returns></returns>
+            public bool IsString { get; }
+
             public BracketDelegate Execute { get; }
 
             /// <summary>
@@ -210,13 +216,19 @@ namespace Cantus.Core
             /// <param name="signStart">The sign that begins the operator (eg. '(')</param>
             /// <param name="signEnd">The sign that ends the bracket (eg. ')')</param>
             /// <param name="execute">The operator definition (use AddressOf)</param>
-            public Bracket(string signStart, string signEnd, BracketDelegate execute, bool stackable = true)
+            /// <param name="stackable">If true, this operator can be stacked like [[]]. 
+            /// Operators with single signs cannot be stacked.</param>
+            /// <param name="isString">If true, this operator is treated as a string
+            ///  and brackets with in the range are ignored.</param>
+            public Bracket(string signStart, string signEnd, BracketDelegate execute,
+                bool stackable = true, bool isString = false)
             {
                 this.Signs = new List<string>();
                 this.Signs.Add(signStart);
                 this.Signs.Add(signEnd);
                 this.Execute = execute;
                 this.Stackable = stackable;
+                this.IsString = isString;
             }
 
             /// <summary>
@@ -224,12 +236,16 @@ namespace Cantus.Core
             /// </summary>
             /// <param name="sign">The sign that begins and ends the operator (eg. '|')</param>
             /// <param name="execute">The operator definition (use AddressOf)</param>
-            public Bracket(string sign, BracketDelegate execute)
+            /// <param name="isString">If true, this operator is treated as a string
+            ///  and brackets with in the range are ignored.</param>
+            public Bracket(string sign, BracketDelegate execute,
+                bool isString = false)
             {
                 this.Signs = new List<string>();
                 this.Signs.Add(sign);
                 this.Execute = execute;
                 this.Stackable = false;
+                this.IsString = isString;
             }
 
             /// <summary>
@@ -278,7 +294,7 @@ namespace Cantus.Core
                             // save the time we last found an escaped end sign
                             endIdx += 1;
                         }
-                        else 
+                        else if (!IsString)
                         {
                             if (expr.Substring(endIdx).StartsWith(startSign) && Stackable)
                             {
@@ -525,18 +541,18 @@ namespace Cantus.Core
             Register(new Bracket("|", BracketOperatorAbsoluteValue));
 
             // strings
-            Register(new Bracket("\"", BracketOperatorQuotedText));
-            Register(new Bracket("'", BracketOperatorQuotedText));
+            Register(new Bracket("\"", BracketOperatorQuotedText, true));
+            Register(new Bracket("'", BracketOperatorQuotedText, true));
 
-            Register(new Bracket("r'", "'", BracketOperatorRawText, false));
-            Register(new Bracket("r\"", "\"", BracketOperatorRawText, false));
+            Register(new Bracket("r'", "'", BracketOperatorRawText, false, true));
+            Register(new Bracket("r\"", "\"", BracketOperatorRawText, false, true));
 
             // multiline / triple-quoted
-            Register(new Bracket("\"\"\"", BracketOperatorQuotedText));
-            Register(new Bracket("r'''", "'''", BracketOperatorRawText));
+            Register(new Bracket("\"\"\"", BracketOperatorQuotedText, true));
+            Register(new Bracket("r'''", "'''", BracketOperatorRawText, true));
 
-            Register(new Bracket("'''", BracketOperatorQuotedText));
-            Register(new Bracket("r'''", "'''", BracketOperatorRawText));
+            Register(new Bracket("'''", BracketOperatorQuotedText, true));
+            Register(new Bracket("r'''", "'''", BracketOperatorRawText, false, true));
 
             this.DefaultOperator = OperatorWithSign("*");
         }
@@ -750,7 +766,6 @@ namespace Cantus.Core
                     try
                     {
                         return new ObjectTypes.Matrix("[" + inner + "]", _eval);
-                        //ex2 As Exception
                     }
                     catch
                     {
@@ -764,6 +779,16 @@ namespace Cantus.Core
                 if (ex is ArgumentOutOfRangeException)
                 {
                     throw new EvaluatorException("Index is out of range");
+                }
+                else if (inner.Contains(","))
+                {
+                    try {
+                        return new ObjectTypes.Matrix("[" + inner + "]", _eval);
+                    }
+                    catch
+                    {
+                        throw new EvaluatorException("Operator [] Error: " + ex.Message);
+                    }
                 }
                 else
                 {
@@ -1202,14 +1227,14 @@ private ObjectTypes.EvalObjectBase BinaryOperatorMultiply(ObjectTypes.EvalObject
     else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Number.IsType(right))
     {
         // scalar multiply, use ** to duplicate
-
         return ObjectTypes.DetectType(_eval.Internals.Scale((List<ObjectTypes.Reference>)lv, rv));
 
     }
     else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
     {
-        // matrix multiplication (for appropriate matrices) or inner product (for vectors)
-        return ObjectTypes.DetectType(_eval.Internals.Multiply((List<ObjectTypes.Reference>)left.GetValue(),
+        // matrix multiplication (for appropriate matrices) or dot product (for vectors)
+        return ObjectTypes.DetectType(_eval.Internals.Multiply(
+            (List<ObjectTypes.Reference>)left.GetValue(),
             (List<ObjectTypes.Reference>)right.GetValue()));
 
     }
