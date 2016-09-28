@@ -141,13 +141,11 @@ namespace Cantus.Core
                 /// </summary>
                 public abstract void SetValue(object obj);
 
+                private new string ToString() { return ""; }
                 /// <summary>
                 /// Convert this object to a human readable string
                 /// </summary>
-                public override string ToString()
-                {
-                    return GetValue().ToString();
-                }
+                public abstract string ToString(CantusEvaluator eval);
 
                 /// <summary>
                 /// Function used to detect if an object is of or is represented by the type. Used in DetectType()
@@ -248,7 +246,7 @@ namespace Cantus.Core
                     }
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     return _value.ToString();
                 }
@@ -386,7 +384,7 @@ namespace Cantus.Core
                     return str.EndsWith(")") && str.StartsWith("(") && str.Contains("i") && (str.Contains("+") || str.Contains("-"));
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     return string.Format("({0} {1} {2}i)", _value.Real, _value.Imaginary >= 0 ? "+" : "-", Math.Abs(_value.Imaginary));
                 }
@@ -483,6 +481,11 @@ namespace Cantus.Core
                 public override int GetHashCode()
                 {
                     return _value.GetHashCode();
+                }
+
+                public override string ToString(CantusEvaluator eval)
+                {
+                    return _value.ToString();
                 }
             }
 
@@ -665,7 +668,7 @@ namespace Cantus.Core
                     return this;
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     return '\'' + _value + '\'';
                 }
@@ -773,6 +776,11 @@ namespace Cantus.Core
                 {
                     return _value.GetHashCode();
                 }
+
+                public override string ToString(CantusEvaluator eval)
+                {
+                    return _value;
+                }
             }
 
             /// <summary>
@@ -837,7 +845,7 @@ namespace Cantus.Core
                     return System.TimeSpan.TryParse(str.Trim(), out ___t) | System.DateTime.TryParse(str.Trim(), out ___d);
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     if (_value.Days > TIMESPAN_DIVIDER)
                     {
@@ -973,14 +981,14 @@ namespace Cantus.Core
                     return str.StartsWith("(") && str.EndsWith(")");
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     StringBuilder str = new StringBuilder("(");
                     foreach (Reference k in _value)
                     {
                         if (!(str.Length == 1))
                             str.Append(", ");
-                        InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                        InternalFunctions ef = eval.Internals;
                         str.Append(ef.O(k.GetRefObject()));
                     }
                     str.Append(")");
@@ -1041,9 +1049,6 @@ namespace Cantus.Core
                             }
                         }
                     }
-                    //Catch ex As Exception
-                    //    MsgBox(ex.ToString)
-                    //End Try
                 }
 
                 public override int GetHashCode()
@@ -1465,9 +1470,12 @@ namespace Cantus.Core
                         int k = (j + 1) % 3;
                         if (k == i)
                             k += 1;
-                        string evalStr = GetCoord(j, 0).ToString() + "*" + other.GetCoord(k, 0).ToString() + "-" + GetCoord(k, 0).ToString() + "*" + other.GetCoord(j, 0).ToString();
+                        string evalStr = GetCoord(j, 0).ToString() + "*" +
+                            other.GetCoord(k, 0).ToString() + "-" + GetCoord(k, 0).ToString() +
+                            "*" + other.GetCoord(j, 0).ToString();
 
-                        EvalObjectBase result = ObjectTypes.DetectType(new CantusEvaluator(reloadDefault: false).EvalExprRaw(evalStr.ToString(), true));
+                        EvalObjectBase result = ObjectTypes.DetectType(
+                            new CantusEvaluator(reloadDefault: false).EvalExprRaw(evalStr.ToString(), true));
                         if (result is Reference)
                         {
                             newValue.Add((Reference)result);
@@ -1900,14 +1908,14 @@ namespace Cantus.Core
                 /// <summary>
                 /// Get the human readable string representation of the matrix
                 /// </summary>
-                private string StringRepr(int itemWid, Matrix m = null)
+                private string StringRepr(int itemWid, CantusEvaluator eval, Matrix m = null)
                 {
                     if (m == null) m = this;
 
                     StringBuilder str = new StringBuilder("[");
 
-                    InternalFunctions ef = new InternalFunctions(
-                        new CantusEvaluator(reloadDefault: false));
+                    InternalFunctions ef = eval.Internals;
+
                     foreach (Reference k in m._value)
                     {
                         if (str.Length != 1)
@@ -1919,7 +1927,7 @@ namespace Cantus.Core
                         string tostr = "";
                         if (k.GetRefObject() is Matrix)
                         {
-                            tostr = StringRepr(itemWid, (Matrix)k.GetRefObject());
+                            tostr = StringRepr(itemWid, eval, (Matrix)k.GetRefObject());
                         }
                         else
                         {
@@ -1932,10 +1940,10 @@ namespace Cantus.Core
                     return str.ToString();
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     int maxLen = MaxItemLen();
-                    return StringRepr(maxLen);
+                    return StringRepr(maxLen, eval);
                 }
 
                 public override bool Equals(EvalObjectBase other)
@@ -2189,7 +2197,6 @@ namespace Cantus.Core
                     }
                     catch
                     {
-                        //MsgBox(ex.ToString)
                     }
                 }
 
@@ -2262,14 +2269,14 @@ namespace Cantus.Core
                     }
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     StringBuilder str = new StringBuilder("{");
                     foreach (KeyValuePair<Reference, Reference> k in _value)
                     {
                         if (!(str.Length == 1))
                             str.Append(", ");
-                        InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                        InternalFunctions ef = eval.Internals;
                         str.Append(ef.O(k.Key.GetValue()));
                         if ((k.Value != null))
                         {
@@ -2405,14 +2412,14 @@ namespace Cantus.Core
                     }
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     StringBuilder str = new StringBuilder("HashSet({");
                     foreach (KeyValuePair<Reference, Reference> k in _value)
                     {
                         if (!(str[str.Length - 1] == '{'))
                             str.Append(", ");
-                        InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                        InternalFunctions ef = eval.Internals;
                         str.Append(ef.O(k.Key.GetValue()));
                         if ((k.Value != null))
                         {
@@ -2491,7 +2498,7 @@ namespace Cantus.Core
             public sealed class LinkedList : EvalObjectBase
             {
 
-                private System.Collections.Generic.LinkedList<Reference> _value;
+                private LinkedList<Reference> _value;
                 private int _index;
                 public int Index
                 {
@@ -2633,7 +2640,7 @@ namespace Cantus.Core
                     return new LinkedList(lst);
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     StringBuilder str = new StringBuilder("linkedlist([");
                     bool init = true;
@@ -2643,7 +2650,7 @@ namespace Cantus.Core
                             str.Append(", ");
                         else
                             init = false;
-                        InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                        InternalFunctions ef = eval.Internals;
                         str.Append(ef.O(r.GetValue()));
                     }
                     str.Append("])");
@@ -2738,6 +2745,11 @@ namespace Cantus.Core
                 public new static bool StrIsType(string str)
                 {
                     return false;
+                }
+
+                public override string ToString(CantusEvaluator eval)
+                {
+                    return Type.ToString();
                 }
 
                 /// <summary>
@@ -3041,11 +3053,11 @@ namespace Cantus.Core
                     return false;
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     if (_value == null || object.ReferenceEquals(_value, this))
                         return "Undefined";
-                    return _value.ToString();
+                    return _value.ToString(eval);
                 }
                 public override bool Equals(EvalObjectBase other)
                 {
@@ -3392,7 +3404,7 @@ namespace Cantus.Core
                     return str.StartsWith("`") && str.EndsWith("`");
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     if (this.IsFunctionPtr)
                     {
@@ -3653,7 +3665,7 @@ namespace Cantus.Core
                     return false;
                 }
 
-                public override string ToString()
+                public override string ToString(CantusEvaluator eval)
                 {
                     if (this._disposed)
                         return "";

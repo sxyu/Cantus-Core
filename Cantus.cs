@@ -462,6 +462,12 @@ namespace Cantus.Core
             /// <returns></returns>
             public string DeclaringScope { get; set; }
 
+            private CantusEvaluator _eval;
+            /// <summary>
+            /// The associated Cantus evaluator
+            /// </summary>
+            public CantusEvaluator Eval { get { return _eval; } }
+
             /// <summary>
             /// Gets the full name of this variable, including the scope
             /// </summary>
@@ -491,24 +497,27 @@ namespace Cantus.Core
             /// <summary>
             /// Create a new variable from a value
             /// </summary>
-            public Variable(string name, object value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
+            public Variable(CantusEvaluator eval, string name, object value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
             {
+                this._eval = eval;
                 this.Reference = new Reference(value);
             }
 
             /// <summary>
             /// Create a new variable from an evaluator object
             /// </summary>
-            public Variable(string name, EvalObjectBase value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
+            public Variable(CantusEvaluator eval, string name, EvalObjectBase value, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
             {
+                this._eval = eval;
                 this.Reference = new Reference(value);
             }
 
             /// <summary>
             /// Create a new variable from an existing reference
             /// </summary>
-            public Variable(string name, Reference @ref, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
+            public Variable(CantusEvaluator eval, string name, Reference @ref, string declaringScope, IEnumerable<string> modifiers = null) : this(name, declaringScope, modifiers)
             {
+                this._eval = eval;
                 this.Reference = @ref;
             }
 
@@ -518,7 +527,7 @@ namespace Cantus.Core
             /// <returns></returns>
             public override string ToString()
             {
-                return this.FullName + " = " + this.Reference.ToString();
+                return this.FullName + " = " + this.Reference.ToString(_eval);
             }
         }
 
@@ -757,12 +766,12 @@ function instanceid()
                         var.DeclaringScope = nsScope;
                         var.Modifiers.Add("internal");
                         eval.Variables[var.FullName] = var;
-                        this.Fields[var.Name] = new Variable(var.Name, var.Reference, tmpScope, var.Modifiers);
+                        this.Fields[var.Name] = new Variable(eval, var.Name, var.Reference, tmpScope, var.Modifiers);
                     }
                     else
                     {
                         var.Modifiers.Add("internal");
-                        this.Fields[var.Name] = new Variable(var.Name, var.Reference.GetDeepCopy(), tmpScope, var.Modifiers);
+                        this.Fields[var.Name] = new Variable(eval,var.Name, var.Reference.GetDeepCopy(), tmpScope, var.Modifiers);
                     }
                 }
 
@@ -777,14 +786,14 @@ function instanceid()
                         fn.DeclaringScope = nsScope;
                         fn.Modifiers.Add("internal");
                         eval.UserFunctions[fn.FullName] = fn;
-                        this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn), tmpScope, fn.Modifiers);
+                        this.Fields[fn.Name] = new Variable(eval,fn.Name, new Lambda(fn), tmpScope, fn.Modifiers);
                     }
                     else
                     {
                         fn.Modifiers.Add("internal");
                         Lambda fl = new Lambda(fn, true);
                         eval.UserFunctions[fn.FullName] = fn;
-                        this.Fields[fn.Name] = new Variable(fn.Name, fl, tmpScope, fn.Modifiers);
+                        this.Fields[fn.Name] = new Variable(eval, fn.Name, fl, tmpScope, fn.Modifiers);
                     }
                 }
 
@@ -802,7 +811,7 @@ function instanceid()
                 {
                     UserFunction fn = new UserFunction("init", "", new List<string>(), tmpScope);
                     fn.Modifiers.Add("internal");
-                    this.Fields[fn.Name] = new Variable(fn.Name, new Lambda(fn, true), this.FullName, fn.Modifiers);
+                    this.Fields[fn.Name] = new Variable(eval, fn.Name, new Lambda(fn, true), this.FullName, fn.Modifiers);
                 }
 
             }
@@ -1548,7 +1557,7 @@ function instanceid()
         public OutputFormat OutputMode {
             get {
                 if (!Variables.ContainsKey("cantus.OUTPUT"))
-                    Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "math", ROOT_NAMESPACE, new[] { "internal"});
+                    Variables["cantus.OUTPUT"] = new Variable(this,"OUTPUT", "math", ROOT_NAMESPACE, new[] { "internal"});
 
                 string val = Variables["cantus.OUTPUT"].Value.ToString();
                 if (val.StartsWith("'")) val = val.Remove(val.Length - 1).Substring(1);
@@ -1571,13 +1580,13 @@ function instanceid()
                 switch (value)
                 {
                     case OutputFormat.Scientific:
-                        Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "scientific", ROOT_NAMESPACE, new []{"internal"});
+                        Variables["cantus.OUTPUT"] = new Variable(this, "OUTPUT", "scientific", ROOT_NAMESPACE, new []{"internal"});
                         break;
                     case OutputFormat.Math:
-                        Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "math", ROOT_NAMESPACE, new []{"internal"});
+                        Variables["cantus.OUTPUT"] = new Variable(this, "OUTPUT", "math", ROOT_NAMESPACE, new []{"internal"});
                         break;
                     case OutputFormat.Raw:
-                        Variables["cantus.OUTPUT"] = new Variable("OUTPUT", "raw", ROOT_NAMESPACE, new []{"internal"});
+                        Variables["cantus.OUTPUT"] = new Variable(this, "OUTPUT", "raw", ROOT_NAMESPACE, new []{"internal"});
                         break;
                     default:
                         throw new EvaluatorException("Invalid output format: " + value);
@@ -1592,7 +1601,7 @@ function instanceid()
         public AngleRepresentation AngleMode {
             get {
                 if (!Variables.ContainsKey("cantus.ANGLEREPR"))
-                    Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "radian", ROOT_NAMESPACE, new[] { "internal"});
+                    Variables["cantus.ANGLEREPR"] = new Variable(this, "ANGLEREPR", "radian", ROOT_NAMESPACE, new[] { "internal"});
 
                 string val = Variables["cantus.ANGLEREPR"].Value.ToString();
                 if (val.StartsWith("'")) val = val.Remove(val.Length - 1).Substring(1);
@@ -1617,13 +1626,13 @@ function instanceid()
                 switch (value)
                 {
                     case AngleRepresentation.Radian:
-                        Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "radian", ROOT_NAMESPACE, new []{"internal"});
+                        Variables["cantus.ANGLEREPR"] = new Variable(this, "ANGLEREPR", "radian", ROOT_NAMESPACE, new []{"internal"});
                         break;
                     case AngleRepresentation.Degree:
-                        Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "degree", ROOT_NAMESPACE, new []{"internal"});
+                        Variables["cantus.ANGLEREPR"] = new Variable(this, "ANGLEREPR", "degree", ROOT_NAMESPACE, new []{"internal"});
                         break;
                     case AngleRepresentation.Gradian:
-                        Variables["cantus.ANGLEREPR"] = new Variable("ANGLEREPR", "gradian", ROOT_NAMESPACE, new []{"internal"});
+                        Variables["cantus.ANGLEREPR"] = new Variable(this, "ANGLEREPR", "gradian", ROOT_NAMESPACE, new []{"internal"});
                         break;
                     default:
                         throw new EvaluatorException("Invalid angle representation: " + value);
@@ -1639,7 +1648,7 @@ function instanceid()
             get
             {
                 if (!Variables.ContainsKey("cantus.SPACESPERTAB"))
-                    Variables["cantus.SPACESPERTAB"] = new Variable("SPACESPERTAB", 4, ROOT_NAMESPACE, new[] { "internal"});
+                    Variables["cantus.SPACESPERTAB"] = new Variable(this, "SPACESPERTAB", 4, ROOT_NAMESPACE, new[] { "internal"});
                 EvalObjectBase eo = Variables["cantus.SPACESPERTAB"].Reference.ResolveObj();
                 if (eo is Number && Internals.IsInteger(((Number)eo).BigDecValue()))
                     return (int)((Number)eo).BigDecValue();
@@ -1650,7 +1659,7 @@ function instanceid()
             }
             set
             {
-                Variables["cantus.SPACESPERTAB"] = new Variable("SPACESPERTAB", (BigDecimal)value, ROOT_NAMESPACE, new[] { "internal" });
+                Variables["cantus.SPACESPERTAB"] = new Variable(this, "SPACESPERTAB", (BigDecimal)value, ROOT_NAMESPACE, new[] { "internal" });
             }
         }
 
@@ -1661,7 +1670,7 @@ function instanceid()
             get
             {
                 if (!Variables.ContainsKey("cantus.EXPLICIT"))
-                    Variables["cantus.EXPLICIT"] = new Variable("EXPLICIT", true, ROOT_NAMESPACE, new[] { "internal"});
+                    Variables["cantus.EXPLICIT"] = new Variable(this, "EXPLICIT", true, ROOT_NAMESPACE, new[] { "internal"});
                 EvalObjectBase eo = Variables["cantus.EXPLICIT"].Reference.ResolveObj();
                 if (eo is ObjectTypes.Boolean)
                     return (bool)((ObjectTypes.Boolean)eo).GetValue();
@@ -1671,7 +1680,7 @@ function instanceid()
                 }
             }
             set {
-                Variables["cantus.EXPLICIT"] = new Variable("EXPLICIT", value, ROOT_NAMESPACE, new[] { "internal"});
+                Variables["cantus.EXPLICIT"] = new Variable(this, "EXPLICIT", value, ROOT_NAMESPACE, new[] { "internal"});
             }
         }
 
@@ -1681,7 +1690,7 @@ function instanceid()
         public bool SignificantMode {
             get {
                 if (!Variables.ContainsKey("cantus.SIGFIGS"))
-                    Variables["cantus.SIGFIGS"] = new Variable("SIGFIGS", false, ROOT_NAMESPACE, new[] { "internal"});
+                    Variables["cantus.SIGFIGS"] = new Variable(this, "SIGFIGS", false, ROOT_NAMESPACE, new[] { "internal"});
                 EvalObjectBase eo = Variables["cantus.SIGFIGS"].Reference.ResolveObj();
                 if (eo is ObjectTypes.Boolean)
                     return (bool)((ObjectTypes.Boolean)eo).GetValue();
@@ -1691,7 +1700,7 @@ function instanceid()
                 }
             }
             set {
-                Variables["cantus.SIGFIGS"] = new Variable("SIGFIGS", value, ROOT_NAMESPACE, new[] { "internal"});
+                Variables["cantus.SIGFIGS"] = new Variable(this, "SIGFIGS", value, ROOT_NAMESPACE, new[] { "internal"});
                 if (value)
                 {
                     foreach (string n in Variables.Keys.ToArray())
@@ -1910,17 +1919,17 @@ function instanceid()
         /// <summary>
         /// Accurate value of PI (300 DP), stored in a string
         /// </summary>
-        private const string PI =  "3.1415926535897932384626433832795028841971693993751058209749445923078" +
+        public static readonly BigDecimal PI =  new Number("3.1415926535897932384626433832795028841971693993751058209749445923078" +
                                    "164062862089986280348253421170679821480865132823066470938446095505822" + 
                                    "317253594081284811174502841027019385211055596446229489549303819644288" +
-                                   "10975665933446128475648233786783165271201909145648566923460348610454326648213393607260249141273";
+                                   "10975665933446128475648233786783165271201909145648566923460348610454326648213393607260249141273").BigDecValue();
         /// <summary>
         /// Accurate value of E (300 DP), stored in a string
         /// </summary>
-        private const string E = "2.718281828459045235360287471352662497757247093699959574966967627724076" +
+        public static readonly BigDecimal E = new Number("2.718281828459045235360287471352662497757247093699959574966967627724076" +
                                  "63035354759457138217852516642742746639193200305992181741359662904357290" + 
                                  "03342952605956307381323286279434907632338298807531952510190115738341879" + 
-                                 "30702154089149934884167509244761460668082264800168477411853742345442437107539077744992069";
+                                 "30702154089149934884167509244761460668082264800168477411853742345442437107539077744992069").BigDecValue();
 
         /// <summary>
         /// List of predefined constants, as a dictionary
@@ -1928,9 +1937,9 @@ function instanceid()
         /// </summary>
         /// <returns></returns>
         private static Dictionary<string, object> _default { get; } = new Dictionary<string, object>{
-            {"e", new Number(E).BigDecValue()},
-            {"pi", new Number(PI).BigDecValue()},
-            {"π", new Number(PI).BigDecValue()},
+            {"e", E },
+            {"pi", PI },
+            {"π", PI },
             {"phi", 1.61803398875},
             {"φ", 1.61803398875},
             {"avogadro", 6.0221409E+23},
@@ -1942,14 +1951,14 @@ function instanceid()
             {"imaginaryunit", System.Numerics.Complex.ImaginaryOne},
             {"c", 299792458.0},
             {"lightspeed", 299792458.0},
+            {"mu0", 4.0 * PI * 0.0000001 },
+            {"permeability", 4.0 * PI * 0.0000001 },
             {"h", 6.6260755E-34},
             {"planck", 6.6260755E-34},
             {"hbar", 1.05457266E-34},
             {"planckreduced", 1.05457266E-34},
             {"e0", 0.000000000008854187817},
             {"permittivity", 0.000000000008854187817},
-            {"mu0", 4.0 * new Number(PI).BigDecValue() * 0.0000001},
-            {"permeability", 4.0 * new Number(PI).BigDecValue() * 0.0000001},
             {"F", 96485.3329},
             {"faraday", 96485.3329},
             {"me", 9.10938356E-31},
@@ -2491,25 +2500,29 @@ function instanceid()
                     if (lineNum < lines.Count)
                     {
                         fullLine = lines[lineNum];
-
-                        // remove comments
-                        bool dqCount = true;
-                        bool sqCount = true;
-                        for (int i = 0; i <= fullLine.Count() - 1; i++)
+                        if (fullLine.TrimStart().StartsWith("#")) fullLine = "";
+                        else
                         {
-                            char c = fullLine[i];
-                            if (c == '\'')
+
+                            // remove comments
+                            bool dqCount = true;
+                            bool sqCount = true;
+                            for (int i = 0; i <= fullLine.Count() - 1; i++)
                             {
-                                sqCount = !sqCount;
-                            }
-                            else if (c == '\"')
-                            {
-                                dqCount = !dqCount;
-                            }
-                            else if (c == COMMENT_START_PTN && dqCount && sqCount)
-                            {
-                                fullLine = fullLine.Remove(i);
-                                break;
+                                char c = fullLine[i];
+                                if (c == '\'')
+                                {
+                                    sqCount = !sqCount;
+                                }
+                                else if (c == '\"')
+                                {
+                                    dqCount = !dqCount;
+                                }
+                                else if (c == COMMENT_START_PTN && dqCount && sqCount)
+                                {
+                                    fullLine = fullLine.Remove(i);
+                                    break;
+                                }
                             }
                         }
 
@@ -2859,7 +2872,7 @@ function instanceid()
             }
             catch (Exception ex)
             {
-                throw new EvaluatorException(ex.Message, _curLine + 1);
+                throw new EvaluatorException(ex.ToString(), _curLine + 1);
             }
         }
 
@@ -3356,11 +3369,11 @@ function instanceid()
                                             throw new EvaluatorException("(: No close bracket found");
                                         }
 
-                                        if (lst.ObjectCount > 0 && lst.OperatorCount >= lst.ObjectCount && eo.ToString().Trim().StartsWith(SCOPE_SEP.ToString()))
+                                        if (lst.ObjectCount > 0 && lst.OperatorCount >= lst.ObjectCount && eo.ToString(this).Trim().StartsWith(SCOPE_SEP.ToString()))
                                         {
                                             left = lst.ObjectAt(lst.ObjectCount - 1);
                                         }
-                                        varlist = ResolveFunctions(eo.ToString(), funcargs, ref left);
+                                        varlist = ResolveFunctions(eo.ToString(this), funcargs, ref left);
 
                                         // advance past this function
                                         idx = j + funcargs.Count() + 1;
@@ -3373,14 +3386,14 @@ function instanceid()
                                         if (op.AssignmentOperator)
                                         {
                                             // for assignment operators, do not resolve the variables
-                                            varlist = new List<EvalObjectBase>(new[] { GetVariableRef(eo.ToString()) });
+                                            varlist = new List<EvalObjectBase>(new[] { GetVariableRef(eo.ToString(this)) });
                                         }
                                         else
                                         {
                                             // try resolving a function pointer
 
                                             varlist = new List<EvalObjectBase>();
-                                            string fn = eo.ToString();
+                                            string fn = eo.ToString(this);
                                             if (HasUserFunction(fn))
                                             {
                                                 varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
@@ -3395,15 +3408,15 @@ function instanceid()
                                             }
                                             else
                                             {
-                                                if (lst.ObjectCount > 0 && (lst.ObjectAt(lst.ObjectCount - 1) != null) && eo.ToString().StartsWith(SCOPE_SEP.ToString()))
+                                                if (lst.ObjectCount > 0 && (lst.ObjectAt(lst.ObjectCount - 1) != null) && eo.ToString(this).StartsWith(SCOPE_SEP.ToString()))
                                                 {
                                                     var obj = lst.ObjectAt(lst.ObjectCount - 1);
-                                                    varlist = ResolveFunctions(eo.ToString(), "", ref obj);
+                                                    varlist = ResolveFunctions(eo.ToString(this), "", ref obj);
                                                 }
                                             }
                                             if (varlist.Count == 0)
                                             {
-                                                varlist = ResolveVariables(eo.ToString());
+                                                varlist = ResolveVariables(eo.ToString(this));
                                             }
                                             else
                                             {
@@ -3570,7 +3583,7 @@ function instanceid()
                     // try resolving a function pointer
 
                     varlist = new List<EvalObjectBase>();
-                    string fn = eo.ToString();
+                    string fn = eo.ToString(this);
                     if (HasUserFunction(fn))
                     {
                         varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
@@ -3586,16 +3599,16 @@ function instanceid()
                     }
                     else
                     {
-                        if (lst.ObjectCount > 0 && (lst.ObjectAt(lst.ObjectCount - 1) != null) && eo.ToString().StartsWith(SCOPE_SEP.ToString()))
+                        if (lst.ObjectCount > 0 && (lst.ObjectAt(lst.ObjectCount - 1) != null) && eo.ToString(this).StartsWith(SCOPE_SEP.ToString()))
                         {
                             var obj = lst.ObjectAt(lst.ObjectCount - 1);
-                            varlist = ResolveFunctions(eo.ToString(), "", ref obj);
+                            varlist = ResolveFunctions(eo.ToString(this), "", ref obj);
                         }
                     }
 
                     if (varlist.Count == 0)
                     {
-                        varlist = ResolveVariables(eo.ToString());
+                        varlist = ResolveVariables(eo.ToString(this));
                     }
                     if (varlist.Count > 0)
                     {
@@ -3652,13 +3665,13 @@ function instanceid()
             // deal with self-referring (.) notation
             if (str.Contains(SCOPE_SEP) && !HasFunction(str))
             {
-                string baseTxt = str.Remove(str.IndexOf(SCOPE_SEP));
+                string baseTxt = str.Remove(str.LastIndexOf(SCOPE_SEP));
                 if (max == min && baseTxt.Length + 1 != min)
                 {
                     throw new EvaluatorException("Member function is undefined");
                 }
 
-                str = str.Substring(str.IndexOf(SCOPE_SEP) + 1);
+                str = str.Substring(str.LastIndexOf(SCOPE_SEP) + 1);
                 if (!string.IsNullOrEmpty(baseTxt))
                 {
                     try
@@ -4053,10 +4066,10 @@ function instanceid()
                 serialized.AppendLine("# Use caution when modifying manually").Append(Environment.NewLine);
                 serialized.AppendLine("# Modes");
 
-                serialized.Append("_output(").Append('\'').Append(OutputMode.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
-                serialized.Append("_anglerepr(").Append('\'').Append(AngleMode.ToString()).Append('\'').Append(")").Append(Environment.NewLine);
-                serialized.Append("_spacespertab(").Append(SpacesPerTab.ToString()).Append(")").Append(Environment.NewLine);
-                serialized.Append("_sigfigs(").Append(SignificantMode.ToString()).Append(")").Append(Environment.NewLine);
+                serialized.Append("OUTPUT = ").Append('\'').Append(OutputMode.ToString()).Append('\'').Append(Environment.NewLine);
+                serialized.Append("ANGLEREPR = ").Append('\'').Append(AngleMode.ToString()).Append('\'').Append(Environment.NewLine);
+                serialized.Append("SPACESPERTAB = ").Append(SpacesPerTab.ToString()).Append(Environment.NewLine);
+                serialized.Append("SIGFIGS = ").Append(SignificantMode.ToString()).Append(Environment.NewLine);
 
                 serialized.AppendLine().AppendLine("# Class Definitions");
                 _visClass = new HashSet<UserClass>();
@@ -4106,13 +4119,14 @@ function instanceid()
                             sb.AppendLine("()");
                             foreach (string f in ci.Fields.Keys)
                             {
-                                sb.Append(fullName).Append(SCOPE_SEP).Append(f).Append(" = ").AppendLine(ci.Fields[f].ToString());
+                                sb.Append(fullName).Append(SCOPE_SEP).Append(f).Append(" = ").
+                                    AppendLine(ci.Fields[f].ToString());
                             }
                             defs = sb.ToString();
                         }
                         else
                         {
-                            defs = def.ToString();
+                            defs = def.ToString(this);
                         }
 
                         serialized.Append(fullName).Append("=").AppendLine(defs);
@@ -4123,7 +4137,7 @@ function instanceid()
                 if (ExplicitMode)
                 {
                     serialized.AppendLine().AppendLine("# Explicit mode switch");
-                    serialized.Append("_explicit(").Append(ExplicitMode.ToString()).Append(")").Append(Environment.NewLine);
+                    serialized.Append("EXPLICIT = ").Append(ExplicitMode.ToString()).Append(Environment.NewLine);
                 }
 
                 serialized.AppendLine().AppendLine("# End of Cantus auto-generated initialization script. DO NOT modify this comment.");
@@ -4269,7 +4283,7 @@ function instanceid()
                     if (k.Value.Reference.Resolve() is double && double.IsNaN((double)(k.Value.Reference.Resolve())))
                         continue;
                     // skip undefined vars
-                    varsCopy.Add(k.Key, new Variable(k.Value.Name, (Reference)k.Value.Reference.GetDeepCopy(), k.Value.DeclaringScope));
+                    varsCopy.Add(k.Key, new Variable(this, k.Value.Name, (Reference)k.Value.Reference.GetDeepCopy(), k.Value.DeclaringScope));
                 }
             }
             catch (Exception)
@@ -4308,7 +4322,7 @@ function instanceid()
                     if (k.Value.Reference.Resolve() is double && double.IsNaN((double)(k.Value.Reference.Resolve())))
                         continue;
                     // skip undefined vars
-                    varsCopy.Add(k.Key, new Variable(k.Value.Name, k.Value.Reference, k.Value.DeclaringScope));
+                    varsCopy.Add(k.Key, new Variable(this, k.Value.Name, k.Value.Reference, k.Value.DeclaringScope));
                 }
             }
             catch
@@ -4408,10 +4422,10 @@ function instanceid()
         public Variable GetVariable(string name, bool @explicit = false)
         {
             if (name == "ans")
-                return new Variable("ans",
+                return new Variable(this, "ans",
                     new Reference(GetLastAns()), ROOT_NAMESPACE, new[] { "internal" });
             if (name == "prevans")
-                return new Variable("prevans",
+                return new Variable(this, "prevans",
                     new Reference(new Matrix(PrevAns)), ROOT_NAMESPACE, new[] { "internal" });
             string scope = _scope;
             name = RemoveRedundantScope(name, scope);
@@ -4431,7 +4445,7 @@ function instanceid()
                         Reference v = Variables[s + SCOPE_SEP + temp].Reference;
                         if (v.ResolveObj() is ClassInstance)
                         {
-                            return new Variable("__anonymous", 
+                            return new Variable(this, "__anonymous", 
                                 ((ClassInstance)v.ResolveObj()).ResolveField(name.Substring(temp.Length + 1),
                                 scope), scope);
                         }
@@ -4488,7 +4502,7 @@ function instanceid()
                 tmp = tmp.Remove(tmp.LastIndexOf(SCOPE_SEP));
             }
 
-            Variable var = new Variable(name, new Reference(double.NaN), scope);
+            Variable var = new Variable(this, name, new Reference(double.NaN), scope);
             Variables[var.FullName] = var;
 
             return Variables[scope + SCOPE_SEP + name];
@@ -4550,7 +4564,7 @@ function instanceid()
                 scope = _scope;
 
             NormalizeScope(ref name, ref scope);
-            Variable var = new Variable(name, @ref, scope, modifiers);
+            Variable var = new Variable(this, name, @ref, scope, modifiers);
             Variables[var.FullName] = var;
         }
 
@@ -4575,7 +4589,7 @@ function instanceid()
             if (string.IsNullOrEmpty(scope))
                 scope = _scope;
 
-            Variable var = new Variable(name, value, scope, modifiers);
+            Variable var = new Variable(this, name, value, scope, modifiers);
             Variables[var.FullName] = var;
         }
 
@@ -4595,7 +4609,7 @@ function instanceid()
         /// <param name="ref">Value of the variable as a Reference</param>
         internal void SetDefaultVariable(Reference @ref)
         {
-            Variables[CombineScope(Scope, DEFAULT_VAR_NAME)] = new Variable(DEFAULT_VAR_NAME, @ref, _scope);
+            Variables[CombineScope(Scope, DEFAULT_VAR_NAME)] = new Variable(this, DEFAULT_VAR_NAME, @ref, _scope);
         }
 
         /// <summary>
@@ -4937,7 +4951,7 @@ function instanceid()
                     }
                     else
                     {
-                        throw new EvaluatorException(newMsg, line);
+                        throw new EvaluatorException(newMsg + '\n' +  ex.ToString(), line);
                     }
                 }
             }
@@ -5224,7 +5238,7 @@ function instanceid()
             // same scope, none required
             if (name.StartsWith(scope + SCOPE_SEP))
                 name = name.Substring(scope.Length + 1);
-            if (name.StartsWith("plugin")) name = name.Substring("plugin".Length+1);
+            if (name.StartsWith("plugin" + SCOPE_SEP)) name = name.Substring("plugin".Length+1);
             return name;
         }
 

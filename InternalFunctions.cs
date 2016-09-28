@@ -572,29 +572,29 @@ namespace Cantus.Core
             }
 
             // convert degree, radians, gradians
-            public double DToR(double x)
+            public BigDecimal DToR(BigDecimal x)
             {
-                return x * Math.PI / 180;
+                return x * CantusEvaluator.PI / 180;
             }
-            public double RToD(double x)
+            public BigDecimal RToD(BigDecimal x)
             {
-                return x / Math.PI * 180;
+                return x / CantusEvaluator.PI * 180;
             }
-            public double RToG(double x)
+            public BigDecimal RToG(BigDecimal x)
             {
-                return x / Math.PI * 200;
+                return x / CantusEvaluator.PI * 200;
             }
-            public double DToG(double x)
+            public BigDecimal DToG(BigDecimal x)
             {
                 return x / 9 * 10;
             }
-            public double GToD(double x)
+            public BigDecimal GToD(BigDecimal x)
             {
                 return x / 10 * 9;
             }
-            public double GToR(double x)
+            public BigDecimal GToR(BigDecimal x)
             {
-                return x / 200 * Math.PI;
+                return x / 200 * CantusEvaluator.PI;
             }
 
             // trig functions
@@ -722,19 +722,19 @@ namespace Cantus.Core
             // specific trig functions
             public double SinD(double x)
             {
-                double deg = DToR(x);
+                double deg = (double)DToR(x);
                 deg = Math.Sin(deg);
                 return deg;
             }
             public double CosD(double x)
             {
-                double deg = DToR(x);
+                double deg = (double)DToR(x);
                 deg = Math.Cos(deg);
                 return deg;
             }
             public double TanD(double x)
             {
-                double deg = DToR(x);
+                double deg = (double)DToR(x);
                 deg = Math.Tan(deg);
                 return deg;
             }
@@ -776,15 +776,15 @@ namespace Cantus.Core
             }
             public double SinG(double x)
             {
-                return Math.Sin(GToR(x));
+                return Math.Sin((double)GToR(x));
             }
             public double CosG(double x)
             {
-                return Math.Cos(GToR(x));
+                return Math.Cos((double)GToR(x));
             }
             public double TanG(double x)
             {
-                return Math.Tan(GToR(x));
+                return Math.Tan((double)GToR(x));
             }
             public double CotG(double x)
             {
@@ -810,11 +810,11 @@ namespace Cantus.Core
                     switch (_eval.AngleMode)
                     {
                         case CantusEvaluator.AngleRepresentation.Degree:
-                            return Asind((double)(x));
+                            return AsinD((double)(x));
                         case CantusEvaluator.AngleRepresentation.Radian:
-                            return Asinr((double)(x));
+                            return AsinR((double)(x));
                         case CantusEvaluator.AngleRepresentation.Gradian:
-                            return Asing((double)(x));
+                            return AsinG((double)(x));
                         default:
                             return double.NaN;
                     }
@@ -836,11 +836,11 @@ namespace Cantus.Core
                     switch (_eval.AngleMode)
                     {
                         case CantusEvaluator.AngleRepresentation.Degree:
-                            return Acosd((double)(x));
+                            return AcosD((double)(x));
                         case CantusEvaluator.AngleRepresentation.Radian:
-                            return Acosr((double)(x));
+                            return AcosR((double)(x));
                         case CantusEvaluator.AngleRepresentation.Gradian:
-                            return Acosg((double)(x));
+                            return AcosG((double)(x));
                         default:
                             return double.NaN;
                     }
@@ -850,29 +850,27 @@ namespace Cantus.Core
                     return double.NaN;
                 }
             }
-            public double Asind(double x)
+            public BigDecimal AsinD(double x)
             {
-                double deg = Math.Asin(x) / Math.PI * 180;
-                return deg;
+                return Math.Asin(x) / CantusEvaluator.PI * 180;
             }
-            public double Acosd(double x)
+            public BigDecimal AcosD(double x)
             {
-                double deg = Math.Acos(x) / Math.PI * 180;
-                return deg;
+                return Math.Acos(x) / CantusEvaluator.PI * 180;
             }
-            public double Asinr(double x)
+            public double AsinR(double x)
             {
                 return Math.Asin(x);
             }
-            public double Acosr(double x)
+            public double AcosR(double x)
             {
                 return Math.Acos(x);
             }
-            public double Asing(double x)
+            public BigDecimal AsinG(double x)
             {
                 return RToG(Math.Asin(x));
             }
-            public double Acosg(double x)
+            public BigDecimal AcosG(double x)
             {
                 return RToG(Math.Acos(x));
             }
@@ -888,11 +886,11 @@ namespace Cantus.Core
                     switch (_eval.AngleMode)
                     {
                         case CantusEvaluator.AngleRepresentation.Degree:
-                            return Atand((double)(x));
+                            return AtanD((double)(x));
                         case CantusEvaluator.AngleRepresentation.Radian:
-                            return Atanr((double)(x));
+                            return AtanR((double)(x));
                         case CantusEvaluator.AngleRepresentation.Gradian:
-                            return Atang((double)(x));
+                            return AtanG((double)(x));
                         default:
                             return double.NaN;
                     }
@@ -902,15 +900,15 @@ namespace Cantus.Core
                     return double.NaN;
                 }
             }
-            public double Atand(double x)
+            public BigDecimal AtanD(double x)
             {
-                return Math.Atan(x) / Math.PI * 180;
+                return Math.Atan(x) / CantusEvaluator.PI * 180;
             }
-            public double Atanr(double x)
+            public double AtanR(double x)
             {
                 return Math.Atan(x);
             }
-            public double Atang(double x)
+            public BigDecimal AtanG(double x)
             {
                 return RToG(Math.Atan(x));
             }
@@ -994,15 +992,15 @@ namespace Cantus.Core
             }
             public double SinhD(double x)
             {
-                return Math.Sinh(DToR(x));
+                return Math.Sinh((double)DToR(x));
             }
             public double TanhD(double x)
             {
-                return Math.Tanh(DToR(x));
+                return Math.Tanh((double)DToR(x));
             }
             public double CoshD(double x)
             {
-                return Math.Cosh(DToR(x));
+                return Math.Cosh((double)DToR(x));
             }
             public double SinhR(double x)
             {
@@ -1018,15 +1016,15 @@ namespace Cantus.Core
             }
             public double SinhG(double x)
             {
-                return Math.Sinh(GToR(x));
+                return Math.Sinh((double)GToR(x));
             }
             public double TanhG(double x)
             {
-                return Math.Tanh(GToR(x));
+                return Math.Tanh((double)GToR(x));
             }
             public double CoshG(double x)
             {
-                return Math.Cosh(GToR(x));
+                return Math.Cosh((double)GToR(x));
             }
 
             /// <summary>
@@ -1211,7 +1209,8 @@ namespace Cantus.Core
                     System.Numerics.Complex result = new System.Numerics.Complex();
                     if (z.Real < 0.5)
                     {
-                        result = Math.PI / (System.Numerics.Complex.Sin(Math.PI * z) * Gamma(1 - z));
+                        result = Math.PI / (System.Numerics.Complex.Sin(
+                            Math.PI * z) * Gamma(1 - z));
                     }
                     else
                     {
@@ -3377,12 +3376,39 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Replace format {0} in text with 
+            /// Replace {0}, {1}, etc. in text with items from the the specified pattern
             /// </summary>
             /// <returns></returns>
-            public string Format(object text, object formatPattern)
+            public string Format(string text, object formatPattern)
             {
-                return string.Format(text.ToString(), formatPattern);
+                if (formatPattern is IList<Reference>) {
+                    object[] arr = (from r in (IList<Reference>)formatPattern
+                                   select r.ResolveObj() is Text ? r.Resolve() : r.ResolveObj()).ToArray();
+                    return string.Format(text, arr);
+                }
+                else
+                    return string.Format(text, formatPattern is string ? formatPattern : O(formatPattern));
+            }
+
+            /// <summary>
+            /// Split the string at the specified pattern
+            /// </summary>
+            public List<Reference> Split(string text, object pattern, bool removeEmpty = false)
+            {
+                if (pattern is IList<Reference>)
+                {
+                    char[] arr = (from r in (IList<Reference>)pattern
+                                  select (r.ResolveObj() is Text ? r.Resolve() : r.ResolveObj()).ToString()[0]).ToArray();
+                    return (from p in text.Split(arr,
+                        removeEmpty ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None)
+                            select new Reference(p)).ToList();
+                }
+                else
+                {
+                    return (from p in text.Split(new[] { pattern.ToString()[0]},
+                        removeEmpty ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None)
+                            select new Reference(p)).ToList();
+                }
             }
 
             /// <summary>
@@ -3986,7 +4012,7 @@ namespace Cantus.Core
                 }
                 else
                 {
-                    return DetectType(value).ToString();
+                    return DetectType(value).ToString(_eval);
                     // other stuff like sets, lists: use type-specific serialization
                 }
             }
@@ -4729,7 +4755,8 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Find all occurrences of the pattern in the texting using regex
+            /// Find all occurrences of the pattern in the texting using regex,
+            /// returning a dictionary with capture group names and contents
             /// </summary>
             /// <param name="text"></param>
             /// <param name="pattern"></param>
@@ -4751,7 +4778,8 @@ namespace Cantus.Core
                             if (!match.Groups[i].Success)
                                 continue;
                             // if failed, skip
-                            curcollection[new Reference(regex.GroupNameFromNumber(i))] = (new Reference(match.Groups[i].Value));
+                            curcollection[new Reference(regex.GroupNameFromNumber(i))] =
+                                (new Reference(match.Groups[i].Value));
                         }
                         result.Add(new Reference(new Set(curcollection)));
                     }
@@ -4763,6 +4791,63 @@ namespace Cantus.Core
                 return result;
             }
 
+            /// <summary>
+            /// Find all occurrences of the pattern in the texting using regex, 
+            /// returning a list of matches
+            /// </summary>
+            /// <param name="text"></param>
+            /// <param name="pattern"></param>
+            /// <returns></returns>
+            public IEnumerable<Reference> RegexMatchList(string text, string pattern)
+            {
+                Regex regex = new Regex(pattern);
+                List<Reference> result = new List<Reference>();
+                foreach (Match match in regex.Matches(text))
+                {
+                    if (!match.Success)
+                        continue;
+                    // if failed, skip
+                    if (match.Groups.Count > 1)
+                    {
+                        for (int i = 1; i <= match.Groups.Count - 1; i++)
+                        {
+                            if (!match.Groups[i].Success)
+                                continue;
+                            // if failed, skip
+                            result.Add(new Reference(match.Groups[i].Value));
+                        }
+                    }
+                    else
+                    {
+                        result.Add(new Reference(match.Value));
+                    }
+                }
+                return result;
+            }
+
+            /// <summary>
+            /// replace all instances of the value specified within the text
+            /// with the new value using regex (does not replace capture groups individually)
+            /// </summary>
+            /// <returns></returns>
+            public string RegexReplace(string text, string oldVal, string newVal)
+            {
+                Regex regex = new Regex(oldVal.ToString());
+                return regex.Replace(text, newVal);
+            }
+
+            /// <summary>
+            /// Escape all regex-associated characters in a regex string
+            /// </summary>
+            /// <returns></returns>
+            public string RegexEscape(string text)
+            {
+                return Regex.Escape(text);
+            }
+
+            /// <summary>
+            /// Returns true if the specified text matches the specified wildcard pattern
+            /// </summary>
             public bool WildCardMatch(string text, string pattern)
             {
                 string regexPtn = "^" + Regex.Escape(pattern)
@@ -5677,7 +5762,8 @@ namespace Cantus.Core
             {
                 if (collection is IEnumerable<Reference>)
                 {
-                    return ((IEnumerable<Reference>)collection).Contains(new Reference(ObjectTypes.DetectType(val)));
+                    return ((IEnumerable<Reference>)collection).Contains(
+                        new Reference(val), new ObjectComparer());
                 }
                 else if (collection is IDictionary<Reference, Reference>)
                 {
@@ -5704,7 +5790,17 @@ namespace Cantus.Core
                 double res = 0;
                 if (collection is IList<Reference>)
                 {
-                    res = ((IList<Reference>)collection).IndexOf(new Reference(ObjectTypes.DetectType(val)));
+                    int i = 0;
+                    res = -1;
+                    foreach (Reference r in (IList<Reference>)collection)
+                    {
+                        if (ObjectComparer.CompareObjs(r.Resolve(), val) == 0)
+                        {
+                            res = i;
+                            break;
+                        }
+                        ++i;
+                    }
                 }
                 else if (collection is string)
                 {
@@ -5733,7 +5829,16 @@ namespace Cantus.Core
                 double res = 0;
                 if (collection is List<Reference>)
                 {
-                    res = ((List<Reference>)collection).LastIndexOf(new Reference(ObjectTypes.DetectType(val)));
+                    res = -1;
+                    IList<Reference> lst = (IList<Reference>)collection;
+                    for (int i = lst.Count()-1; i>=0; --i)
+                    {
+                        if (ObjectComparer.CompareObjs(lst[i].Resolve(), val) == 0)
+                        {
+                            res = i;
+                            break;
+                        }
+                    }
                 }
                 else if (collection is string)
                 {
@@ -5806,7 +5911,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// replace all visible instances of the value with in the texting with the new value
+            /// replace all instances of each regex capture group within the text with the new value
             /// </summary>
             /// <returns></returns>
             public string Replace(string text, string oldVal, string newVal)
@@ -8021,22 +8126,30 @@ namespace Cantus.Core
                 return DownloadText(url);
             }
 
-            public string WebGet(string url, IDictionary<Reference, Reference> @params = null)
+            public string HTTPGet(string url, IDictionary<Reference, Reference> @params = null)
             {
                 if (@params != null)
                 {
                     url += "?";
                     foreach (KeyValuePair<Reference, Reference> k in @params)
                     {
-                        if (url != "?")
-                            url += "&";
-                        url += k.Key.ToString() + "=" + k.Value.ToString();
+                        if (!url.EndsWith("?")) url += "&";
+                        object key = k.Key.ResolveObj() is Text ? k.Key.Resolve() : k.Key.ResolveObj();
+                        object val;
+
+                        if (k.Value == null)
+                            url += key + "=true";
+                        else
+                        {
+                            val = k.Value.ResolveObj() is Text ? k.Value.Resolve() : k.Value.ResolveObj();
+                            url += key + "=" + val;
+                        }
                     }
                 }
                 return DownloadText(url);
             }
 
-            public string WebPost(string url, IDictionary<Reference, Reference> @params = null)
+            public string HTTPPost(string url, IDictionary<Reference, Reference> @params = null)
             {
                 using (WebClient wc = new WebClient())
                 {

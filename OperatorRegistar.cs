@@ -621,7 +621,7 @@ namespace Cantus.Core
             }
             else
             {
-                object res = _eval.EvalExprRaw(inner, true);
+                object res = _eval.EvalExprRaw(inner, true, ConditionMode);
                 return ObjectTypes.DetectType(res, true);
             }
         }

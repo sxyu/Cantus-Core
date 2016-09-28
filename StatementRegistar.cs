@@ -405,10 +405,10 @@ namespace Cantus.Core
         /// </summary>
         private bool TestCond(string expr)
         {
-            string scope = _eval.Scope;
-            _eval.ParentScope();
+            //string scope = _eval.Scope;
+            //_eval.ParentScope();
             bool res = _eval.Internals.IsTrue(_eval.EvalExprRaw(expr.TrimStart(), true, true));
-            _eval.Scope = scope;
+            //_eval.Scope = scope;
             return res;
         }
 
