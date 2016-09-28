@@ -719,7 +719,11 @@ namespace Cantus.Core
                 if (delta == 0)
                     throw new SyntaxException("Step of 0 not allowed");
 
-                for (BigDecimal i = var; i <= lim; i += delta)
+                CantusEvaluator tmpEval = _eval.SubEvaluator();
+                BigDecimal i = var;
+                tmpEval.SetVariable(varname, i);
+
+                while (i <= lim)
                 {
                     i = i.Truncate(10);
                     if (i == lim)
@@ -729,7 +733,6 @@ namespace Cantus.Core
                     if (_die)
                         throw new EvaluatorException("");
 
-                    CantusEvaluator tmpEval = _eval.SubEvaluator();
                     tmpEval.SetVariable(varname, i);
 
                     result = (StatementResult)tmpEval.EvalRaw(blocks[0].Content, noSaveAns: true, @internal: true);
@@ -744,6 +747,7 @@ namespace Cantus.Core
                             continue;
                     }
                     ct += 1;
+                    i = ((Number)tmpEval.GetVariable(varname).Reference.ResolveObj()).BigDecValue() + delta;
                 }
             }
             else

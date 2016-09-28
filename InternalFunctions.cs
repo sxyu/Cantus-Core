@@ -7254,12 +7254,12 @@ namespace Cantus.Core
             public void Print(object text = null)
             {
                 if (text == null) text = "";
-                if ((WriteOutput != null))
+                if (WriteOutput != null)
                 {
-                    if (WriteOutput != null)
-                    {
-                        WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString()));
-                    }
+                        if (text is string)
+                            WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString()));
+                        else
+                            WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, O(text)));
                 }
                 else
                 {

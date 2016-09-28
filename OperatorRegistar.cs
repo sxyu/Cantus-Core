@@ -958,16 +958,6 @@ namespace Cantus.Core
                 return new ObjectTypes.DateTime((TimeSpan)lv + ((TimeSpan)rv));
 
             }
-            else if (ObjectTypes.Text.IsType(left) || ObjectTypes.Text.IsType(right))
-            {
-                // do not append "NaN"
-                if (lv.ToString() == "NaN")
-                    lv = "";
-                if (rv.ToString() == "NaN")
-                    rv = "";
-                return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString()) +
-                    (right is ObjectTypes.Text ? rv.ToString() : right.ToString()));
-            }
             else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
             {
                 List<ObjectTypes.Reference> lstl = (List<ObjectTypes.Reference>)lv;
@@ -1035,7 +1025,17 @@ lst.AddLast(new ObjectTypes.Reference(right));
 				return BinaryOperatorOr(left, right);
 				// + = OR
 
-			} else {
+			} else if (ObjectTypes.Text.IsType(left) || ObjectTypes.Text.IsType(right))
+            {
+                // do not append "NaN"
+                if (lv.ToString() == "NaN")
+                    lv = "";
+                if (rv.ToString() == "NaN")
+                    rv = "";
+                return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString(_eval)) +
+                    (right is ObjectTypes.Text ? rv.ToString() : right.ToString(_eval)));
+            }
+            else {
 				throw new SyntaxException("Invalid Addition");
 			}
 		}
@@ -1053,16 +1053,7 @@ private ObjectTypes.EvalObjectBase BinaryOperatorUnaryMinus(ObjectTypes.EvalObje
         {
             return new ObjectTypes.Complex(-(System.Numerics.Complex)rv);
         }
-        else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
-        {
-            return new ObjectTypes.Complex(-(double)(rv));
-        }
-        else if (ObjectTypes.Number.IsType(left) & ObjectTypes.Complex.IsType(right))
-        {
-            return new ObjectTypes.Complex(-(System.Numerics.Complex)rv);
-
-        }
-        else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
+        else if (ObjectTypes.Matrix.IsType(right))
         {
             List<ObjectTypes.Reference> lstr = (List<ObjectTypes.Reference>)rv;
             for (int i = 0; i < lstr.Count; i++)
@@ -1779,7 +1770,7 @@ private ObjectTypes.EvalObjectBase BinaryOperatorIncrement(ObjectTypes.EvalObjec
     {
         if (ObjectTypes.Reference.IsType(right))
             right = ((ObjectTypes.Reference)right).GetRefObject();
-        if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString() == "NaN"))
+        if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString(_eval) == "NaN"))
         {
             object lv = ((ObjectTypes.Reference)left).Resolve();
             if (lv is double || lv is BigDecimal)
@@ -1831,7 +1822,7 @@ private ObjectTypes.EvalObjectBase BinaryOperatorDecrement(ObjectTypes.EvalObjec
     {
         if (ObjectTypes.Reference.IsType(right))
             right = ((ObjectTypes.Reference)right).GetRefObject();
-        if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString() == "NaN"))
+        if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString(_eval) == "NaN"))
         {
             object lv = ((ObjectTypes.Reference)left).Resolve();
             if (lv is double)
@@ -1935,8 +1926,8 @@ private ObjectTypes.EvalObjectBase BinaryOperatorConcat(ObjectTypes.EvalObjectBa
             rv = "";
         if (lv.ToString() == "NaN")
             lv = "";
-        return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString()) +
-            (right is ObjectTypes.Text ? rv.ToString() : right.ToString()));
+        return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString(_eval)) +
+            (right is ObjectTypes.Text ? rv.ToString() : right.ToString(_eval)));
     }
     catch
     {
