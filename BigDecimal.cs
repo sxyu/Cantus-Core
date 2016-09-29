@@ -399,7 +399,7 @@ namespace Cantus.Core.CommonTypes
                 new BigDecimal(AlignExponent(left, right) + right.Mantissa, right.Exponent) :
                 new BigDecimal(AlignExponent(right, left) + left.Mantissa, left.Exponent);
 
-            if (left.SigFigs == int.MaxValue || right.SigFigs == int.MaxValue)
+            if (left.SigFigs == int.MaxValue && right.SigFigs == int.MaxValue)
             {
                 bn.SigFigs = int.MaxValue;
                 return bn;

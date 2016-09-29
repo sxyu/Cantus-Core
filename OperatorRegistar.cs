@@ -54,15 +54,19 @@ namespace Cantus.Core
             /// </summary>
             mul_div,
             /// <summary>
-            /// Represents the precedence of the unary minus operator
-            /// </summary>
-            unaryminus,
-            /// <summary>
             /// Represents the precedence of the ^ operator (EVALUATED RTL)
             /// </summary>
             exponent,
             /// <summary>
-            /// Represents the precedence of some very high precedence operators like !, %, and E,
+            /// Represents the precedence of the E operator
+            /// </summary>
+            exp10,
+            /// <summary>
+            /// Represents the precedence of the unary minus operator
+            /// </summary>
+            unaryminus,
+            /// <summary>
+            /// Represents the precedence of some very high precedence operators like ! and %
             /// evaluated first
             /// </summary>
             factorial_percent
@@ -471,7 +475,7 @@ namespace Cantus.Core
                 " choose ",
                 " c "
             }, Precedence.mul_div, BinaryOperatorChoose));
-            Register(new BinaryOperator(new[]{ " e " }, Precedence.factorial_percent, BinaryOperatorExp10));
+            Register(new BinaryOperator(new[]{ " e " }, Precedence.exp10, BinaryOperatorExp10));
 
             RegisterByRef(new BinaryOperator(new[]{ "=" }, Precedence.comparison, BinaryOperatorAutoEqual));
             Register(new BinaryOperator(new[]{ "==" }, Precedence.comparison, BinaryOperatorEqualTo));
@@ -2017,15 +2021,8 @@ private ObjectTypes.EvalObjectBase BinaryOperatorExp10(ObjectTypes.EvalObjectBas
     {
         BigDecimal lv = ((ObjectTypes.Number)left).BigDecValue();
         BigDecimal rv = ((ObjectTypes.Number)right).BigDecValue();
-        if (rv.Exponent >= 0)
-        {
-            return new ObjectTypes.Number(new BigDecimal(mantissa: lv.Mantissa,
-                exponent: (int)(lv.Exponent + rv), sigFigs: lv.SigFigs));
-        }
-        else
-        {
-            return new ObjectTypes.Number(lv * BigDecimal.Pow(10, rv));
-        }
+        return new ObjectTypes.Number(new BigDecimal(mantissa: lv.Mantissa,
+            exponent: (int)(lv.Exponent + rv), sigFigs: lv.SigFigs));
     }
     else
     {

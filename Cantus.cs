@@ -2872,7 +2872,7 @@ function instanceid()
             }
             catch (Exception ex)
             {
-                throw new EvaluatorException(ex.ToString(), _curLine + 1);
+                throw new EvaluatorException(ex.Message, _curLine + 1);
             }
         }
 
@@ -4951,7 +4951,7 @@ function instanceid()
                     }
                     else
                     {
-                        throw new EvaluatorException(newMsg + '\n' +  ex.ToString(), line);
+                        throw new EvaluatorException(newMsg, line);
                     }
                 }
             }

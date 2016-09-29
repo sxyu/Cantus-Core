@@ -1639,11 +1639,14 @@ namespace Cantus.Core
             /// <summary>
             /// Get the natural logarithm of a number
             /// </summary>
-            public object Ln(object value)
-            {
+            public object Ln(object value) {
                 if (value is double)
                 {
                     return Math.Log((double)(value));
+                }
+                if (value is BigDecimal)
+                {
+                    return Math.Log((double)(BigDecimal)(value));
                 }
                 else if (value is System.Numerics.Complex)
                 {
@@ -4068,7 +4071,7 @@ namespace Cantus.Core
                 List<Reference> loopLst = new List<Reference>();
                 if (collection is IList<Reference>)
                 {
-                    IList<Reference> list = (IList<Reference>)collection;
+                    IList<Reference> list = ((IList<Reference>)collection).ToList();
                     for (int i=0; i<list.Count(); i++)
                     {
                         object x = list[i].ResolveObj();
@@ -5249,7 +5252,7 @@ namespace Cantus.Core
             {
                 if (collection is List<Reference>)
                 {
-                    ((List<Reference>)collection).AddRange(val.ToArray());
+                    ((List<Reference>)collection).AddRange(val);
                 }
                 else if (collection is LinkedList<Reference>)
                 {
