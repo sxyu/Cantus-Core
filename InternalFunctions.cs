@@ -3206,11 +3206,39 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the length of a piece of text or a collection
+            /// Get the size, in bits, of an object
             /// </summary>
             public double Size(object obj)
             {
-                return Len(obj);
+                if (obj is bool) return sizeof (bool);
+                if (obj is char) return sizeof (char);
+                if (obj is string) return ((string)obj).Length * sizeof(char);
+                else if (obj is IDictionary<Reference, Reference>)
+                {
+                    int ct = 0;
+                    foreach (KeyValuePair<Reference, Reference> k in
+                        (IDictionary<Reference, Reference>)obj)
+                        ct += (int)Size(k.Key.Resolve()) +
+                        (k.Value != null ? (int)Size(k.Value.Resolve()) : 0);
+                }
+                else if (obj is IEnumerable<Reference>)
+                {
+                    int ct = 0;
+                    foreach (Reference r in (IEnumerable<Reference>)obj)
+                        ct += (int)Size(r.Resolve());
+                    return ct;
+                }
+                else if (obj is LinkedList<Reference>)
+                {
+                    int ct = 0;
+                    foreach (Reference r in (LinkedList<Reference>)obj)
+                        ct += (int)Size(r.Resolve());
+                    return ct;
+                }
+                else if (obj is Reference) return sizeof(int);
+                else if (obj is Lambda) return ((Lambda)obj).ToString(_eval).Length * sizeof(char);
+
+                return System.Runtime.InteropServices.Marshal.SizeOf(obj);
             }
 
             /// <summary>
@@ -3975,27 +4003,24 @@ namespace Cantus.Core
                 // reference: display ampersand
                 if (value is Reference)
                 {
-                    return "&" + ((Reference)value).ToString();
-
-                    // lambda: display ampersand if function pointer
+                    return "&" + ((Reference)value).ToString(_eval);
+                    
                 }
-                else if (value is Lambda)
+                else if (value is Lambda) // lambda: display ampersand if function pointer
                 {
-                    string result = ((Lambda)value).ToString();
+                    string result = ((Lambda)value).ToString(_eval);
                     if (result.StartsWith("`"))
                         return result;
                     return "&" + result;
 
-                    // text: put quotes
                 }
-                else if (value is string)
+                else if (value is string) // text: put quotes
                 {
                     return '\'' + Convert.ToString(value) + '\'';
                     // put quotes around textings
 
-                    // numbers: process (detect fractions, etc.)
                 }
-                else if (value is double || value is BigDecimal)
+                else if (value is double || value is BigDecimal) // numbers: process (detect fractions, etc.)
                 {
                     string ret = null;
                     if (_eval.OutputMode == CantusEvaluator.OutputFormat.Math)
@@ -4015,8 +4040,8 @@ namespace Cantus.Core
                 }
                 else
                 {
-                    return DetectType(value).ToString(_eval);
                     // other stuff like sets, lists: use type-specific serialization
+                    return DetectType(value).ToString(_eval);
                 }
             }
 
@@ -6597,37 +6622,44 @@ namespace Cantus.Core
             /// </summary>
             public List<Reference> NullSpace(List<Reference> collection)
             {
-                Matrix mat = new Matrix(collection);
-                mat = mat.Rref();
+                try {
+                    Matrix mat = new Matrix(collection);
+                    mat = mat.Rref();
 
-                Matrix ker = new Matrix(mat.Width, mat.Width - mat.Height + 1);
+                    Matrix ker = new Matrix(mat.Width, mat.Width - mat.Height + 1);
 
-                for (int i = 0; i <= ker.Width - 1; i++)
-                {
-                    for (int j = 0; j <= ker.Width - 1; j++)
+                    for (int i = 0; i < ker.Width; i++)
                     {
-                        object val = mat.GetCoord(i, j + ker.Width);
-                        if (val is double)
+                        for (int j = 0; j < ker.Width; j++)
                         {
-                            ker.SetCoord(i, j, -(double)(val));
-                        }
-                        else if (val is BigDecimal)
-                        {
-                            ker.SetCoord(i, j, -(BigDecimal)val);
-                        }
-                        else if (val is System.Numerics.Complex)
-                        {
-                            ker.SetCoord(i, j, -(System.Numerics.Complex)val);
+                            if (i >= mat.Height || j + ker.Width >= mat.Width) continue;
+                            object val = mat.GetCoord(i, j + ker.Width);
+                            if (val is double)
+                            {
+                                ker.SetCoord(i, j, -(double)(val));
+                            }
+                            else if (val is BigDecimal)
+                            {
+                                ker.SetCoord(i, j, -(BigDecimal)val);
+                            }
+                            else if (val is System.Numerics.Complex)
+                            {
+                                ker.SetCoord(i, j, -(System.Numerics.Complex)val);
+                            }
                         }
                     }
-                }
 
-                for (int i = 0; i <= ker.Width - 1; i++)
+                    for (int i = 0; i < ker.Width - 1; i++)
+                    {
+                        ker.SetCoord(ker.Width + i, i, 1);
+                    }
+
+                    return (List<Reference>)ker.GetValue();
+                }
+                catch (Exception ex)
                 {
-                    ker.SetCoord(ker.Width + i, i, 1);
+                    return new List<Reference> { new Reference(ex.ToString()) };
                 }
-
-                return (List<Reference>)ker.GetValue();
             }
 
             /// <summary>
@@ -8009,37 +8041,52 @@ namespace Cantus.Core
             /// <summary>
             /// Start a process from the specified filesystem path, wait for completion, and get the return value
             /// </summary>
-            public string StartWait(string path, string args = "")
+            public string StartWait(string path, string args = "", bool background = false)
             {
-                if (!File.Exists(path) && !Directory.Exists(path))
+                if (!File.Exists(path))
                     throw new EvaluatorException("Error: file does not exist");
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
                 si.UseShellExecute = true;
                 si.RedirectStandardOutput = true;
+                si.CreateNoWindow = background;
                 p.StartInfo = si;
                 p.Start();
 
                 string ret = null;
-                using (System.IO.StreamReader oStreamReader = p.StandardOutput)
-                {
+                using (StreamReader oStreamReader = p.StandardOutput)
                     ret = oStreamReader.ReadToEnd();
-                }
                 return ret;
             }
 
             /// <summary>
             /// Start a process from the specified filesystem path without waiting for completion
             /// </summary>
-            public void Start(string path, string args = "")
+            public void Start(string path, string args = "", bool background=false)
+            {
+                if (!File.Exists(path))
+                    throw new EvaluatorException("Error: file does not exist");
+                Process p = new Process();
+                ProcessStartInfo si = new ProcessStartInfo(path, args);
+                si.UseShellExecute = false;
+                si.RedirectStandardOutput = true;
+                si.CreateNoWindow = background;
+                p.StartInfo = si;
+                p.Start();
+            }
+
+            /// <summary>
+            /// Start a process from the specified filesystem path using the shell without waiting for completion
+            /// </summary>
+            public void StartShell(string path, string args = "")
             {
                 if (!File.Exists(path) && !Directory.Exists(path))
                     throw new EvaluatorException("Error: file does not exist");
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
                 si.UseShellExecute = true;
-                si.RedirectStandardOutput = true;
                 p.StartInfo = si;
+                
                 p.Start();
             }
 
@@ -8226,9 +8273,28 @@ namespace Cantus.Core
                 return "Unknown";
             }
 
+            /// <summary>
+            /// Return the version name of the OS
+            /// </summary>
             public string OsVer()
             {
                 return Environment.OSVersion.ToString();
+            }
+
+            /// <summary>
+            /// Return true if the OS is 64 bit
+            /// </summary>
+            public bool Os64Bit()
+            {
+                return Environment.Is64BitOperatingSystem;
+            }
+
+            /// <summary>
+            /// Return true if Cantus is running in 64 bit mode
+            /// </summary>
+            public bool Cantus64Bit()
+            {
+                return Environment.Is64BitProcess;
             }
 
         }

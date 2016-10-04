@@ -4426,7 +4426,7 @@ function instanceid()
                     new Reference(GetLastAns()), ROOT_NAMESPACE, new[] { "internal" });
             if (name == "prevans")
                 return new Variable(this, "prevans",
-                    new Reference(new Matrix(PrevAns)), ROOT_NAMESPACE, new[] { "internal" });
+                    new Reference(new ObjectTypes.Tuple(PrevAns)), ROOT_NAMESPACE, new[] { "internal" });
             string scope = _scope;
             name = RemoveRedundantScope(name, scope);
 

@@ -204,8 +204,8 @@ namespace Cantus.Core
         /// <summary>
         /// Maximum length in characters of a single statement
         /// </summary>
+        public int MaxStatementLength { get; set; } = 0;
 
-        public const int MAX_STATEMENT_LENGTH = 9;
         /// <summary>
         /// Maximum times to loop
         /// </summary>
@@ -329,10 +329,13 @@ namespace Cantus.Core
             {
                 _keywords.Add(kwd, statement);
                 _mainKeywords.Add(kwd, statement);
+                MaxStatementLength = Math.Max(MaxStatementLength, kwd.Length);
+                MaxStatementLength = Math.Max(MaxStatementLength, kwd.Length);
             }
             foreach (string kwd in statement.AuxKeywords)
             {
                 _keywords.Add(kwd, statement);
+                MaxStatementLength = Math.Max(MaxStatementLength, kwd.Length);
             }
         }
         #endregion
@@ -379,7 +382,7 @@ namespace Cantus.Core
         public string KeywordFromExpr(ref string expr, bool mainOnly = false)
         {
             expr = expr.Trim();
-            for (int i = Math.Min(expr.Length, MAX_STATEMENT_LENGTH); i >= 1; i += -1)
+            for (int i = Math.Min(expr.Length, MaxStatementLength); i >= 1; i += -1)
             {
                 // only try to resolve if this takes up the whole expression or ends with a space
                 if (i != expr.Length && expr[i] != ' ')

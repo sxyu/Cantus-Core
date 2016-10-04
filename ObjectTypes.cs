@@ -1645,6 +1645,7 @@ namespace Cantus.Core
                 /// <param name="aug">Right side of augmented matrix, if applicable</param>
                 public void ScaleRow(int row, object scale, Matrix aug = null)
                 {
+                    if (scale is double) scale = (BigDecimal)(double)scale;
                     for (int i = 0; i <= Width - 1; i++)
                     {
                         object orig = GetCoord(row, i);
@@ -1658,7 +1659,7 @@ namespace Cantus.Core
                         }
                         else if (orig is double)
                         {
-                            SetCoord(row, i, new Reference(((double)(orig) * (BigDecimal)scale)));
+                            SetCoord(row, i, new Reference((double)orig * (BigDecimal)scale));
                         }
                         else if (orig is BigDecimal)
                         {
@@ -1793,7 +1794,7 @@ namespace Cantus.Core
                     if (!skip){
                         while (curRow < mat.Height)
                         {
-                            mat.ScaleRow(curRow, 0, augmented);
+                            mat.ScaleRow(curRow, 0.0, augmented);
                             curRow += 1;
                         }
                     }
@@ -1925,9 +1926,14 @@ namespace Cantus.Core
                             else str.Append(' ');
                         }
                         string tostr = "";
-                        if (k.GetRefObject() is Matrix)
+                        EvalObjectBase ro = k.GetRefObject();
+                        if (ro is Matrix)
                         {
-                            tostr = StringRepr(itemWid, eval, (Matrix)k.GetRefObject());
+                            tostr = StringRepr(itemWid, eval, (Matrix)ro);
+                        }
+                        else if (ro is Number)
+                        {
+                            tostr = ef.O(((Number)ro).BigDecValue());
                         }
                         else
                         {
@@ -2152,46 +2158,48 @@ namespace Cantus.Core
                 {
                     try
                     {
-                        if (StrIsType(str))
-                        {
-                            str = str.Trim().Remove(str.Length - 1).Substring(1).Trim();
+                        StringBuilder sb = new StringBuilder(str.Trim());
+                        //if (StrIsType(str))
+                        //    sb = sb.Remove(str.Length - 1, 1).Remove(0, 1);
 
-                            this._value = new List<Reference>();
-                            if (!string.IsNullOrWhiteSpace(str))
+                        this._value = new List<Reference>();
+                        if (sb.Length != 0)
+                        {
+                            // add zeros to fill blanks for convenience
+                            sb.Insert(0, ",");
+                            sb.Append(",");
+                            while (sb.ToString().Contains(", "))
+                            {
+                                // prepare so that we can detect ,,'s later
+                                sb = sb.Replace(", ", ",");
+                            }
+                            while (sb.ToString().Contains(",,"))
                             {
                                 // add zeros to fill blanks for convenience
-                                str = "," + str + ",";
-                                while (str.Contains(", "))
-                                {
-                                    str = str.Replace(", ", ",");
-                                    // prepare so that we can detect ,,'s later
-                                }
-                                while (str.Contains(",,"))
-                                {
-                                    str = str.Replace(",,", ",0,");
-                                    // add zeros to fill blanks for convenience
-                                }
+                                sb = sb.Replace(",,", ",0,");
+                            }
 
-                                // ignore hanging commas
-                                if (str.EndsWith(","))
-                                    str = str.Remove(str.Length - 1);
-                                if (str.StartsWith(","))
-                                    str = str.Substring(1);
+                            // ignore hanging commas
+                            if (sb.Length > 0 && sb[sb.Length-1] == ',')
+                                sb = sb.Remove(sb.Length - 1,1);
+                            if (sb.Length > 0 && sb[0] == ',')
+                                sb = sb.Remove(0, 1);
 
-                                object res = eval.EvalExprRaw("0," + str, true, true);
+                            object res = eval.EvalExprRaw("0," + sb.ToString(), true, true);
 
-                                if (Tuple.IsType(res))
+                            if (Tuple.IsType(res))
+                            {
+                                Reference[] lst = (Reference[])res;
+                                for (int i = 1; i < lst.Length; ++i)
                                 {
-                                    List<Reference> lst = ((Reference[])res).ToList();
-                                    this._value.AddRange(lst.GetRange(1, lst.Count - 1));
-                                }
-                                else
-                                {
-                                    this._value.Add(new Reference(res));
+                                    this._value.Add(lst[i]);
                                 }
                             }
+                            else
+                            {
+                                this._value.Add(new Reference(res));
+                            }
                         }
-
                         this.Normalize();
                         //ex As Exception
                     }
@@ -2277,10 +2285,13 @@ namespace Cantus.Core
                         if (!(str.Length == 1))
                             str.Append(", ");
                         InternalFunctions ef = eval.Internals;
-                        str.Append(ef.O(k.Key.GetValue()));
+                        EvalObjectBase ko = k.Key.GetRefObject();
+                        str.Append(ko is Number ? ef.O(((Number)ko).BigDecValue()) : ef.O(k.Key.GetValue()));
                         if ((k.Value != null))
                         {
-                            str.Append(":" + ef.O(k.Value.GetValue()));
+                            EvalObjectBase ro = k.Value.GetRefObject();
+                            str.Append(":" + (ro is Number ? ef.O(((Number)ro).BigDecValue()) :
+                                ef.O(ro.GetValue())));
                         }
                     }
                     str.Append("}");
@@ -2312,29 +2323,26 @@ namespace Cantus.Core
                 {
                     try
                     {
-                        if (StrIsType(str))
+                        if (StrIsType(str)) str = str.Trim().Remove(str.Length - 1).Substring(1).Trim(',');
+                        this._value = new SortedDictionary<Reference, Reference>(new ObjectComparer());
+                        if (string.IsNullOrWhiteSpace(str))
+                            return;
+                        List<Reference> lst = new List<Reference>((Reference[])new Tuple("(" + str + ")", eval).GetValue());
+                        foreach (EvalObjectBase obj in lst)
                         {
-                            str = str.Trim().Remove(str.Length - 1).Substring(1).Trim(',');
-                            this._value = new SortedDictionary<Reference, Reference>(new ObjectComparer());
-                            if (string.IsNullOrWhiteSpace(str))
-                                return;
-                            List<Reference> lst = new List<Reference>((Reference[])new Tuple("(" + str + ")", eval).GetValue());
-                            foreach (EvalObjectBase obj in lst)
+                            EvalObjectBase o = obj;
+                            if (o is Reference)
+                                o = ((Reference)o).GetRefObject();
+                            if (Tuple.IsType(o))
                             {
-                                EvalObjectBase o = obj;
-                                if (o is Reference)
-                                    o = ((Reference)o).GetRefObject();
-                                if (Tuple.IsType(o))
+                                Reference[] innerlst = (Reference[])o.GetValue();
+                                if (innerlst.Count() == 2)
                                 {
-                                    Reference[] innerlst = (Reference[])o.GetValue();
-                                    if (innerlst.Count() == 2)
-                                    {
-                                        this._value[innerlst[0]] = innerlst[1];
-                                        continue;
-                                    }
+                                    this._value[innerlst[0]] = innerlst[1];
+                                    continue;
                                 }
-                                this._value[new Reference(o)] = null;
                             }
+                            this._value[new Reference(o)] = null;
                         }
                         //ex As Exception
                     }
@@ -2420,10 +2428,14 @@ namespace Cantus.Core
                         if (!(str[str.Length - 1] == '{'))
                             str.Append(", ");
                         InternalFunctions ef = eval.Internals;
-                        str.Append(ef.O(k.Key.GetValue()));
+                        EvalObjectBase ko = k.Key.GetRefObject();
+                        str.Append(ko is Number ? ef.O(((Number)ko).BigDecValue()) :
+                            ef.O(ko.GetValue()));
                         if ((k.Value != null))
                         {
-                            str.Append(":" + ef.O(k.Value.GetValue()));
+                            EvalObjectBase ro = k.Value.GetRefObject();
+                            str.Append(":" + (ro is Number ? ef.O(((Number)ro).BigDecValue()) :
+                                ef.O(ro.GetValue())));
                         }
                     }
                     str.Append("})");
@@ -2455,32 +2467,29 @@ namespace Cantus.Core
                 {
                     try
                     {
-                        if (StrIsType(str))
+                        if (StrIsType(str)) str = str.Trim().Remove(str.Length - 2).Substring("HashSet({".Length).Trim(',');
+                        this._value = new Dictionary<Reference, Reference>(new ObjectComparer());
+                        if (string.IsNullOrWhiteSpace(str))
+                            return;
+                        List<Reference> lst = new List<Reference>((Reference[])new Tuple("(" + str + ")", eval).GetValue());
+                        foreach (EvalObjectBase obj in lst)
                         {
-                            str = str.Trim().Remove(str.Length - 2).Substring("HashSet({".Length).Trim(',');
-                            this._value = new Dictionary<Reference, Reference>(new ObjectComparer());
-                            if (string.IsNullOrWhiteSpace(str))
-                                return;
-                            List<Reference> lst = new List<Reference>((Reference[])new Tuple("(" + str + ")", eval).GetValue());
-                            foreach (EvalObjectBase obj in lst)
+                            EvalObjectBase o = obj;
+                            if (o is Reference)
+                                o = ((Reference)o).GetRefObject();
+                            if (Tuple.IsType(o))
                             {
-                                EvalObjectBase o = obj;
-                                if (o is Reference)
-                                    o = ((Reference)o).GetRefObject();
-                                if (Tuple.IsType(o))
+                                Reference[] innerlst = (Reference[])o.GetValue();
+                                if (innerlst.Count() == 2)
                                 {
-                                    Reference[] innerlst = (Reference[])o.GetValue();
-                                    if (innerlst.Count() == 2)
-                                    {
-                                        this._value[innerlst[0]] = innerlst[1];
-                                        continue;
-                                    }
+                                    this._value[innerlst[0]] = innerlst[1];
+                                    continue;
                                 }
-                                this._value[new Reference(o)] = null;
                             }
+                            this._value[new Reference(o)] = null;
                         }
-                        //ex As Exception
                     }
+                    //ex As Exception
                     catch
                     {
                     }
@@ -2651,7 +2660,10 @@ namespace Cantus.Core
                         else
                             init = false;
                         InternalFunctions ef = eval.Internals;
-                        str.Append(ef.O(r.GetValue()));
+                        EvalObjectBase ro = r.GetRefObject();
+                        str.Append(ro is Number ? ef.O(((Number)ro).BigDecValue()) :
+                            ef.O(ro.GetValue()));
+
                     }
                     str.Append("])");
                     return str.ToString();
@@ -2711,10 +2723,10 @@ namespace Cantus.Core
                     defer
                 }
                 public MessageType Type { get; set; }
-                public object Content { get;  set; }
+                public object Content { get; set; }
                 public override bool Equals(EvalObjectBase other)
                 {
-                    return other is SystemMessage && ((SystemMessage)other).Type == Type  && Content == ((SystemMessage)other).Content;
+                    return other is SystemMessage && ((SystemMessage)other).Type == Type && Content == ((SystemMessage)other).Content;
                 }
 
                 public override int GetHashCode()
@@ -3113,7 +3125,7 @@ namespace Cantus.Core
                 /// <summary>
                 /// The name of the function this is pointing to
                 /// </summary>
-                internal string FunctionName  { get; set; } = "";
+                internal string FunctionName { get; set; } = "";
 
                 /// <summary>
                 /// Returns self
@@ -3225,10 +3237,10 @@ namespace Cantus.Core
                         if (eval.UserFunctions.ContainsKey(fnName))
                         {
                             UserFunction uf = eval.GetUserFunction(fnName);
-                            for ( int i = 0; i< uf.Defaults.Count; ++i)
+                            for (int i = 0; i < uf.Defaults.Count; ++i)
                             {
                                 if (uf.Defaults[i] == null) continue;
-                                tmpEval.SetVariable(_args.ElementAt(i),  uf.Defaults[i]);
+                                tmpEval.SetVariable(_args.ElementAt(i), uf.Defaults[i]);
                             }
                         }
                     }
@@ -3246,10 +3258,10 @@ namespace Cantus.Core
                         }
                     }
 
-                    for (int i=args.Count(); i< _args.Count(); ++i)
+                    for (int i = args.Count(); i < _args.Count(); ++i)
                     {
-                        if (!tmpEval.HasVariable(_args.ElementAt(i)))  
-                            throw new EvaluatorException("(Lambda): " + _args.Count()+ " parameters expected");
+                        if (!tmpEval.HasVariable(_args.ElementAt(i)))
+                            throw new EvaluatorException("(Lambda): " + _args.Count() + " parameters expected");
                     }
 
                     object res = tmpEval.EvalRaw(_value, noSaveAns: true);
@@ -3266,7 +3278,7 @@ namespace Cantus.Core
                     }
                 }
 
-                public int ExecuteAsync(CantusEvaluator eval, IEnumerable<object> args, 
+                public int ExecuteAsync(CantusEvaluator eval, IEnumerable<object> args,
                    IDictionary<string, object> kwargs = null, Lambda callBack = null, string executingScope = "")
                 {
                     CantusEvaluator tmpEval = eval.SubEvaluator();
@@ -3279,10 +3291,10 @@ namespace Cantus.Core
                         if (eval.UserFunctions.ContainsKey(fnName))
                         {
                             UserFunction uf = eval.GetUserFunction(fnName);
-                            for ( int i = 0; i< uf.Defaults.Count; ++i)
+                            for (int i = 0; i < uf.Defaults.Count; ++i)
                             {
                                 if (uf.Defaults[i] == null) continue;
-                                tmpEval.SetVariable(_args.ElementAt(i),  uf.Defaults[i]);
+                                tmpEval.SetVariable(_args.ElementAt(i), uf.Defaults[i]);
                             }
                         }
                     }
@@ -3636,7 +3648,7 @@ namespace Cantus.Core
                     {
                         throw ex;
                     }
-                    catch (Exception )//ex)
+                    catch (Exception)//ex)
                     {
                         throw new Exception(fieldName + " is not a field of " + UserClass.Name);
                     }
@@ -3920,6 +3932,7 @@ namespace Cantus.Core.CommonTypes
             {
                 BigDecimal xd = (BigDecimal)x;
                 BigDecimal yd = (BigDecimal)y;
+                if (xd.IsUndefined ^ yd.IsUndefined) return -1;
                 return xd > yd ? 1 : xd == yd ? 0 : -1;
             }
             else if (x is double && y is double)

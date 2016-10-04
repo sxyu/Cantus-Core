@@ -695,16 +695,16 @@ namespace Cantus.Core
                             (int)((BigDecimal)result)), true);
                     }
 
-                    // lists
                 }
+                    // lists
                 else if (ObjectTypes.LinkedList.IsType(left))
                 {
                     if (string.IsNullOrWhiteSpace(inner))
                         throw new EvaluatorException("No Index Specified");
                     object result = _eval.EvalExprRaw(inner, true);
                     left = ObjectTypes.DetectType(_eval.Internals.Index((LinkedList<ObjectTypes.Reference>)left.GetValue(), (int)((BigDecimal)result)), true);
-                    // tuples
                 }
+                    // tuples
                 else if (ObjectTypes.Tuple.IsType(left))
                 {
                     if (string.IsNullOrWhiteSpace(inner))
@@ -732,12 +732,24 @@ namespace Cantus.Core
                     }
 
                 }
+                // sets
                 else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left))
                 {
                     object result = _eval.EvalExprRaw(inner, true);
-                    left = ObjectTypes.DetectType(_eval.Internals.Index((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)left.GetValue(), result), true);
-                    // strings
+                    IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> ld =
+                        (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)left.GetValue();
+
+                    if (!ld.ContainsKey(new ObjectTypes.Reference(result)) && !ConditionMode)
+                    {
+                        ld[new ObjectTypes.Reference(result)] = 
+                            new ObjectTypes.Reference(BigDecimal.Undefined);
+                    }
+
+                    left = ObjectTypes.DetectType(
+                                _eval.Internals.Index(ld,
+                                    result), true);
                 }
+                // strings
                 else if (ObjectTypes.Text.IsType(left))
                 {
                     if (string.IsNullOrWhiteSpace(inner))
@@ -769,7 +781,7 @@ namespace Cantus.Core
                 {
                     try
                     {
-                        return new ObjectTypes.Matrix("[" + inner + "]", _eval);
+                        return new ObjectTypes.Matrix(inner, _eval);
                     }
                     catch
                     {
@@ -805,7 +817,7 @@ namespace Cantus.Core
         {
             try
             {
-                return new ObjectTypes.Set("{" + inner + "}", _eval);
+                return new ObjectTypes.Set(inner, _eval);
             }
             catch
             {
@@ -854,6 +866,7 @@ namespace Cantus.Core
 
         private ObjectTypes.EvalObjectBase UnaryOperatorNot(ObjectTypes.EvalObjectBase value)
         {
+            if (value is ObjectTypes.Reference) value = ((ObjectTypes.Reference)value).ResolveObj();
             object v = value.GetValue();
             if (ObjectTypes.Boolean.IsType(value))
             {
@@ -870,6 +883,7 @@ namespace Cantus.Core
             {
                 return new ObjectTypes.Boolean(Math.Round((double)(Convert.ToInt64(v)), 15) == 0);
             }
+            else if (value == null) return new ObjectTypes.Boolean(true);
             else
             {
                 throw new SyntaxException("Invalid type for the logical not operator (only booleans and numbers allowed)");
