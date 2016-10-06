@@ -2835,7 +2835,10 @@ namespace Cantus.Core
                         return double.NaN;
                     if (res is EvalObjectBase)
                     {
-                        res = ((EvalObjectBase)res).GetValue();
+                        if (res is Number)
+                            res = ((Number)res).BigDecValue();
+                        else
+                            res = ((EvalObjectBase)res).GetValue();
                     }
                     return res;
                 }
@@ -3401,7 +3404,7 @@ namespace Cantus.Core
                     }
                     else
                     {
-                        throw new SyntaxException("Invalid lambda expression (correct format: `var, var2, ...:expression` OR" + " `var: expression` OR `expression`");
+                        throw new SyntaxException("Invalid lambda expression \"" + lambda + "\" (correct format: `var, var2, ...:expression` OR" + " `var: expression` OR `expression`");
                     }
                 }
 
@@ -3900,7 +3903,8 @@ namespace Cantus.Core.CommonTypes
         /// <returns></returns>
         public static int CompareObjs(object x, object y)
         {
-            while (x.GetType().ToString().StartsWith("Cantus.Core.CantusEvaluator+ObjectTypes") && !x.GetType().ToString().EndsWith("[]"))
+            if (x.GetType().ToString().StartsWith("Cantus.Core.CantusEvaluator+ObjectTypes") &&
+                !x.GetType().ToString().EndsWith("[]"))
             {
                 if (x.GetType() == typeof(Number))
                 {
@@ -3911,7 +3915,7 @@ namespace Cantus.Core.CommonTypes
                     x = ((EvalObjectBase)x).GetValue();
                 }
             }
-            while (y.GetType().ToString().StartsWith("Cantus.Core.CantusEvaluator+ObjectTypes") && !y.GetType().ToString().EndsWith("[]"))
+            if (y.GetType().ToString().StartsWith("Cantus.Core.CantusEvaluator+ObjectTypes") && !y.GetType().ToString().EndsWith("[]"))
             {
                 if (y.GetType() == typeof(Number))
                 {

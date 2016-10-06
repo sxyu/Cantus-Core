@@ -82,8 +82,6 @@
     $(PostBuildEventDependsOn);
     PostBuildMacros;
   </PostBuildEventDependsOn>
-    <PostBuildEvent>echo @(VersionNumber) Alpha &gt; $(ProjectDir)meta\ver
-sed -i.bak s/;\{#VER\}/"@(VersionNumber)"/g "$(SolutionDir)\Setup\cantus.iss"
-"C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe" sign /f "E:\Programming\DotNet\ayu_spc.pfx" "$(TargetPath)"</PostBuildEvent>
+    <PostBuildEvent>echo @(VersionNumber) Alpha &gt; $(ProjectDir)meta\ver</PostBuildEvent>
   </PropertyGroup>
 </Project>

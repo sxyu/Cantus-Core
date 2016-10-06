@@ -5002,7 +5002,7 @@ function instanceid()
                         string[] exceptions = {
                             "Log", "Print", "PrintLine", "ReadLine", "Read",
                             "ReadChar", "Max", "Min", "Abs" ,"Text", "IsUndefined",
-                            "Index", "At", "IndexCircular", "SetAt", "SetAtCircular"};
+                            "Index", "At", "IndexCircular", "SetAt", "SetAtCircular", };
                         if (!(paraminfo.ParameterType == typeof(BigDecimal)) &&
                             args[maxParamCt].GetType() == typeof(BigDecimal) && !exceptions.Contains(info.Name))
                         {

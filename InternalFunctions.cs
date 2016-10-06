@@ -4074,15 +4074,15 @@ namespace Cantus.Core
                     _eval.SetDefaultVariable(new Reference(x));
                     if (x is Reference[])
                     {
-                        operation.Execute(_eval, (Reference[])x);
+                        r.SetValue(operation.Execute(_eval, (Reference[])x));
                     }
                     else if (x is Reference)
                     {
-                        operation.Execute(_eval, new[] { (Reference)x });
+                        r.SetValue(operation.Execute(_eval, new[] { (Reference)x }));
                     }
                     else
                     {
-                        operation.Execute(_eval, new[] { new Reference(x) });
+                        r.SetValue(operation.Execute(_eval, new[] { new Reference(x) }));
                     }
                 }
                 return collection;
@@ -5501,7 +5501,13 @@ namespace Cantus.Core
                     IList<Reference> lr = (IList<Reference>)collection;
                     if (lr.Count == 0)
                         return double.NaN;
-                    object last = lr[lr.Count - 1];
+                    object last;
+                    if (lr[lr.Count - 1].GetRefObject() is Reference)
+                        last = lr[lr.Count - 1];
+                    else if (lr[lr.Count - 1].ResolveObj() is Number)
+                        last = ((Number)lr[lr.Count - 1].ResolveObj()).BigDecValue();
+                    else
+                        last = lr[lr.Count - 1].Resolve();
                     lr.RemoveAt(lr.Count - 1);
                     return last;
                 }
@@ -5546,7 +5552,13 @@ namespace Cantus.Core
                     IList<Reference> lr = (IList<Reference>)collection;
                     if (lr.Count == 0)
                         return double.NaN;
-                    object first = lr[0];
+                    object first;
+                    if (lr[0].GetRefObject() is Reference)
+                        first = lr[0];
+                    else if (lr[0].ResolveObj() is Number)
+                        first = ((Number)lr[0].ResolveObj()).BigDecValue();
+                    else
+                        first = lr[0].ResolveObj();
                     lr.RemoveAt(0);
                     return first;
                 }
@@ -5562,7 +5574,7 @@ namespace Cantus.Core
                 else if (collection is string)
                 {
                     if (Convert.ToString(collection).Length == 0)
-                        return double.NaN;
+                        return BigDecimal.Undefined;
                     string first = Convert.ToString(collection).Remove(1);
                     collection = Convert.ToString(collection).Substring(1);
                     return first;

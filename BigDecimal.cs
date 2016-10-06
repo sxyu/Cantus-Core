@@ -557,7 +557,7 @@ namespace Cantus.Core.CommonTypes
             double @base = (double)(basis);
 
             int ct = 0;
-            int MAX_CT = 300;
+            int MAX_CT = 3000;
             while (Math.Abs(expo) > 100)
             {
                 int diff = exponent > 0 ? 100 : -100;

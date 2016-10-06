@@ -799,7 +799,7 @@ namespace Cantus.Core
                 else if (inner.Contains(","))
                 {
                     try {
-                        return new ObjectTypes.Matrix("[" + inner + "]", _eval);
+                        return new ObjectTypes.Matrix(inner, _eval);
                     }
                     catch
                     {
@@ -1645,23 +1645,40 @@ private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBa
         {
             ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
             ObjectTypes.Reference rr = (ObjectTypes.Reference)right;
-            // if we are assigning a reference
-
-            // try to avoid circular references
-            if (!object.ReferenceEquals(lr, rr))
-            {
-                if (rr.Node != null)
+                if (!(lr.ResolveObj() is ObjectTypes.Lambda))
                 {
-                    // set node
-                    lr.SetNode(rr.Node);
-                    lr.SetValue(new ObjectTypes.Reference(rr.Node));
+                    // if we are assigning a reference
+
+                    // try to avoid circular references
+                    if (!object.ReferenceEquals(lr, rr))
+                    {
+                        if (rr.Node != null)
+                        {
+                            // set node
+                            lr.SetNode(rr.Node);
+                            lr.SetValue(new ObjectTypes.Reference(rr.Node));
+                        }
+                        else
+                        {
+                            // set object
+                            left.SetValue(new ObjectTypes.Reference(rr.ResolveObj()));
+                        }
+                    }
                 }
                 else
                 {
-                    // set object
-                    left.SetValue(new ObjectTypes.Reference(rr.ResolveObj()));
+                    left = ((ObjectTypes.Reference)left).ResolveObj();
                 }
-            }
+        }
+        if (left is ObjectTypes.Lambda)
+        {
+            if (right is ObjectTypes.Reference) right = ((ObjectTypes.Reference)right).ResolveObj();
+            ObjectTypes.Lambda lamb = (ObjectTypes.Lambda)left;
+            ObjectTypes.Lambda lambr = (ObjectTypes.Lambda)right;
+
+                _eval.SetVariable(lamb.FunctionName, right is ObjectTypes.Number ?
+                    ((ObjectTypes.Number)right).BigDecValue() : right.GetValue() );
+            return lamb;
         }
         else
         {
@@ -1679,8 +1696,8 @@ private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBa
         //ex As Exception
     }
     catch(Exception)
-    {
-        throw new EvaluatorException("Assignment operation failed");
+{
+    throw new EvaluatorException("Assignment operation failed");
     }
 }
 
@@ -1890,9 +1907,12 @@ private ObjectTypes.EvalObjectBase BinaryOperatorDecrement(ObjectTypes.EvalObjec
 /// <returns></returns>
 private ObjectTypes.EvalObjectBase BinaryOperatorAutoEqual(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
 {
-    if (!(ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) || ObjectTypes.Tuple.IsType(right)) || ConditionMode)
+    if (!(ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) ||
+                ObjectTypes.Tuple.IsType(right)) || ConditionMode)
     {
         if (ObjectTypes.Reference.IsType(left)) left = ((ObjectTypes.Reference)left).ResolveObj();
+        if (left is ObjectTypes.Lambda)
+            return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
         return BinaryOperatorEqualTo(left, right);
     }
     else
