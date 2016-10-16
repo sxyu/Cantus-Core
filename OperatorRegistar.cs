@@ -80,7 +80,7 @@ namespace Cantus.Core
         /// </summary>
         public abstract class Operator
         {
-            public abstract List<string> Signs { get; } 
+            public abstract List<string> Signs { get; }
             public abstract Precedence Precedence { get; }
             /// <summary>
             /// If true, values are passed by the Reference class which allows the value within to be manipulated
@@ -98,7 +98,7 @@ namespace Cantus.Core
         /// </summary>
         public class BinaryOperator : Operator
         {
-            public override List<string> Signs { get; } 
+            public override List<string> Signs { get; }
             public override Precedence Precedence { get; }
             public Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> Execute { get; }
             /// <summary>
@@ -261,8 +261,8 @@ namespace Cantus.Core
             public int FindCloseBracket(string expr, OperatorRegistar opReg)
             {
                 string startSign = this.OpenBracket;
-                HashSet<string> endSign = new HashSet<string>(new[]{ this.Signs.Count < 2 ? startSign : CloseBracket });
-                for (int i = 2; i <= this.Signs.Count- 1; i++)
+                HashSet<string> endSign = new HashSet<string>(new[] { this.Signs.Count < 2 ? startSign : CloseBracket });
+                for (int i = 2; i <= this.Signs.Count - 1; i++)
                 {
                     endSign.Add(this.Signs[i]);
                 }
@@ -339,17 +339,11 @@ namespace Cantus.Core
         #endregion
 
         #region "Constants & Variable Declarations"
-        private int _maxOperatorLength = 0;
+        private Dictionary<char, int> _maxOperatorLength =  new Dictionary<char, int>();
         /// <summary>
         /// Maximum length in characters of a single operator
         /// </summary>
-        public int MaxOperatorLength { get { return _maxOperatorLength; } }
-
-        private int _maxSpaceLetterOperatorLength = 0;
-        /// <summary>
-        /// Maximum length in characters of an operator starting with a space or letter
-        /// </summary>
-        public int MaxSpaceLetterOperatorLength { get { return _maxSpaceLetterOperatorLength; } }
+        public Dictionary<char, int> MaxOperatorLength { get { return _maxOperatorLength; } }
 
         private CantusEvaluator _eval;
         /// <summary>
@@ -415,7 +409,8 @@ namespace Cantus.Core
         /// <returns></returns>
         public Operator OperatorWithSign(string sign, Precedence? precedence = null)
         {
-            try {
+            try
+            {
                 foreach (Operator op in _operatorSigns[sign])
                 {
                     if (precedence == null || op.Precedence == precedence)
@@ -443,105 +438,108 @@ namespace Cantus.Core
             // FORMAT: 
             // Register(New [Type]Operator(new[]{[List of signs to register]}, Precedence.[Precedence], AddressOf [Definition]))
 
-            Register(new BinaryOperator(new[]{ "+" }, Precedence.add_sub, BinaryOperatorAdd));
-            Register(new BinaryOperator(new[]{ "-" }, Precedence.unaryminus, BinaryOperatorUnaryMinus));
-            Register(new BinaryOperator(new[]{ "-" }, Precedence.add_sub, BinaryOperatorSubtract));
+            Register(new BinaryOperator(new[] { "+" }, Precedence.add_sub, BinaryOperatorAdd));
+            Register(new BinaryOperator(new[] { "-" }, Precedence.unaryminus, BinaryOperatorUnaryMinus));
+            Register(new BinaryOperator(new[] { "-" }, Precedence.add_sub, BinaryOperatorSubtract));
 
-            Register(new BinaryOperator(new[]{ "*" }, Precedence.mul_div, BinaryOperatorMultiply));
-            Register(new BinaryOperator(new[]{ "/" }, Precedence.mul_div, BinaryOperatorDivide));
-            Register(new BinaryOperator(new[]{ "**" }, Precedence.mul_div, BinaryOperatorDuplicateCross));
-            Register(new BinaryOperator(new[]{ "//" }, Precedence.mul_div, BinaryOperatorDivideFloor));
-            Register(new BinaryOperator(new[]{ " mod " }, Precedence.mul_div, BinaryOperatorModulo));
+            Register(new BinaryOperator(new[] { "*" }, Precedence.mul_div, BinaryOperatorMultiply));
+            Register(new BinaryOperator(new[] { "/" }, Precedence.mul_div, BinaryOperatorDivide));
+            Register(new BinaryOperator(new[] { "**" }, Precedence.mul_div, BinaryOperatorDuplicateCross));
+            Register(new BinaryOperator(new[] { "//" }, Precedence.mul_div, BinaryOperatorDivideFloor));
+            Register(new BinaryOperator(new[] { " mod " }, Precedence.mul_div, BinaryOperatorModulo));
 
-            Register(new BinaryOperator(new[]{ "^" }, Precedence.exponent, BinaryOperatorExponent));
-            Register(new BinaryOperator(new[]{ "&" }, Precedence.bitshift_concat_frac, BinaryOperatorConcat));
-            Register(new BinaryOperator(new[]{ "\\" }, Precedence.bitshift_concat_frac, BinaryOperatorDivide));
-            Register(new BinaryOperator(new[]{ "<<" }, Precedence.bitshift_concat_frac, BinaryOperatorShl));
-            Register(new BinaryOperator(new[]{ ">>" }, Precedence.bitshift_concat_frac, BinaryOperatorShr));
+            Register(new BinaryOperator(new[] { "^" }, Precedence.exponent, BinaryOperatorExponent));
+            Register(new BinaryOperator(new[] { "&" }, Precedence.bitshift_concat_frac, BinaryOperatorConcat));
+            Register(new BinaryOperator(new[] { "\\" }, Precedence.bitshift_concat_frac, BinaryOperatorDivide));
+            Register(new BinaryOperator(new[] { "<<" }, Precedence.bitshift_concat_frac, BinaryOperatorShl));
+            Register(new BinaryOperator(new[] { ">>" }, Precedence.bitshift_concat_frac, BinaryOperatorShr));
 
-            Register(new BinaryOperator(new[]{ " or " }, Precedence.or, BinaryOperatorOr));
-            Register(new BinaryOperator(new[]{ "||" }, Precedence.mul_div, BinaryOperatorBitwiseOr));
-            Register(new BinaryOperator(new[]{ " and " }, Precedence.and, BinaryOperatorAnd));
-            Register(new BinaryOperator(new[]{ "&&" }, Precedence.mul_div, BinaryOperatorBitwiseAnd));
-            Register(new BinaryOperator(new[]{ " xor " }, Precedence.or, BinaryOperatorXor));
-            Register(new BinaryOperator(new[]{ "^^" }, Precedence.mul_div, BinaryOperatorBitwiseXor));
+            Register(new BinaryOperator(new[] { " or " }, Precedence.or, BinaryOperatorOr));
+            Register(new BinaryOperator(new[] { "||" }, Precedence.mul_div, BinaryOperatorBitwiseOr));
+            Register(new BinaryOperator(new[] { " and " }, Precedence.and, BinaryOperatorAnd));
+            Register(new BinaryOperator(new[] { "&&" }, Precedence.mul_div, BinaryOperatorBitwiseAnd));
+            Register(new BinaryOperator(new[] { " xor " }, Precedence.or, BinaryOperatorXor));
+            Register(new BinaryOperator(new[] { "^^" }, Precedence.mul_div, BinaryOperatorBitwiseXor));
 
             // use number group separator for ,
-            RegisterByRef(new BinaryOperator(new[]{ "," }, Precedence.tupling, BinaryOperatorCommaTuple));
+            RegisterByRef(new BinaryOperator(new[] { "," }, Precedence.tupling, BinaryOperatorCommaTuple));
 
-            RegisterByRef(new BinaryOperator(new[]{ ":" }, Precedence.tupling, BinaryOperatorColon));
+            RegisterByRef(new BinaryOperator(new[] { ":" }, Precedence.tupling, BinaryOperatorColon));
 
             Register(new BinaryOperator(new[]{
                 " choose ",
                 " c "
             }, Precedence.mul_div, BinaryOperatorChoose));
-            Register(new BinaryOperator(new[]{ " e " }, Precedence.exp10, BinaryOperatorExp10));
+            Register(new BinaryOperator(new[] { " e " }, Precedence.exp10, BinaryOperatorExp10));
 
-            RegisterByRef(new BinaryOperator(new[]{ "=" }, Precedence.comparison, BinaryOperatorAutoEqual));
-            Register(new BinaryOperator(new[]{ "==" }, Precedence.comparison, BinaryOperatorEqualTo));
+            RegisterByRef(new BinaryOperator(new[] { "=" }, Precedence.comparison, BinaryOperatorAutoEqual));
+            Register(new BinaryOperator(new[] { "==" }, Precedence.comparison, BinaryOperatorEqualTo));
             Register(new BinaryOperator(new[]{
                 "!=",
                 "<>"
             }, Precedence.comparison, BinaryOperatorNotEqualTo));
-            Register(new BinaryOperator(new[]{ ">" }, Precedence.comparison, BinaryOperatorGreaterThan));
-            Register(new BinaryOperator(new[]{ ">=" }, Precedence.comparison, BinaryOperatorGreaterThanOrEqualTo));
-            Register(new BinaryOperator(new[]{ "<" }, Precedence.comparison, BinaryOperatorLessThan));
-            Register(new BinaryOperator(new[]{ "<=" }, Precedence.comparison, BinaryOperatorLessThanOrEqualTo));
+            Register(new BinaryOperator(new[] { ">" }, Precedence.comparison, BinaryOperatorGreaterThan));
+            Register(new BinaryOperator(new[] { ">=" }, Precedence.comparison, BinaryOperatorGreaterThanOrEqualTo));
+            Register(new BinaryOperator(new[] { "<" }, Precedence.comparison, BinaryOperatorLessThan));
+            Register(new BinaryOperator(new[] { "<=" }, Precedence.comparison, BinaryOperatorLessThanOrEqualTo));
 
-            Register(new BinaryOperator(new[]{ "?:" }, Precedence.assignment, BinaryOperatorElvis));
+            Register(new BinaryOperator(new[] { "?:" }, Precedence.assignment, BinaryOperatorElvis));
 
             // assignment (use RegisterByRef, with same format)
 
-            RegisterAssignment(new BinaryOperator(new[]{ "=" }, Precedence.assignment, BinaryOperatorAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ ":=" }, Precedence.assignment, BinaryOperatorAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "+=" }, Precedence.assignment, BinaryOperatorAddAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "-=" }, Precedence.assignment, BinaryOperatorSubtractAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "*=" }, Precedence.assignment, BinaryOperatorMultiplyAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "/=" }, Precedence.assignment, BinaryOperatorDivideAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "**=" }, Precedence.assignment, BinaryOperatorDuplicateAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "//=" }, Precedence.assignment, BinaryOperatorDivideFloorAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "=" }, Precedence.assignment, BinaryOperatorAssign));
+            RegisterAssignment(new BinaryOperator(new[] { ":=" }, Precedence.assignment, BinaryOperatorAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "+=" }, Precedence.assignment, BinaryOperatorAddAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "-=" }, Precedence.assignment, BinaryOperatorSubtractAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "*=" }, Precedence.assignment, BinaryOperatorMultiplyAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "/=" }, Precedence.assignment, BinaryOperatorDivideAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "**=" }, Precedence.assignment, BinaryOperatorDuplicateAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "//=" }, Precedence.assignment, BinaryOperatorDivideFloorAssign));
             RegisterAssignment(new BinaryOperator(new[]{
                 " mod=",
                 " mod ="
             }, Precedence.assignment, BinaryOperatorModuloAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "^=" }, Precedence.assignment, BinaryOperatorExponentAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "^=" }, Precedence.assignment, BinaryOperatorExponentAssign));
 
-            RegisterAssignment(new BinaryOperator(new[]{ "&=" }, Precedence.assignment, BinaryOperatorConcatAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "&=" }, Precedence.assignment, BinaryOperatorConcatAssign));
 
-            RegisterAssignment(new BinaryOperator(new[]{ "||=" }, Precedence.assignment, BinaryOperatorBitwiseOrAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "&&=" }, Precedence.assignment, BinaryOperatorBitwiseAndAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "^^=" }, Precedence.assignment, BinaryOperatorBitwiseXorAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ "<<=" }, Precedence.assignment, BinaryOperatorShlAssign));
-            RegisterAssignment(new BinaryOperator(new[]{ ">>=" }, Precedence.assignment, BinaryOperatorShrAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "||=" }, Precedence.assignment, BinaryOperatorBitwiseOrAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "&&=" }, Precedence.assignment, BinaryOperatorBitwiseAndAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "^^=" }, Precedence.assignment, BinaryOperatorBitwiseXorAssign));
+            RegisterAssignment(new BinaryOperator(new[] { "<<=" }, Precedence.assignment, BinaryOperatorShlAssign));
+            RegisterAssignment(new BinaryOperator(new[] { ">>=" }, Precedence.assignment, BinaryOperatorShrAssign));
 
-            RegisterAssignment(new BinaryOperator(new[]{ "++" }, Precedence.add_sub, BinaryOperatorIncrement));
-            RegisterAssignment(new BinaryOperator(new[]{ "--" }, Precedence.add_sub, BinaryOperatorDecrement));
+            RegisterAssignment(new BinaryOperator(new[] { "++" }, Precedence.add_sub, BinaryOperatorIncrement));
+            RegisterAssignment(new BinaryOperator(new[] { "--" }, Precedence.add_sub, BinaryOperatorDecrement));
 
             // unary
 
-            Register(new UnaryOperatorBefore(new[]{ "!" }, Precedence.factorial_percent, UnaryOperatorFactorial));
-            Register(new UnaryOperatorBefore(new[]{ "%" }, Precedence.factorial_percent, UnaryOperatorPercent));
-            Register(new UnaryOperatorAfter(new[]{ "not " }, Precedence.not, UnaryOperatorNot));
-            Register(new UnaryOperatorAfter(new[]{ "~" }, Precedence.factorial_percent, UnaryOperatorBitwiseNot));
+            Register(new UnaryOperatorBefore(new[] { "!" }, Precedence.factorial_percent, UnaryOperatorFactorial));
+            Register(new UnaryOperatorBefore(new[] { "%" }, Precedence.factorial_percent, UnaryOperatorPercent));
+            Register(new UnaryOperatorAfter(new[] { "not " }, Precedence.not, UnaryOperatorNot));
+            Register(new UnaryOperatorAfter(new[] { "~" }, Precedence.factorial_percent, UnaryOperatorBitwiseNot));
 
             // ref keyword: create reference to object (reference not saved after session)
-            RegisterByRef(new UnaryOperatorAfter(new[]{ "ref " }, Precedence.factorial_percent, UnaryOperatorReference));
+            RegisterByRef(new UnaryOperatorAfter(new[] { "ref " }, Precedence.factorial_percent, UnaryOperatorReference));
 
             // deref keyword: dereference the reference
-            RegisterByRef(new UnaryOperatorAfter(new[]{ "deref " }, Precedence.factorial_percent, UnaryOperatorDereference));
+            RegisterByRef(new UnaryOperatorAfter(new[] { "deref " }, Precedence.factorial_percent, UnaryOperatorDereference));
 
             // Brackets:
             // Register(New Bracket([start], [end], AddressOf [Definition]))
             // OR
             // Register(New Bracket([sign], AddressOf [Definition]))
 
-            Register(new Bracket("$(", ")", BracketOperatorAsync));
+            Register(new Bracket("$(", ")", BracketOperatorSilent));
             Register(new Bracket("`", BracketOperatorLambdaExpression));
 
             RegisterByRef(new Bracket("[", "]", BracketOperatorListIndexSlice));
             Register(new Bracket("{", "}", BracketOperatorDictionary));
 
             Register(new Bracket("(", ")", BracketOperatorRoundBracket));
+            Register(new Bracket("(as ", ")", BracketOperatorCast));
+            Register(new Bracket("(!as ", ")", BracketOperatorUnsafeCast));
+            Register(new Bracket("(is ", ")", BracketOperatorIsType));
             Register(new Bracket("|", BracketOperatorAbsoluteValue));
 
             // strings
@@ -579,9 +577,12 @@ namespace Cantus.Core
 
             foreach (string sign in op.Signs)
             {
-                if (sign.Length > 0 && (sign[0] == ' ' || char.IsLetter(sign[0])))
-                    _maxSpaceLetterOperatorLength = Math.Max(sign.Length, MaxSpaceLetterOperatorLength);
-                else _maxOperatorLength = Math.Max(sign.Length, MaxOperatorLength);
+                if (sign.Length > 0)
+                {
+                    if (!_maxOperatorLength.ContainsKey(sign[0]))
+                        _maxOperatorLength[sign[0]] = 0;
+                    _maxOperatorLength[sign[0]] = Math.Max(sign.Length,_maxOperatorLength[sign[0]]);
+                }
 
                 if (!_operatorSigns.ContainsKey(sign))
                     _operatorSigns[sign] = new List<Operator>();
@@ -619,7 +620,7 @@ namespace Cantus.Core
             if (left is ObjectTypes.Lambda)
             {
                 ObjectTypes.Lambda lambda = (ObjectTypes.Lambda)left;
-                
+
                 left = ObjectTypes.DetectType(lambda.Execute(_eval, inner));
                 return left;
             }
@@ -628,6 +629,35 @@ namespace Cantus.Core
                 object res = _eval.EvalExprRaw(inner, true, ConditionMode);
                 return ObjectTypes.DetectType(res, true);
             }
+        }
+
+        private ObjectTypes.EvalObjectBase BracketOperatorCast(string inner, ref ObjectTypes.EvalObjectBase left)
+        {
+            object lv = left is ObjectTypes.Number ?
+                ((ObjectTypes.Number)left).BigDecValue() :
+                left.GetValue();
+            left = ObjectTypes.DetectType(_eval.Internals.Cast(lv, inner.Trim()));
+            return left;
+        }
+
+        private ObjectTypes.EvalObjectBase BracketOperatorUnsafeCast(string inner, ref ObjectTypes.EvalObjectBase left)
+        {
+            object lv = left is ObjectTypes.Number ?
+                ((ObjectTypes.Number)left).BigDecValue() :
+                left.GetValue();
+            left = ObjectTypes.DetectType(_eval.Internals.UnsafeCast(lv, inner.Trim()));
+            return left;
+        }
+
+        private ObjectTypes.EvalObjectBase BracketOperatorIsType(string inner, ref ObjectTypes.EvalObjectBase left)
+        {
+            object lv = left is ObjectTypes.Number ?
+                ((ObjectTypes.Number)left).BigDecValue() :
+                left.GetValue();
+            left = new ObjectTypes.Boolean(
+                _eval.Internals.Type(lv).ToLowerInvariant() ==
+                    inner.Trim().ToLowerInvariant());
+            return left;
         }
 
         private ObjectTypes.EvalObjectBase BracketOperatorAbsoluteValue(string inner, ref ObjectTypes.EvalObjectBase left)
@@ -643,10 +673,10 @@ namespace Cantus.Core
             }
         }
 
-        private ObjectTypes.EvalObjectBase BracketOperatorAsync(string inner, ref ObjectTypes.EvalObjectBase left)
+        private ObjectTypes.EvalObjectBase BracketOperatorSilent(string inner, ref ObjectTypes.EvalObjectBase left)
         {
 
-            return new ObjectTypes.Number(_eval.Internals.Async(new ObjectTypes.Lambda(inner, new string[]{})));
+            return ObjectTypes.DetectType(_eval.Internals.Silent(inner));
         }
 
         private ObjectTypes.EvalObjectBase BracketOperatorQuotedText(string inner, ref ObjectTypes.EvalObjectBase left)
@@ -696,7 +726,7 @@ namespace Cantus.Core
                     }
 
                 }
-                    // lists
+                // lists
                 else if (ObjectTypes.LinkedList.IsType(left))
                 {
                     if (string.IsNullOrWhiteSpace(inner))
@@ -704,7 +734,7 @@ namespace Cantus.Core
                     object result = _eval.EvalExprRaw(inner, true);
                     left = ObjectTypes.DetectType(_eval.Internals.Index((LinkedList<ObjectTypes.Reference>)left.GetValue(), (int)((BigDecimal)result)), true);
                 }
-                    // tuples
+                // tuples
                 else if (ObjectTypes.Tuple.IsType(left))
                 {
                     if (string.IsNullOrWhiteSpace(inner))
@@ -741,7 +771,7 @@ namespace Cantus.Core
 
                     if (!ld.ContainsKey(new ObjectTypes.Reference(result)) && !ConditionMode)
                     {
-                        ld[new ObjectTypes.Reference(result)] = 
+                        ld[new ObjectTypes.Reference(result)] =
                             new ObjectTypes.Reference(BigDecimal.Undefined);
                     }
 
@@ -798,7 +828,8 @@ namespace Cantus.Core
                 }
                 else if (inner.Contains(","))
                 {
-                    try {
+                    try
+                    {
                         return new ObjectTypes.Matrix(inner, _eval);
                     }
                     catch
@@ -854,7 +885,7 @@ namespace Cantus.Core
             if (ObjectTypes.Number.IsType(value))
             {
                 BigDecimal bn = ((ObjectTypes.Number)value).BigDecValue();
-                bn = new BigDecimal(bn.Mantissa, bn.Exponent - 2, sigFigs:bn.SigFigs);
+                bn = new BigDecimal(bn.Mantissa, bn.Exponent - 2, sigFigs: bn.SigFigs);
                 bn.Normalize();
                 return new ObjectTypes.Number(bn);
             }
@@ -990,60 +1021,78 @@ namespace Cantus.Core
                     if (!(((ObjectTypes.Matrix)left).Height == 1 && ((ObjectTypes.Matrix)right).Height == 1))
                     {
                         if (!ObjectTypes.Matrix.IsType(objL))
-                            objL = new ObjectTypes.Matrix(new[]{ objL });
-                if (!ObjectTypes.Matrix.IsType(objR))
-                    objR = new ObjectTypes.Matrix(new[]{ objR });
+                            objL = new ObjectTypes.Matrix(new[] { objL });
+                        if (!ObjectTypes.Matrix.IsType(objR))
+                            objR = new ObjectTypes.Matrix(new[] { objR });
+                    }
+
+                    ObjectTypes.EvalObjectBase sum = BinaryOperatorAdd(objL, objR);
+
+                    if (ObjectTypes.Reference.IsType(sum))
+                    {
+                        newLst.Add((ObjectTypes.Reference)sum);
+                    }
+                    else
+                    {
+                        newLst.Add(new ObjectTypes.Reference(sum));
+                    }
+                }
+                return new ObjectTypes.Matrix(newLst);
+
             }
-
-            ObjectTypes.EvalObjectBase sum = BinaryOperatorAdd(objL, objR);
-
-            if (ObjectTypes.Reference.IsType(sum))
+            else if (ObjectTypes.Matrix.IsType(left) & (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right)))
             {
-                newLst.Add((ObjectTypes.Reference)sum);
+                List<ObjectTypes.Reference> lst = (List<ObjectTypes.Reference>)lv;
+                lst.AddRange(_eval.Internals.ToMatrix((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv));
+                return new ObjectTypes.Matrix(lst);
+
             }
-            else
+            else if (ObjectTypes.Matrix.IsType(left))
             {
-                newLst.Add(new ObjectTypes.Reference(sum));
+                List<ObjectTypes.Reference> lst = (List<ObjectTypes.Reference>)lv;
+                lst.Add(new ObjectTypes.Reference(right));
+                return new ObjectTypes.Matrix(lst);
+
             }
-        }
-				return new ObjectTypes.Matrix(newLst);
+            else if (ObjectTypes.LinkedList.IsType(left))
+            {
+                LinkedList<ObjectTypes.Reference> lst = (LinkedList<ObjectTypes.Reference>)lv;
+                lst.AddLast(new ObjectTypes.Reference(right));
+                return new ObjectTypes.LinkedList(lst);
 
-			} else if (ObjectTypes.Matrix.IsType(left) & (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))) {
-				List<ObjectTypes.Reference> lst = (List<ObjectTypes.Reference>)lv;
-    lst.AddRange(_eval.Internals.ToMatrix((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv));
-				return new ObjectTypes.Matrix(lst);
+            }
+            else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left))
+            {
+                IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> dict = (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv;
 
-			} else if (ObjectTypes.Matrix.IsType(left)) {
-				List<ObjectTypes.Reference> lst = (List<ObjectTypes.Reference>)lv;
-lst.Add(new ObjectTypes.Reference(right));
-				return new ObjectTypes.Matrix(lst);
+                if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
+                {
+                    // union
+                    dict = _eval.Internals.Union(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
+                }
+                else if (ObjectTypes.Matrix.IsType(right))
+                {
+                    dict = _eval.Internals.Union(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
+                }
+                else
+                {
+                    dict[new ObjectTypes.Reference(rv)] = null;
+                }
+                return ObjectTypes.DetectType(dict);
 
-			} else if (ObjectTypes.LinkedList.IsType(left)) {
-				LinkedList<ObjectTypes.Reference> lst = (LinkedList<ObjectTypes.Reference>)lv;
-lst.AddLast(new ObjectTypes.Reference(right));
-				return new ObjectTypes.LinkedList(lst);
+            }
+            else if (ObjectTypes.Matrix.IsType(right) || right is ObjectTypes.LinkedList)
+            {
+                return BinaryOperatorAdd(right, left);
 
-			} else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left)) {
-				IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> dict = (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv;
+            }
+            else if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
+            {
+                return BinaryOperatorOr(left, right);
+                // + = OR
 
-				if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right)) {
-					// union
-					dict = _eval.Internals.Union(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
-				} else if (ObjectTypes.Matrix.IsType(right)) {
-					dict = _eval.Internals.Union(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
-				} else {
-					dict[new ObjectTypes.Reference(rv)] = null;
-				}
-				return ObjectTypes.DetectType(dict);
-
-			} else if (ObjectTypes.Matrix.IsType(right) || right is ObjectTypes.LinkedList) {
-				return BinaryOperatorAdd(right, left);
-
-			} else if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right)) {
-				return BinaryOperatorOr(left, right);
-				// + = OR
-
-			} else if (ObjectTypes.Text.IsType(left) || ObjectTypes.Text.IsType(right))
+            }
+            else if (ObjectTypes.Text.IsType(left) || ObjectTypes.Text.IsType(right))
             {
                 // do not append "NaN"
                 if (lv.ToString() == "NaN")
@@ -1053,1016 +1102,1027 @@ lst.AddLast(new ObjectTypes.Reference(right));
                 return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString(_eval)) +
                     (right is ObjectTypes.Text ? rv.ToString() : right.ToString(_eval)));
             }
-            else {
-				throw new SyntaxException("Invalid Addition");
-			}
-		}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorUnaryMinus(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null)
-    {
-        object rv = right.GetValue();
-        if (ObjectTypes.Number.IsType(right))
-        {
-            return new ObjectTypes.Number(-((ObjectTypes.Number)right).BigDecValue());
-        }
-        else if ( ObjectTypes.Complex.IsType(right))
-        {
-            return new ObjectTypes.Complex(-(System.Numerics.Complex)rv);
-        }
-        else if (ObjectTypes.Matrix.IsType(right))
-        {
-            List<ObjectTypes.Reference> lstr = (List<ObjectTypes.Reference>)rv;
-            for (int i = 0; i < lstr.Count; i++)
-            {
-                ObjectTypes.EvalObjectBase neg = BinaryOperatorUnaryMinus(null, lstr[i].ResolveObj());
-                if (ObjectTypes.Reference.IsType(neg))
-                {
-                    lstr[i] = (ObjectTypes.Reference)neg;
-                }
-                else
-                {
-                    lstr[i] = new ObjectTypes.Reference(neg);
-                }
-            }
-            ObjectTypes.Matrix mat = new ObjectTypes.Matrix(lstr);
-            return mat;
-
-        }
-        else if (ObjectTypes.DateTime.IsType(right))
-        {
-            if (rv is DateTime)
-                rv = new TimeSpan(-Convert.ToDateTime(rv).Ticks);
-            return new ObjectTypes.DateTime(- (TimeSpan)rv);
-        }
-        else
-        {
-            return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
-        }
-    }
-    else
-    {
-        return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorSubtract(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Number(((ObjectTypes.Number)left).BigDecValue() - ((ObjectTypes.Number)right).BigDecValue());
-
-    }
-    else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
-    {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv - (System.Numerics.Complex)rv);
-    }
-    else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv - (double)(rv));
-    }
-    else if (ObjectTypes.Number.IsType(left) & ObjectTypes.Complex.IsType(right))
-    {
-        return new ObjectTypes.Complex((double)(lv) - (System.Numerics.Complex)rv);
-
-    }
-    else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left))
-    {
-        IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> dict = (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv;
-        if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
-        {
-            // difference
-            dict = _eval.Internals.Difference(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
-        }
-        else if (ObjectTypes.Matrix.IsType(right))
-        {
-            dict = _eval.Internals.Difference(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
-        }
-        else
-        {
-            dict[new ObjectTypes.Reference(rv)] = null;
-        }
-        return new ObjectTypes.Set(dict);
-
-    }
-    else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
-    {
-        List<ObjectTypes.Reference> lstl = (List<ObjectTypes.Reference>)lv;
-        List<ObjectTypes.Reference> lstr = (List<ObjectTypes.Reference>)rv;
-        for (int i = 0; i <= Math.Min(lstl.Count, lstr.Count) - 1; i++)
-        {
-            ObjectTypes.EvalObjectBase sum = BinaryOperatorSubtract(lstl[i].ResolveObj(), lstr[i].ResolveObj());
-            if (ObjectTypes.Reference.IsType(sum))
-            {
-                lstl[i] = (ObjectTypes.Reference)sum;
-            }
             else
             {
-                lstl[i] = new ObjectTypes.Reference(sum);
+                throw new SyntaxException("Invalid Addition");
             }
         }
-        ObjectTypes.Matrix mat = new ObjectTypes.Matrix(lstl);
-        return mat;
 
-    }
-    else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.DateTime.IsType(right))
-    {
-        if (lv is DateTime)
-            lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
-        if (rv is DateTime)
-            rv = new TimeSpan(Convert.ToDateTime(rv).Ticks);
-        return new ObjectTypes.DateTime((TimeSpan)lv - (TimeSpan)rv);
-
-    }
-    else
-    {
-        throw new SyntaxException("Invalid Subtraction");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorMultiply(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-
-    if (left == null)
-        throw new SyntaxException("Invalid Multiplication");
-    if ((ObjectTypes.Number.IsType(left) && ObjectTypes.DateTime.IsType(right)) || 
-            (ObjectTypes.Number.IsType(left) && ObjectTypes.Matrix.IsType(right)) ||
-            (ObjectTypes.Number.IsType(left) && ObjectTypes.Complex.IsType(right)) ||
-            (ObjectTypes.Number.IsType(left) && ObjectTypes.Text.IsType(right)))
-    {
-        return BinaryOperatorMultiply(right, left);
-    }
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Number(((ObjectTypes.Number)left).BigDecValue() * ((ObjectTypes.Number)right).BigDecValue());
-
-    }
-    else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
-    {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv * (System.Numerics.Complex)lv);
-    }
-    else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv * (double)(rv));
-
-    }
-    else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        if (lv is DateTime)
-            lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
-        return new ObjectTypes.DateTime(new TimeSpan(Convert.ToInt64((double)(rv) * ((TimeSpan)lv).Ticks)));
-
-    }
-    else if (ObjectTypes.Text.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        string origstr = Convert.ToString(lv);
-        string strcat = origstr;
-        while (strcat.Length * 2 < origstr.Length * (double)(rv))
+        private ObjectTypes.EvalObjectBase BinaryOperatorUnaryMinus(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
         {
-            strcat += strcat;
-        }
-        while (strcat.Length < origstr.Length * (double)(rv))
-        {
-            strcat += origstr;
-        }
-        return new ObjectTypes.Text(strcat);
-
-    }
-    else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        // scalar multiply, use ** to duplicate
-        return ObjectTypes.DetectType(_eval.Internals.Scale((List<ObjectTypes.Reference>)lv, rv));
-
-    }
-    else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
-    {
-        // matrix multiplication (for appropriate matrices) or dot product (for vectors)
-        return ObjectTypes.DetectType(_eval.Internals.Multiply(
-            (List<ObjectTypes.Reference>)left.GetValue(),
-            (List<ObjectTypes.Reference>)right.GetValue()));
-
-    }
-    else if (ObjectTypes.Set.IsType(left) & ObjectTypes.Matrix.IsType(right) || ObjectTypes.HashSet.IsType(left) & ObjectTypes.Matrix.IsType(right))
-    {
-        return new ObjectTypes.Set(_eval.Internals.Intersect((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv)));
-
-    }
-    else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
-    {
-        return BinaryOperatorMultiply(right, left);
-
-    }
-    else if (ObjectTypes.Set.IsType(left) & ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(left) & ObjectTypes.Set.IsType(right))
-    {
-        return new ObjectTypes.Set(_eval.Internals.Intersect((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv));
-
-    }
-    else if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
-    {
-        return BinaryOperatorAnd(left, right);
-        // * = AND
-
-    }
-    else
-    {
-        throw new SyntaxException("Invalid Multiplication");
-    }
-}
-
-// used for duplication
-private ObjectTypes.EvalObjectBase BinaryOperatorDuplicateCross(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if ((ObjectTypes.Number.IsType(left) & ObjectTypes.Matrix.IsType(right)) || (ObjectTypes.Complex.IsType(left) & ObjectTypes.Matrix.IsType(right)))
-    {
-        return BinaryOperatorDuplicateCross(right, left);
-    }
-
-    if (ObjectTypes.Matrix.IsType(left) & (ObjectTypes.Number.IsType(right) || ObjectTypes.Complex.IsType(right)))
-    {
-        // duplicate
-        List<ObjectTypes.Reference> lst = new List<ObjectTypes.Reference>((List<ObjectTypes.Reference>)left.GetValue());
-        object lv = left.GetDeepCopy().GetValue();
-        object rv = right.GetValue();
-        List<ObjectTypes.Reference> origlst = new List<ObjectTypes.Reference>(lst);
-        while (lst.Count* 2 < origlst.Count *    (double)(rv))
-        {
-            lst.AddRange((List<ObjectTypes.Reference>)new ObjectTypes.Matrix(lst).GetDeepCopy().GetValue());
-        }
-        while (lst.Count< origlst.Count* (double)(rv))
-        {
-            lst.AddRange((List<ObjectTypes.Reference>)new ObjectTypes.Matrix(origlst).GetDeepCopy().GetValue());
-        }
-        return new ObjectTypes.Matrix(lst);
-
-    }
-    else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
-    {
-        // cross product
-        return new ObjectTypes.Matrix((List<ObjectTypes.Reference>)_eval.Internals.Cross((List<ObjectTypes.Reference>)left.GetValue(), (List<ObjectTypes.Reference>)right.GetValue()));
-    }
-    else
-    {
-        return BinaryOperatorMultiply(left, right);
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorDivide(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null || right == null)
-        throw new SyntaxException("Invalid Division");
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Number(((ObjectTypes.Number)left).BigDecValue() / ((ObjectTypes.Number)right).BigDecValue());
-
-    }
-    else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
-    {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv / (System.Numerics.Complex)lv);
-    }
-    else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Complex((System.Numerics.Complex)lv / (double)(rv));
-    }
-    else if (ObjectTypes.Number.IsType(left) & ObjectTypes.Complex.IsType(right))
-    {
-        return new ObjectTypes.Complex((double)(lv) / (System.Numerics.Complex)rv);
-
-    }
-    else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        // scalar division
-
-        return ObjectTypes.DetectType(_eval.Internals.Scale((List<ObjectTypes.Reference>)lv, BinaryOperatorDivide(new ObjectTypes.Number(1), right).GetValue()));
-
-    }
-    else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        if (lv is DateTime)
-            lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
-        return new ObjectTypes.DateTime(new TimeSpan(Convert.ToInt64(((TimeSpan)lv).Ticks / (double)(rv))));
-
-    }
-    else
-    {
-        throw new SyntaxException("Invalid Division");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorDivideFloor(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null || right == null)
-        throw new SyntaxException("Invalid Floor Div.");
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Number(Math.Floor((double)(((ObjectTypes.Number)left).BigDecValue() / ((ObjectTypes.Number)right).BigDecValue())));
-
-    }
-    else if (ObjectTypes.Complex.IsType(left) | ObjectTypes.Complex.IsType(right))
-    {
-        ObjectTypes.Complex cplx = (ObjectTypes.Complex)BinaryOperatorDivide(left, right);
-        return new ObjectTypes.Complex(Math.Floor(cplx.Real), Math.Floor(cplx.Imag));
-
-    }
-    else
-    {
-        throw new SyntaxException("Invalid Floor Div.");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorModulo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null)
-        throw new SyntaxException("Invalid Modulo");
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Number(_eval.Internals.Modulo(((ObjectTypes.Number)left).BigDecValue(), 
-            ((ObjectTypes.Number)right).BigDecValue()));
-
-    }
-    else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        if (lv is DateTime)
-            lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
-        return new ObjectTypes.DateTime(new TimeSpan(Convert.ToInt64(((TimeSpan)lv).Ticks % (double)(rv))));
-    }
-    else
-    {
-        throw new SyntaxException("Invalid Modulo");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorExponent(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null)
-        throw new SyntaxException("Invalid Exponent");
-    try
-    {
-        if (left is ObjectTypes.Number && right is ObjectTypes.Number)
-        {
-            return ObjectTypes.DetectType(_eval.Internals.Pow(((ObjectTypes.Number)left).BigDecValue(), ((ObjectTypes.Number)right).BigDecValue()));
-        }
-        else
-        {
-            return ObjectTypes.DetectType(_eval.Internals.Pow(left.GetValue(), right.GetValue()));
-        }
-    }
-    catch (MathException ex)
-    {
-        throw ex;
-    }
-    catch
-    {
-        throw new SyntaxException("Invalid Exponent");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorOr(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
-    {
-        try
-        {
-            return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) || Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
-        }
-        catch
-        {
-            throw new SyntaxException("Operator or: Expression must produce a boolean value");
-        }
-
-    }
-    else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Boolean(Math.Round((double)(lv), 15) != 0 | Math.Round((double)(rv), 15) != 0);
-    }
-    else
-    {
-        throw new SyntaxException("Invalid logical or operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseOr(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null || right == null)
-        return new ObjectTypes.Number(double.NaN);
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
-    {
-        try
-        {
-            return new ObjectTypes.Boolean((bool)lv || (bool)rv);
-        }
-        catch
-        {
-            throw new SyntaxException("Invalid bitwise or operation");
-        }
-
-    }
-    else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Number(Convert.ToInt64(lv) | Convert.ToInt64(rv));
-    }
-    else
-    {
-        throw new SyntaxException("Invalid bitwise or operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorAnd(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Boolean.IsType(left) && ObjectTypes.Boolean.IsType(right))
-    {
-            return new ObjectTypes.Boolean((bool)lv && (bool)rv);
-    }
-    else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Boolean(Math.Round((double)(lv), 15) != 0 & Math.Round((double)(rv), 15) != 0);
-    }
-    else
-    {
-        throw new SyntaxException("Invalid logical and operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseAnd(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Boolean.IsType(left) && ObjectTypes.Boolean.IsType(right))
-    {
-        try
-        {
-            return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) && Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
-        }
-        catch
-        {
-            throw new SyntaxException("Invalid bitwise and operation");
-        }
-    }
-    else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Number(Convert.ToInt64(lv) & Convert.ToInt64(rv));
-    }
-    else
-    {
-        throw new SyntaxException("Invalid bitwise and operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorXor(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
-    {
-        try
-        {
-            return new ObjectTypes.Boolean((bool)lv ^ (bool)rv);
-        }
-        catch
-        {
-            throw new SyntaxException("Operator xor: Expression must produce a boolean value");
-        }
-    }
-    else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Boolean(Math.Round((double)(lv), 15) != 0 ^ Math.Round((double)(rv), 15) != 0);
-    }
-    else
-    {
-        throw new SyntaxException("Invalid logical xor operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseXor(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
-    {
-        try
-        {
-            return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) ^ Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
-        }
-        catch
-        {
-            throw new SyntaxException("Invalid bitwise xor operation");
-        }
-    }
-    else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Number(Convert.ToInt64(lv) ^ Convert.ToInt64(rv));
-        // this operator doubles as the symmetric difference operator for sets
-    }
-    else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left))
-    {
-        IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> dict = (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv;
-
-        if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
-        {
-            // symmetric difference
-            dict = _eval.Internals.DifferenceSymmetric(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
-        }
-        else if (ObjectTypes.Matrix.IsType(right))
-        {
-            dict = _eval.Internals.DifferenceSymmetric(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
-        }
-        else
-        {
-            dict[new ObjectTypes.Reference(rv)] = null;
-        }
-        return new ObjectTypes.Set(dict);
-    }
-    else
-    {
-        throw new SyntaxException("Invalid bitwise xor operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorShl(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Number(Convert.ToInt64(lv) << Convert.ToInt32(rv));
-    }
-    else
-    {
-        throw new SyntaxException("Invalid << (bitwise shl) operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorShr(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
-    {
-        return new ObjectTypes.Number(Convert.ToInt64(lv) >> Convert.ToInt32(rv));
-    }
-    else
-    {
-        throw new SyntaxException("Invalid >> (bitwise shl) operation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorChoose(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        return new ObjectTypes.Number(_eval.Internals.Comb((double)(lv), (double)(rv)));
-    }
-    else
-    {
-        throw new SyntaxException("Invalid types for the choose (combinations) operator");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    try
-    {
-        if (ObjectTypes.Reference.IsType(left) && ObjectTypes.Reference.IsType(right) &&
-                    ObjectTypes.Reference.IsType(((ObjectTypes.Reference)right).GetRefObject()))
-        {
-            ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
-            ObjectTypes.Reference rr = (ObjectTypes.Reference)right;
-                if (!(lr.ResolveObj() is ObjectTypes.Lambda))
+            if (left == null)
+            {
+                object rv = right.GetValue();
+                if (ObjectTypes.Number.IsType(right))
                 {
-                    // if we are assigning a reference
-
-                    // try to avoid circular references
-                    if (!object.ReferenceEquals(lr, rr))
+                    return new ObjectTypes.Number(-((ObjectTypes.Number)right).BigDecValue());
+                }
+                else if (ObjectTypes.Complex.IsType(right))
+                {
+                    return new ObjectTypes.Complex(-(System.Numerics.Complex)rv);
+                }
+                else if (ObjectTypes.Matrix.IsType(right))
+                {
+                    List<ObjectTypes.Reference> lstr = (List<ObjectTypes.Reference>)rv;
+                    for (int i = 0; i < lstr.Count; i++)
                     {
-                        if (rr.Node != null)
+                        ObjectTypes.EvalObjectBase neg = BinaryOperatorUnaryMinus(null, lstr[i].ResolveObj());
+                        if (ObjectTypes.Reference.IsType(neg))
                         {
-                            // set node
-                            lr.SetNode(rr.Node);
-                            lr.SetValue(new ObjectTypes.Reference(rr.Node));
+                            lstr[i] = (ObjectTypes.Reference)neg;
                         }
                         else
                         {
-                            // set object
-                            left.SetValue(new ObjectTypes.Reference(rr.ResolveObj()));
+                            lstr[i] = new ObjectTypes.Reference(neg);
                         }
                     }
+                    ObjectTypes.Matrix mat = new ObjectTypes.Matrix(lstr);
+                    return mat;
+
+                }
+                else if (ObjectTypes.DateTime.IsType(right))
+                {
+                    if (rv is DateTime)
+                        rv = new TimeSpan(-Convert.ToDateTime(rv).Ticks);
+                    return new ObjectTypes.DateTime(-(TimeSpan)rv);
                 }
                 else
                 {
-                    left = ((ObjectTypes.Reference)left).ResolveObj();
+                    return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
                 }
-        }
-        if (left is ObjectTypes.Lambda)
-        {
-            if (right is ObjectTypes.Reference) right = ((ObjectTypes.Reference)right).ResolveObj();
-            ObjectTypes.Lambda lamb = (ObjectTypes.Lambda)left;
-            ObjectTypes.Lambda lambr = (ObjectTypes.Lambda)right;
-
-                _eval.SetVariable(lamb.FunctionName, right is ObjectTypes.Number ?
-                    ((ObjectTypes.Number)right).BigDecValue() : right.GetValue() );
-            return lamb;
-        }
-        else
-        {
-            if (ObjectTypes.Reference.IsType(right))
-                right = ((ObjectTypes.Reference)right).ResolveObj();
-            if (ObjectTypes.Reference.IsType(left))
-                left =  ((ObjectTypes.Reference)left).ResolveRef();
-            // if we are assigning a plain value
-            if (right is ObjectTypes.Number)
-                left.SetValue(((ObjectTypes.Number)right.GetDeepCopy()).BigDecValue());
-            else
-                left.SetValue(right.GetDeepCopy().GetValue());
-        }
-        return left;
-        //ex As Exception
-    }
-    catch(Exception)
-{
-    throw new EvaluatorException("Assignment operation failed");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorOpAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> op)
-{
-
-    try
-    {
-        if (ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left))
-        {
-            ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
-            // assign object
-            if (ObjectTypes.Reference.IsType(right))
-                right = ((ObjectTypes.Reference)right).ResolveObj();
-            return BinaryOperatorAssign(left, op(lr.ResolveObj().GetDeepCopy(), right.GetDeepCopy()));
-
-        }
-        else
-        {
-            return op(left, right);
-            // not a reference? just use normal operator
-        }
-        //ex As Exception
-    }
-    catch
-    {
-        throw new EvaluatorException("Operator and assignment ([op]=) operation failed");
-    }
-}
-
-
-private ObjectTypes.EvalObjectBase BinaryOperatorAddAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorAdd);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorSubtractAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorSubtract);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorMultiplyAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorMultiply);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorDivideAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorDivide);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorDuplicateAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorDuplicateCross);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorDivideFloorAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorDivideFloor);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorModuloAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorModulo);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorExponentAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorExponent);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseOrAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorBitwiseOr);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseAndAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorBitwiseAnd);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseXorAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorBitwiseXor);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorShlAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorShl);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorShrAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorShr);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorConcatAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return BinaryOperatorOpAssign(left, right, BinaryOperatorConcat);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorIncrement(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    try
-    {
-        if (ObjectTypes.Reference.IsType(right))
-            right = ((ObjectTypes.Reference)right).GetRefObject();
-        if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString(_eval) == "NaN"))
-        {
-            object lv = ((ObjectTypes.Reference)left).Resolve();
-            if (lv is double || lv is BigDecimal)
-            {
-                left.SetValue((double)(lv) + 1);
-                // add one to numbers
-            }
-            else if (lv is BigDecimal)
-            {
-                left.SetValue((BigDecimal)lv + 1);
-                // add one to numbers
-            }
-            else if (lv is System.DateTime)
-            {
-                left.SetValue(Convert.ToDateTime(lv).AddDays(1));
-                // add one day to dates
-            }
-            else if (lv is TimeSpan)
-            {
-                left.SetValue(((TimeSpan)lv).Add(new TimeSpan(0, 1, 0)));
-                // add one minute to timespans
             }
             else
             {
-                //otherwise ??? we don't know what to do, so we'll try the normal add operation.
-                return BinaryOperatorAdd(left, right);
+                return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
             }
-            return left;
         }
-        else
-        {
-            if (ObjectTypes.Reference.IsType(left))
-                left = ((ObjectTypes.Reference)left).ResolveObj();
-            if (ObjectTypes.Reference.IsType(right))
-                right = ((ObjectTypes.Reference)right).ResolveObj();
-            // if it is not a reference we see the operation as ++, for example in 1++1 = 2
-            return BinaryOperatorAdd(left, right);
-        }
-    }
-    catch
-    {
-        throw new EvaluatorException("Invalid increment (++) operation");
-    }
-}
 
-private ObjectTypes.EvalObjectBase BinaryOperatorDecrement(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    try
-    {
-        if (ObjectTypes.Reference.IsType(right))
-            right = ((ObjectTypes.Reference)right).GetRefObject();
-        if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString(_eval) == "NaN"))
+        private ObjectTypes.EvalObjectBase BinaryOperatorSubtract(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
         {
-            object lv = ((ObjectTypes.Reference)left).Resolve();
-            if (lv is double)
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
             {
-                left.SetValue((double)(lv) - 1);
-                // subtract one from numbers
+                return new ObjectTypes.Number(((ObjectTypes.Number)left).BigDecValue() - ((ObjectTypes.Number)right).BigDecValue());
+
             }
-            else if (lv is BigDecimal)
+            else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
             {
-                left.SetValue((BigDecimal)lv - 1);
-                // subtract one from numbers
+                return new ObjectTypes.Complex((System.Numerics.Complex)lv - (System.Numerics.Complex)rv);
             }
-            else if (lv is System.DateTime)
+            else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
             {
-                left.SetValue(Convert.ToDateTime(lv).AddDays(-1));
-                // subtract one day from dates
+                return new ObjectTypes.Complex((System.Numerics.Complex)lv - (double)(rv));
             }
-            else if (lv is TimeSpan)
+            else if (ObjectTypes.Number.IsType(left) & ObjectTypes.Complex.IsType(right))
             {
-                left.SetValue(((TimeSpan)lv).Add(new TimeSpan(0, -1, 0)));
-                // subtract one minute from timespans
+                return new ObjectTypes.Complex((double)(lv) - (System.Numerics.Complex)rv);
+
+            }
+            else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left))
+            {
+                IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> dict = (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv;
+                if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
+                {
+                    // difference
+                    dict = _eval.Internals.Difference(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
+                }
+                else if (ObjectTypes.Matrix.IsType(right))
+                {
+                    dict = _eval.Internals.Difference(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
+                }
+                else
+                {
+                    dict[new ObjectTypes.Reference(rv)] = null;
+                }
+                return new ObjectTypes.Set(dict);
+
+            }
+            else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
+            {
+                List<ObjectTypes.Reference> lstl = (List<ObjectTypes.Reference>)lv;
+                List<ObjectTypes.Reference> lstr = (List<ObjectTypes.Reference>)rv;
+                for (int i = 0; i <= Math.Min(lstl.Count, lstr.Count) - 1; i++)
+                {
+                    ObjectTypes.EvalObjectBase sum = BinaryOperatorSubtract(lstl[i].ResolveObj(), lstr[i].ResolveObj());
+                    if (ObjectTypes.Reference.IsType(sum))
+                    {
+                        lstl[i] = (ObjectTypes.Reference)sum;
+                    }
+                    else
+                    {
+                        lstl[i] = new ObjectTypes.Reference(sum);
+                    }
+                }
+                ObjectTypes.Matrix mat = new ObjectTypes.Matrix(lstl);
+                return mat;
+
+            }
+            else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.DateTime.IsType(right))
+            {
+                if (lv is DateTime)
+                    lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
+                if (rv is DateTime)
+                    rv = new TimeSpan(Convert.ToDateTime(rv).Ticks);
+                return new ObjectTypes.DateTime((TimeSpan)lv - (TimeSpan)rv);
+
             }
             else
             {
-                //otherwise ??? we don't know what to do, so we'll try the normal subtract operation.
-                return BinaryOperatorSubtract(left, right);
+                throw new SyntaxException("Invalid Subtraction");
             }
-            return left;
         }
-        else
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorMultiply(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
         {
-            // if it is not a reference we see the operation as --, for example in 1--1 = 2
-            return BinaryOperatorAdd(left, right);
+
+            if (left == null)
+                throw new SyntaxException("Invalid Multiplication");
+            if ((ObjectTypes.Number.IsType(left) && ObjectTypes.DateTime.IsType(right)) ||
+                    (ObjectTypes.Number.IsType(left) && ObjectTypes.Matrix.IsType(right)) ||
+                    (ObjectTypes.Number.IsType(left) && ObjectTypes.Complex.IsType(right)) ||
+                    (ObjectTypes.Number.IsType(left) && ObjectTypes.Text.IsType(right)))
+            {
+                return BinaryOperatorMultiply(right, left);
+            }
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Number(((ObjectTypes.Number)left).BigDecValue() * ((ObjectTypes.Number)right).BigDecValue());
+
+            }
+            else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
+            {
+                return new ObjectTypes.Complex((System.Numerics.Complex)lv * (System.Numerics.Complex)lv);
+            }
+            else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Complex((System.Numerics.Complex)lv * (double)(rv));
+
+            }
+            else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                if (lv is DateTime)
+                    lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
+                return new ObjectTypes.DateTime(new TimeSpan(Convert.ToInt64((double)(rv) * ((TimeSpan)lv).Ticks)));
+
+            }
+            else if (ObjectTypes.Text.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                string origstr = Convert.ToString(lv);
+                string strcat = origstr;
+                while (strcat.Length * 2 < origstr.Length * (double)(rv))
+                {
+                    strcat += strcat;
+                }
+                while (strcat.Length < origstr.Length * (double)(rv))
+                {
+                    strcat += origstr;
+                }
+                return new ObjectTypes.Text(strcat);
+
+            }
+            else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                // scalar multiply, use ** to duplicate
+                return ObjectTypes.DetectType(_eval.Internals.Scale((List<ObjectTypes.Reference>)lv, rv));
+
+            }
+            else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
+            {
+                // matrix multiplication (for appropriate matrices) or dot product (for vectors)
+                return ObjectTypes.DetectType(_eval.Internals.Multiply(
+                    (List<ObjectTypes.Reference>)left.GetValue(),
+                    (List<ObjectTypes.Reference>)right.GetValue()));
+
+            }
+            else if (ObjectTypes.Set.IsType(left) & ObjectTypes.Matrix.IsType(right) || ObjectTypes.HashSet.IsType(left) & ObjectTypes.Matrix.IsType(right))
+            {
+                return new ObjectTypes.Set(_eval.Internals.Intersect((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv)));
+
+            }
+            else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
+            {
+                return BinaryOperatorMultiply(right, left);
+
+            }
+            else if (ObjectTypes.Set.IsType(left) & ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(left) & ObjectTypes.Set.IsType(right))
+            {
+                return new ObjectTypes.Set(_eval.Internals.Intersect((IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv));
+
+            }
+            else if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
+            {
+                return BinaryOperatorAnd(left, right);
+                // * = AND
+
+            }
+            else
+            {
+                throw new SyntaxException("Invalid Multiplication");
+            }
         }
-    }
-    catch
-    {
-        throw new EvaluatorException("Invalid decrement (--) operation");
-    }
-}
 
-/// <summary>
-/// 'Smart' equals operator that functions as an assignment or equalTo operator as needed
-/// </summary>
-/// <param name="left"></param>
-/// <param name="right"></param>
-/// <returns></returns>
-private ObjectTypes.EvalObjectBase BinaryOperatorAutoEqual(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (!(ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) ||
-                ObjectTypes.Tuple.IsType(right)) || ConditionMode)
-    {
-        if (ObjectTypes.Reference.IsType(left)) left = ((ObjectTypes.Reference)left).ResolveObj();
-        if (left is ObjectTypes.Lambda)
-            return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
-        return BinaryOperatorEqualTo(left, right);
-    }
-    else
-    {
-        return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return new ObjectTypes.Boolean(ObjectComparer.CompareObjs(left, right) == 0);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorNotEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return UnaryOperatorNot(BinaryOperatorEqualTo(left, right));
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorGreaterThan(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return new ObjectTypes.Boolean(ObjectComparer.CompareObjs(left, right) == 1);
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorGreaterThanOrEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return new ObjectTypes.Boolean(ObjectComparer.CompareObjs(left, right) >= 0);
-}
-
-
-private ObjectTypes.EvalObjectBase BinaryOperatorLessThan(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return UnaryOperatorNot(BinaryOperatorGreaterThanOrEqualTo(left, right));
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorLessThanOrEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    return UnaryOperatorNot(BinaryOperatorGreaterThan(left, right));
-}
-
-
-private ObjectTypes.EvalObjectBase BinaryOperatorConcat(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    try
-    {
-        // do not append NaN
-        if (rv.ToString() == "NaN")
-            rv = "";
-        if (lv.ToString() == "NaN")
-            lv = "";
-        return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString(_eval)) +
-            (right is ObjectTypes.Text ? rv.ToString() : right.ToString(_eval)));
-    }
-    catch
-    {
-        throw new SyntaxException("Invalid concatenation");
-    }
-}
-
-private ObjectTypes.EvalObjectBase BinaryOperatorCommaTuple(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null)
-        return right;
-    if (right == null)
-        return left;
-
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-
-    try
-    {
-        if (ObjectTypes.Tuple.IsType(left))
+        // used for duplication
+        private ObjectTypes.EvalObjectBase BinaryOperatorDuplicateCross(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
         {
-            return new ObjectTypes.Tuple((((object[])lv).Concat(new[]{ right })));
+            if ((ObjectTypes.Number.IsType(left) & ObjectTypes.Matrix.IsType(right)) || (ObjectTypes.Complex.IsType(left) & ObjectTypes.Matrix.IsType(right)))
+            {
+                return BinaryOperatorDuplicateCross(right, left);
+            }
+
+            if (ObjectTypes.Matrix.IsType(left) & (ObjectTypes.Number.IsType(right) || ObjectTypes.Complex.IsType(right)))
+            {
+                // duplicate
+                List<ObjectTypes.Reference> lst = new List<ObjectTypes.Reference>((List<ObjectTypes.Reference>)left.GetValue());
+                object lv = left.GetDeepCopy().GetValue();
+                object rv = right.GetValue();
+                List<ObjectTypes.Reference> origlst = new List<ObjectTypes.Reference>(lst);
+                while (lst.Count * 2 < origlst.Count * (double)(rv))
+                {
+                    lst.AddRange((List<ObjectTypes.Reference>)new ObjectTypes.Matrix(lst).GetDeepCopy().GetValue());
+                }
+                while (lst.Count < origlst.Count * (double)(rv))
+                {
+                    lst.AddRange((List<ObjectTypes.Reference>)new ObjectTypes.Matrix(origlst).GetDeepCopy().GetValue());
+                }
+                return new ObjectTypes.Matrix(lst);
+
+            }
+            else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Matrix.IsType(right))
+            {
+                // cross product
+                return new ObjectTypes.Matrix((List<ObjectTypes.Reference>)_eval.Internals.Cross((List<ObjectTypes.Reference>)left.GetValue(), (List<ObjectTypes.Reference>)right.GetValue()));
+            }
+            else
+            {
+                return BinaryOperatorMultiply(left, right);
+            }
         }
-        else
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorDivide(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
         {
-            return new ObjectTypes.Tuple(new[]{
+            if (left == null || right == null)
+                throw new SyntaxException("Invalid Division");
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Number(((ObjectTypes.Number)left).BigDecValue() / ((ObjectTypes.Number)right).BigDecValue());
+
+            }
+            else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Complex.IsType(right))
+            {
+                return new ObjectTypes.Complex((System.Numerics.Complex)lv / (System.Numerics.Complex)lv);
+            }
+            else if (ObjectTypes.Complex.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Complex((System.Numerics.Complex)lv / (double)(rv));
+            }
+            else if (ObjectTypes.Number.IsType(left) & ObjectTypes.Complex.IsType(right))
+            {
+                return new ObjectTypes.Complex((double)(lv) / (System.Numerics.Complex)rv);
+
+            }
+            else if (ObjectTypes.Matrix.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                // scalar division
+
+                return ObjectTypes.DetectType(_eval.Internals.Scale((List<ObjectTypes.Reference>)lv, BinaryOperatorDivide(new ObjectTypes.Number(1), right).GetValue()));
+
+            }
+            else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                if (lv is DateTime)
+                    lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
+                return new ObjectTypes.DateTime(new TimeSpan(Convert.ToInt64(((TimeSpan)lv).Ticks / (double)(rv))));
+
+            }
+            else
+            {
+                throw new SyntaxException("Invalid Division");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorDivideFloor(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (left == null || right == null)
+                throw new SyntaxException("Invalid Floor Div.");
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Number(Math.Floor((double)(((ObjectTypes.Number)left).BigDecValue() / ((ObjectTypes.Number)right).BigDecValue())));
+
+            }
+            else if (ObjectTypes.Complex.IsType(left) | ObjectTypes.Complex.IsType(right))
+            {
+                ObjectTypes.Complex cplx = (ObjectTypes.Complex)BinaryOperatorDivide(left, right);
+                return new ObjectTypes.Complex(Math.Floor(cplx.Real), Math.Floor(cplx.Imag));
+
+            }
+            else
+            {
+                throw new SyntaxException("Invalid Floor Div.");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorModulo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (left == null)
+                throw new SyntaxException("Invalid Modulo");
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Number(_eval.Internals.Modulo(((ObjectTypes.Number)left).BigDecValue(),
+                    ((ObjectTypes.Number)right).BigDecValue()));
+
+            }
+            else if (ObjectTypes.DateTime.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                if (lv is DateTime)
+                    lv = new TimeSpan(Convert.ToDateTime(lv).Ticks);
+                return new ObjectTypes.DateTime(new TimeSpan(Convert.ToInt64(((TimeSpan)lv).Ticks % (double)(rv))));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid Modulo");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorExponent(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (left == null)
+                throw new SyntaxException("Invalid Exponent");
+            try
+            {
+                if (left is ObjectTypes.Number && right is ObjectTypes.Number)
+                {
+                    return ObjectTypes.DetectType(_eval.Internals.Pow(((ObjectTypes.Number)left).BigDecValue(), ((ObjectTypes.Number)right).BigDecValue()));
+                }
+                else
+                {
+                    return ObjectTypes.DetectType(_eval.Internals.Pow(left.GetValue(), right.GetValue()));
+                }
+            }
+            catch (MathException ex)
+            {
+                throw ex;
+            }
+            catch
+            {
+                throw new SyntaxException("Invalid Exponent");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorOr(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
+            {
+                try
+                {
+                    return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) || Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
+                }
+                catch
+                {
+                    throw new SyntaxException("Operator or: Expression must produce a boolean value");
+                }
+
+            }
+            else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Boolean(Math.Round((double)(lv), 15) != 0 | Math.Round((double)(rv), 15) != 0);
+            }
+            else
+            {
+                throw new SyntaxException("Invalid logical or operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseOr(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (left == null || right == null)
+                return new ObjectTypes.Number(double.NaN);
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
+            {
+                try
+                {
+                    return new ObjectTypes.Boolean((bool)lv || (bool)rv);
+                }
+                catch
+                {
+                    throw new SyntaxException("Invalid bitwise or operation");
+                }
+
+            }
+            else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Number(Convert.ToInt64(lv) | Convert.ToInt64(rv));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid bitwise or operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorAnd(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Boolean.IsType(left) && ObjectTypes.Boolean.IsType(right))
+            {
+                return new ObjectTypes.Boolean((bool)lv && (bool)rv);
+            }
+            else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Boolean(Math.Round((double)(lv), 15) != 0 & Math.Round((double)(rv), 15) != 0);
+            }
+            else
+            {
+                throw new SyntaxException("Invalid logical and operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseAnd(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Boolean.IsType(left) && ObjectTypes.Boolean.IsType(right))
+            {
+                try
+                {
+                    return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) && Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
+                }
+                catch
+                {
+                    throw new SyntaxException("Invalid bitwise and operation");
+                }
+            }
+            else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Number(Convert.ToInt64(lv) & Convert.ToInt64(rv));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid bitwise and operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorXor(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
+            {
+                try
+                {
+                    return new ObjectTypes.Boolean((bool)lv ^ (bool)rv);
+                }
+                catch
+                {
+                    throw new SyntaxException("Operator xor: Expression must produce a boolean value");
+                }
+            }
+            else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Boolean(Math.Round((double)(lv), 15) != 0 ^ Math.Round((double)(rv), 15) != 0);
+            }
+            else
+            {
+                throw new SyntaxException("Invalid logical xor operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseXor(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Boolean.IsType(left) & ObjectTypes.Boolean.IsType(right))
+            {
+                try
+                {
+                    return new ObjectTypes.Boolean(Convert.ToBoolean(_eval.Internals.Eval(lv.ToString())) ^ Convert.ToBoolean(_eval.Internals.Eval(rv.ToString())));
+                }
+                catch
+                {
+                    throw new SyntaxException("Invalid bitwise xor operation");
+                }
+            }
+            else if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Number(Convert.ToInt64(lv) ^ Convert.ToInt64(rv));
+                // this operator doubles as the symmetric difference operator for sets
+            }
+            else if (ObjectTypes.Set.IsType(left) || ObjectTypes.HashSet.IsType(left))
+            {
+                IDictionary<ObjectTypes.Reference, ObjectTypes.Reference> dict = (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)lv;
+
+                if (ObjectTypes.Set.IsType(right) || ObjectTypes.HashSet.IsType(right))
+                {
+                    // symmetric difference
+                    dict = _eval.Internals.DifferenceSymmetric(dict, (IDictionary<ObjectTypes.Reference, ObjectTypes.Reference>)rv);
+                }
+                else if (ObjectTypes.Matrix.IsType(right))
+                {
+                    dict = _eval.Internals.DifferenceSymmetric(dict, _eval.Internals.ToSet((List<ObjectTypes.Reference>)rv));
+                }
+                else
+                {
+                    dict[new ObjectTypes.Reference(rv)] = null;
+                }
+                return new ObjectTypes.Set(dict);
+            }
+            else
+            {
+                throw new SyntaxException("Invalid bitwise xor operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorShl(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Number(Convert.ToInt64(lv) << Convert.ToInt32(rv));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid << (bitwise shl) operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorShr(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) && ObjectTypes.Number.IsType(right) && !double.IsNaN((double)(lv)) && !double.IsNaN((double)(rv)))
+            {
+                return new ObjectTypes.Number(Convert.ToInt64(lv) >> Convert.ToInt32(rv));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid >> (bitwise shl) operation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorChoose(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                return new ObjectTypes.Number(_eval.Internals.Comb((double)(lv), (double)(rv)));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid types for the choose (combinations) operator");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            try
+            {
+                if (ObjectTypes.Reference.IsType(left) && ObjectTypes.Reference.IsType(right) &&
+                            ObjectTypes.Reference.IsType(((ObjectTypes.Reference)right).GetRefObject()))
+                {
+                    ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
+                    ObjectTypes.Reference rr = (ObjectTypes.Reference)right;
+                    if (!(lr.ResolveObj() is ObjectTypes.Lambda))
+                    {
+                        // if we are assigning a reference
+
+                        // try to avoid circular references
+
+                        if (!object.ReferenceEquals(lr, rr))
+                        {
+                            if (rr.Node != null)
+                            {
+                                // set node
+                                lr.SetNode(rr.Node);
+                                lr.SetValue(new ObjectTypes.Reference(rr.Node));
+                            }
+                            else
+                            {
+                                // set object
+                                left.SetValue(new ObjectTypes.Reference(rr.ResolveObj()));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        left = ((ObjectTypes.Reference)right).ResolveObj();
+                    }
+                }
+                if (left is ObjectTypes.Lambda)
+                {
+                    if (right is ObjectTypes.Reference)
+                        right = ((ObjectTypes.Reference)right).ResolveObj();
+                    ObjectTypes.Lambda lamb = (ObjectTypes.Lambda)left;
+                    if (right is ObjectTypes.Lambda)
+                    {
+                        ObjectTypes.Lambda lambr = (ObjectTypes.Lambda)right;
+                        _eval.SetVariable(lamb.FunctionName,
+                            lambr.ToString(_eval));
+                    }
+                    else
+                    {
+                        _eval.SetVariable(lamb.FunctionName, right is ObjectTypes.Number ?
+                            ((ObjectTypes.Number)right).BigDecValue() :
+                             right.GetValue());
+                    }
+                    return lamb;
+                }
+                else
+                {
+                    if (ObjectTypes.Reference.IsType(right))
+                        right = ((ObjectTypes.Reference)right).ResolveObj();
+                    if (ObjectTypes.Reference.IsType(left))
+                        left = ((ObjectTypes.Reference)left).ResolveRef();
+                    // if we are assigning a plain value
+                    if (right is ObjectTypes.Number)
+                        left.SetValue(((ObjectTypes.Number)right.GetDeepCopy()).BigDecValue());
+                    else
+                        left.SetValue(right.GetDeepCopy().GetValue());
+                }
+                return left;
+                //ex As Exception
+            }
+            catch(Exception ex)
+            {
+                throw new EvaluatorException("Assignment operation failed " + ex.ToString());
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorOpAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right, Func<ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase, ObjectTypes.EvalObjectBase> op)
+        {
+
+            try
+            {
+                if (ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left))
+                {
+                    ObjectTypes.Reference lr = (ObjectTypes.Reference)left;
+                    // assign object
+                    if (ObjectTypes.Reference.IsType(right))
+                        right = ((ObjectTypes.Reference)right).ResolveObj();
+                    return BinaryOperatorAssign(left, op(lr.ResolveObj().GetDeepCopy(), right.GetDeepCopy()));
+
+                }
+                else
+                {
+                    return op(left, right);
+                    // not a reference? just use normal operator
+                }
+                //ex As Exception
+            }
+            catch
+            {
+                throw new EvaluatorException("Operator and assignment ([op]=) operation failed");
+            }
+        }
+
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorAddAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorAdd);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorSubtractAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorSubtract);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorMultiplyAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorMultiply);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorDivideAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorDivide);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorDuplicateAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorDuplicateCross);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorDivideFloorAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorDivideFloor);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorModuloAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorModulo);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorExponentAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorExponent);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseOrAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorBitwiseOr);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseAndAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorBitwiseAnd);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorBitwiseXorAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorBitwiseXor);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorShlAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorShl);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorShrAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorShr);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorConcatAssign(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return BinaryOperatorOpAssign(left, right, BinaryOperatorConcat);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorIncrement(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            try
+            {
+                if (ObjectTypes.Reference.IsType(right))
+                    right = ((ObjectTypes.Reference)right).GetRefObject();
+                if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString(_eval) == "NaN"))
+                {
+                    object lv = ((ObjectTypes.Reference)left).Resolve();
+                    if (lv is double)
+                    {
+                        // add one to numbers
+                        left.SetValue((double)(lv) + 1);
+                    }
+                    else if (lv is BigDecimal)
+                    {
+                        // add one to numbers
+                        left.SetValue((BigDecimal)lv + 1);
+                    }
+                    else if (lv is System.DateTime)
+                    {
+                        left.SetValue(Convert.ToDateTime(lv).AddDays(1));
+                        // add one day to dates
+                    }
+                    else if (lv is TimeSpan)
+                    {
+                        left.SetValue(((TimeSpan)lv).Add(new TimeSpan(0, 1, 0)));
+                        // add one minute to timespans
+                    }
+                    else
+                    {
+                        //otherwise ??? we don't know what to do, so we'll try the normal add operation.
+                        return BinaryOperatorAdd(left, right);
+                    }
+                    return left;
+                }
+                else
+                {
+                    if (ObjectTypes.Reference.IsType(left))
+                        left = ((ObjectTypes.Reference)left).ResolveObj();
+                    if (ObjectTypes.Reference.IsType(right))
+                        right = ((ObjectTypes.Reference)right).ResolveObj();
+                    // if it is not a reference we see the operation as ++, for example in 1++1 = 2
+                    return BinaryOperatorAdd(left, right);
+                }
+            }
+            catch(Exception ex)
+            {
+                throw new EvaluatorException("Invalid increment (++) operation\n" + ex.ToString());
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorDecrement(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            try
+            {
+                if (ObjectTypes.Reference.IsType(right))
+                    right = ((ObjectTypes.Reference)right).GetRefObject();
+                if (ObjectTypes.Reference.IsType(left) && (right == null || right.ToString(_eval) == "NaN"))
+                {
+                    object lv = ((ObjectTypes.Reference)left).Resolve();
+                    if (lv is double)
+                    {
+                        left.SetValue((double)(lv) - 1);
+                        // subtract one from numbers
+                    }
+                    else if (lv is BigDecimal)
+                    {
+                        left.SetValue((BigDecimal)lv - 1);
+                        // subtract one from numbers
+                    }
+                    else if (lv is System.DateTime)
+                    {
+                        left.SetValue(Convert.ToDateTime(lv).AddDays(-1));
+                        // subtract one day from dates
+                    }
+                    else if (lv is TimeSpan)
+                    {
+                        left.SetValue(((TimeSpan)lv).Add(new TimeSpan(0, -1, 0)));
+                        // subtract one minute from timespans
+                    }
+                    else
+                    {
+                        //otherwise ??? we don't know what to do, so we'll try the normal subtract operation.
+                        return BinaryOperatorSubtract(left, right);
+                    }
+                    return left;
+                }
+                else
+                {
+                    // if it is not a reference we see the operation as --, for example in 1--1 = 2
+                    return BinaryOperatorAdd(left, right);
+                }
+            }
+            catch
+            {
+                throw new EvaluatorException("Invalid decrement (--) operation");
+            }
+        }
+
+        /// <summary>
+        /// 'Smart' equals operator that functions as an assignment or equalTo operator as needed
+        /// </summary>
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        private ObjectTypes.EvalObjectBase BinaryOperatorAutoEqual(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (!(ObjectTypes.Reference.IsType(left) || ObjectTypes.Tuple.IsType(left) ||
+                        ObjectTypes.Tuple.IsType(right)) || ConditionMode)
+            {
+                if (ObjectTypes.Reference.IsType(left)) left = ((ObjectTypes.Reference)left).ResolveObj();
+                if (left is ObjectTypes.Lambda)
+                    return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
+                return BinaryOperatorEqualTo(left, right);
+            }
+            else
+            {
+                return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return new ObjectTypes.Boolean(ObjectComparer.CompareObjs(left, right) == 0);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorNotEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return UnaryOperatorNot(BinaryOperatorEqualTo(left, right));
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorGreaterThan(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return new ObjectTypes.Boolean(ObjectComparer.CompareObjs(left, right) == 1);
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorGreaterThanOrEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return new ObjectTypes.Boolean(ObjectComparer.CompareObjs(left, right) >= 0);
+        }
+
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorLessThan(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return UnaryOperatorNot(BinaryOperatorGreaterThanOrEqualTo(left, right));
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorLessThanOrEqualTo(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            return UnaryOperatorNot(BinaryOperatorGreaterThan(left, right));
+        }
+
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorConcat(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            try
+            {
+                // do not append NaN
+                if (rv.ToString() == "NaN")
+                    rv = "";
+                if (lv.ToString() == "NaN")
+                    lv = "";
+                return new ObjectTypes.Text((left is ObjectTypes.Text ? lv.ToString() : left.ToString(_eval)) +
+                    (right is ObjectTypes.Text ? rv.ToString() : right.ToString(_eval)));
+            }
+            catch
+            {
+                throw new SyntaxException("Invalid concatenation");
+            }
+        }
+
+        private ObjectTypes.EvalObjectBase BinaryOperatorCommaTuple(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (left == null)
+                return right;
+            if (right == null)
+                return left;
+
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+
+            try
+            {
+                if (ObjectTypes.Tuple.IsType(left))
+                {
+                    return new ObjectTypes.Tuple((((object[])lv).Concat(new[] { right })));
+                }
+                else
+                {
+                    return new ObjectTypes.Tuple(new[]{
                         left,
                         right
                     });
+                }
+                //ex As Exception
+            }
+            catch
+            {
+                throw new SyntaxException("Invalid comma concatenation");
+            }
         }
-        //ex As Exception
-    }
-    catch
-    {
-        throw new SyntaxException("Invalid comma concatenation");
-    }
-}
 
-private ObjectTypes.EvalObjectBase BinaryOperatorColon(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (left == null)
-        return right;
-    if (right == null)
-        return left;
-    object lv = left.GetValue();
-    object rv = right.GetValue();
-    try
-    {
-        if (rv == null || rv.ToString() == "NaN")
-            return left;
-        if (ObjectTypes.Tuple.IsType(left))
+        private ObjectTypes.EvalObjectBase BinaryOperatorColon(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
         {
-            List<ObjectTypes.Reference> lst = new List<ObjectTypes.Reference>((ObjectTypes.Reference[])lv);
-            lst[lst.Count- 1] = new ObjectTypes.Reference(BinaryOperatorCommaTuple(lst[lst.Count- 1].GetRefObject(), right));
-            return new ObjectTypes.Tuple(lst);
-        }
-        else
-        {
-            ObjectTypes.Reference @ref = new ObjectTypes.Reference(new ObjectTypes.Tuple(new[]{
+            if (left == null)
+                return right;
+            if (right == null)
+                return left;
+            object lv = left.GetValue();
+            object rv = right.GetValue();
+            try
+            {
+                if (rv == null || rv.ToString() == "NaN")
+                    return left;
+                if (ObjectTypes.Tuple.IsType(left))
+                {
+                    List<ObjectTypes.Reference> lst = new List<ObjectTypes.Reference>((ObjectTypes.Reference[])lv);
+                    lst[lst.Count - 1] = new ObjectTypes.Reference(BinaryOperatorCommaTuple(lst[lst.Count - 1].GetRefObject(), right));
+                    return new ObjectTypes.Tuple(lst);
+                }
+                else
+                {
+                    ObjectTypes.Reference @ref = new ObjectTypes.Reference(new ObjectTypes.Tuple(new[]{
                         lv,
                         rv
                     }));
-            return new ObjectTypes.Tuple(new[]{ @ref });
+                    return new ObjectTypes.Tuple(new[] { @ref });
+                }
+                //ex As Exception
+            }
+            catch
+            {
+                throw new SyntaxException("Invalid comma concatenation");
+            }
         }
-        //ex As Exception
-    }
-    catch
-    {
-        throw new SyntaxException("Invalid comma concatenation");
-    }
-}
 
-/// <summary>
-/// The elvis operator
-/// </summary>
-private ObjectTypes.EvalObjectBase BinaryOperatorElvis(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (_eval.Internals.IsTrue(left.GetValue()))
-        return left;
-    else
-        return right;
-}
+        /// <summary>
+        /// The elvis operator
+        /// </summary>
+        private ObjectTypes.EvalObjectBase BinaryOperatorElvis(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (_eval.Internals.IsTrue(left.GetValue()))
+                return left;
+            else
+                return right;
+        }
 
-private ObjectTypes.EvalObjectBase BinaryOperatorExp10(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
-{
-    if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
-    {
-        BigDecimal lv = ((ObjectTypes.Number)left).BigDecValue();
-        BigDecimal rv = ((ObjectTypes.Number)right).BigDecValue();
-        return new ObjectTypes.Number(new BigDecimal(mantissa: lv.Mantissa,
-            exponent: (int)(lv.Exponent + rv), sigFigs: lv.SigFigs));
+        private ObjectTypes.EvalObjectBase BinaryOperatorExp10(ObjectTypes.EvalObjectBase left, ObjectTypes.EvalObjectBase right)
+        {
+            if (ObjectTypes.Number.IsType(left) & ObjectTypes.Number.IsType(right))
+            {
+                BigDecimal lv = ((ObjectTypes.Number)left).BigDecValue();
+                BigDecimal rv = ((ObjectTypes.Number)right).BigDecValue();
+                return new ObjectTypes.Number(new BigDecimal(mantissa: lv.Mantissa,
+                    exponent: (int)(lv.Exponent + rv), sigFigs: lv.SigFigs));
+            }
+            else
+            {
+                throw new SyntaxException("Invalid types for the E (exp10) operator");
+            }
+        }
+        #endregion
     }
-    else
-    {
-        throw new SyntaxException("Invalid types for the E (exp10) operator");
-    }
-}
-		#endregion
-	}
 }

@@ -17,6 +17,7 @@ using System.Linq;
 using static Cantus.Core.CantusEvaluator.ObjectTypes;
 using static Cantus.Core.CantusEvaluator.IOEventArgs;
 using System.Reflection;
+using System.ComponentModel;
 
 namespace Cantus.Core
 {
@@ -102,14 +103,6 @@ namespace Cantus.Core
             }
 
             // evaluator management
-
-            /// <summary>
-            /// Exit the evaluator (deprecated 2.5)
-            /// </summary>
-            public void _Exit()
-            {
-                Environment.Exit(0);
-            }
 
             /// <summary>
             /// Exit the evaluator
@@ -525,9 +518,9 @@ namespace Cantus.Core
             /// <summary>
             /// Set or get the clipboard object
             /// </summary>
-            public object Clip(object obj = null)
+            public object Clip(object objToCopy = null)
             {
-                if (obj == null)
+                if (objToCopy == null)
                 {
                     object result = double.NaN;
                     Thread th = new Thread(() =>
@@ -547,17 +540,23 @@ namespace Cantus.Core
                 }
                 else
                 {
+                    string tocopy;
+                    if (objToCopy is string)
+                        tocopy = objToCopy.ToString();
+                    else
+                        tocopy = O(objToCopy);
+
                     Thread th = new Thread(() =>
                     {
                         try
                         {
-                            if (string.IsNullOrEmpty(obj.ToString()))
+                            if (string.IsNullOrEmpty(tocopy))
                             {
                                 Clipboard.Clear();
                             }
                             else
                             {
-                                Clipboard.SetText(obj.ToString());
+                                Clipboard.SetText(tocopy);
                             }
                         }
                         catch
@@ -567,7 +566,8 @@ namespace Cantus.Core
                     th.SetApartmentState(ApartmentState.STA);
                     th.Start();
 
-                    return obj.ToString() + ": copied to clipboard";
+                    PrintLine(tocopy + ": copied to clipboard");
+                    return objToCopy;
                 }
             }
 
@@ -1372,45 +1372,67 @@ namespace Cantus.Core
             {
                 return Perm(n, k);
             }
-            public double GCF(double v1, double v2)
+            public BigDecimal GCF(BigDecimal v1, BigDecimal v2)
+            {
+                return GCD(v1, v2);
+            }
+
+            public BigDecimal GCD(BigDecimal v1, BigDecimal v2)
             {
                 try
                 {
-                    //convert to integers
-                    ulong i1 = Convert.ToUInt64(Abs(v1));
-                    ulong i2 = Convert.ToUInt64(Abs(v2));
-                    ulong r = 0;
-                    //euclid's algorithm
+                    BigDecimal r = 0;
+                    //euclidean algorithm
                     do
                     {
-                        r = i1 % i2;
-                        i1 = i2;
-                        i2 = r;
+                        r = v1 % v2;
+                        v1 = v2;
+                        v2 = r;
                     } while (r > 0);
-                    return i1;
+                    return v1;
                 }
                 catch (Exception)
                 {
-                    return double.NaN;
+                    return BigDecimal.Undefined;
                 }
             }
 
-            public double GCD(double v1, double v2)
+            public BigDecimal GCDAll(List<Reference> lst)
             {
-                //alternate name
-                return GCF(v1, v2);
+                BigDecimal gcd = BigDecimal.Undefined;
+                foreach (Reference r in lst)
+                {
+                    BigDecimal bd = BigDecimal.Undefined;
+                    if (r.ResolveObj() is Matrix) 
+                    {
+                        List<Reference> sublst = (List<Reference>)r.GetValue();
+                        bd = GCDAll(sublst);
+                    }
+
+                    if (r.ResolveObj() is Number)
+                    {
+                        bd = ((Number)r.ResolveObj()).BigDecValue();
+                    }
+                    if (!bd.IsUndefined)
+                    {
+                        if (gcd.IsUndefined)
+                            gcd = bd;
+                        else
+                            gcd = GCD(gcd, bd);
+                    }
+                }
+                return gcd;
             }
-            public double LCM(double v1, double v2)
+
+            public BigDecimal LCM(BigDecimal v1, BigDecimal v2)
             {
                 try
                 {
-                    int i1 = Int(v1);
-                    int i2 = Int(v2);
-                    return i1 * i2 / GCF(i1, i2);
+                    return v1 * v2 / GCD(v1, v2);
                 }
                 catch
                 {
-                    return double.NaN;
+                    return BigDecimal.Undefined;
                 }
             }
 
@@ -1987,7 +2009,8 @@ namespace Cantus.Core
                 if (func.Args.Count() != 1)
                     throw new SyntaxException("Differentiated function must have one parameter");
                 if (double.IsNaN(x))
-                    x = (double)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+                    x = (double)(_eval.GetVariableRef(
+                        func.Args.ElementAt(0)).Resolve());
                 return Derivative(func, x);
             }
             public double DNydxN(Lambda func, double n, double x = double.NaN)
@@ -2327,7 +2350,7 @@ namespace Cantus.Core
             // encryption (actual)
 
             /// <summary>
-            /// Encode a texting into base 64
+            /// Encode a string into base 64
             /// </summary>
             /// <param name="value"></param>
             /// <returns></returns>
@@ -2341,7 +2364,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Decode a texting from base 64
+            /// Decode a string from base 64
             /// </summary>
             /// <param name="value"></param>
             /// <returns></returns>
@@ -2355,11 +2378,11 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Encrypts a texting using the AES/Rijndael symmetric key algorithm using the specified password
+            /// Encrypts a string using the AES/Rijndael symmetric key algorithm using the specified password
             /// generates a random hash and IV and appends them before the actual cipher, so they can be used when decrypting
             /// modified from http://www.obviex.com/samples/encryption.aspx
             /// </summary>
-            /// <param name="value">The value to encrypt. Automatically converted to a texting.</param>
+            /// <param name="value">The value to encrypt. Automatically converted to a string.</param>
             /// <param name="pwd">The password</param>
             /// <param name="keySize">The size of the key (default is 256, please use a power of 2)</param>
             /// <returns></returns>
@@ -2402,10 +2425,10 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Decode a AES/Rijndael-encrypted texting using the specified password
+            /// Decode a AES/Rijndael-encrypted string using the specified password
             /// modified from http://www.obviex.com/samples/encryption.aspx
             /// </summary>
-            /// <param name="value">The encrypted texting</param>
+            /// <param name="value">The encrypted string</param>
             /// <param name="pwd">The password</param>
             /// <param name="keySize">The size of the key (default is 256, please use a power of 2)</param>
             /// <returns></returns>
@@ -3254,7 +3277,7 @@ namespace Cantus.Core
             /// </summary>
             public string Type(object obj)
             {
-                if (obj == null || (obj is double && double.IsNaN((double)(obj))) || obj is System.DBNull)
+                if (IsUndefined(obj))
                 {
                     return "Undefined";
                 }
@@ -3262,13 +3285,13 @@ namespace Cantus.Core
                 {
                     return "LinkedList";
                 }
-                else if (obj is IEnumerable<Reference>)
-                {
-                    return "Matrix";
-                }
                 else if (obj is Reference[])
                 {
                     return "Tuple";
+                }
+                else if (obj is IEnumerable<Reference>)
+                {
+                    return "Matrix";
                 }
                 else if (obj is SortedDictionary<Reference, Reference>)
                 {
@@ -3278,7 +3301,7 @@ namespace Cantus.Core
                 {
                     return "HashSet";
                 }
-                else if (obj is double || obj is float || obj is decimal)
+                else if (obj is BigDecimal || obj is double || obj is float || obj is decimal)
                 {
                     return "Number";
                 }
@@ -3286,7 +3309,7 @@ namespace Cantus.Core
                 {
                     return "Text";
                 }
-                else if (obj is System.DateTime)
+                else if (obj is System.DateTime || obj is System.TimeSpan)
                 {
                     return "Date";
                 }
@@ -3315,6 +3338,99 @@ namespace Cantus.Core
                     return obj.GetType().Name;
                 }
             }
+
+            /// <summary>
+            /// Casting helper function
+            /// </summary>
+            private object CastBase(object obj, string type,
+                Func<ClassInstance, UserClass, ClassInstance> caster)
+            {
+                type = Scoping.RemoveRedundantScope(type, ROOT_NAMESPACE);
+                if (obj == null ||
+                    (obj is double && double.IsNaN((double)(obj))) ||
+                    obj is System.DBNull)
+                {
+                    return BigDecimal.Undefined;
+                }
+                switch (type.ToLowerInvariant()) {
+                    case "linkedlist":
+                        return ToLinkedList(obj);
+                    case "tuple":
+                        return ToTuple(obj);
+                    case "matrix":
+                        return ToMatrix(obj);
+                    case "set":
+                        return ToSet(obj);
+                    case "hashset":
+                        return ToHashSet(obj);
+                    case "number":
+                        if (obj is BigDecimal)
+                            return (BigDecimal)obj;
+                        else if (obj is int)
+                            return (BigDecimal)(int)obj;
+                        else if (obj is double)
+                            return (BigDecimal)(double)obj;
+                        else
+                            return ParseNumber(obj.ToString());
+                    case "text":
+                        return Text(obj);
+                    case "date":
+                        if (obj is BigDecimal)
+                            return TimeSpan.FromTicks((int)(BigDecimal)obj);
+                        else if (obj is double)
+                            return TimeSpan.FromTicks((int)(double)obj);
+                        return ParseDate(obj.ToString());
+                    case "boolean":
+                        return Boolean(obj);
+                    case "reference":
+                        return new Reference(obj.ToString());
+                    case "function":
+                        return new Lambda(obj.ToString(), new List<string>());
+
+                    default:
+                        if (_eval.HasUserClass(type))
+                        {
+                            UserClass uc = _eval.GetUserClass(type);
+                            if (obj is ClassInstance)
+                            {
+                                ClassInstance ci = (ClassInstance)obj;
+                                return caster(ci, uc);
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    return uc.Constructor.Execute(_eval, new[] { obj });
+                                }
+                                catch
+                                {
+                                    throw new EvaluatorException("Failed to cast type " + Type(obj) +
+                                        " to " + type + ": constructor does not support input type.");
+                                }
+                            }
+                        }
+                        throw new EvaluatorException("Invalid cast: type " + type + " does not exist.");
+                }
+            }
+
+            /// <summary>
+            /// Cast the class instance safely, disallowing narrowing
+            /// </summary>
+            public object Cast(object obj, string type)
+            {
+                return CastBase(obj, type, 
+                    (ClassInstance ci, UserClass uc) => { ci.Cast(uc); return ci; });
+            }
+
+            /// <summary>
+            /// Cast the class instance unsafely, allowing narrowing
+            /// </summary>
+            public object UnsafeCast(object obj, string type)
+            {
+                return CastBase(obj, type, 
+                    (ClassInstance ci, UserClass uc) => { ci.UnsafeCast(uc); return ci; });
+            }
+
             public string GetType(object obj)
             {
                 return Type(obj);
@@ -3555,56 +3671,57 @@ namespace Cantus.Core
             /// <summary>
             /// Convert a double value to a fraction
             /// </summary>
-            private string ToFrac(BigDecimal d)
+            private string ToFrac(BigDecimal value)
             {
-                BigDecimal[] res = CFrac(d,
-                    Min(1E-11 * (BigDecimal)Abs(Pow(10, Round((BigDecimal)Pow((BigDecimal)d, 0.1)))), 0.001));
-                string lft = res[0].ToString();
-                if (res[1] == 1)
+                Reference[] res = ConvFrac(value);
+                string num = res[0].ToString(_eval);
+                BigDecimal denom = ((Number)res[1].ResolveObj()).BigDecValue();
+                if (denom == 1)
                 {
-                    return lft;
+                    return num;
                 }
-                else if (res[1] == 0)
+                else if (denom == 0)
                 {
                     throw new Exception("Fraction resulted in 0 denominator");
                 }
-                else if (res[1] < 50000)
+                else if (denom < 50000)
                 {
-                    if (lft.Contains(' ')) lft = '(' + lft + ')';
-                    return lft + "/" + res[1];
+                    if (num.Contains(' ')) num = '(' + num + ')';
+                    return num + "/" + denom;
                 }
                 else
                 {
-                    return d.ToString();
+                    return value.ToString();
                 }
             }
 
             /// <summary>
             /// Internal function for converting a double value to a fraction
             /// </summary>
-            private BigDecimal[] CFrac(BigDecimal d, BigDecimal? epsi = null)
+            public Reference[] ConvFrac(BigDecimal value)
             {
+                BigDecimal epsi = Min(1E-11 * (BigDecimal)Pow(10, Round((BigDecimal)Pow(
+                            (BigDecimal)Abs(value), 0.1))), 0.001);
                 BigDecimal sign = 1.0;
-                if (d < 0)
+                if (value < 0)
                 {
                     sign = -1;
-                    d = -d;
+                    value = -value;
                 }
-                if (epsi == null) epsi = 1E-16;
-                BigDecimal n = Floor(d);
-                d -= n;
-                if (d < epsi)
+                BigDecimal n = Floor(value);
+                value -= n;
+                if (value < epsi)
                 {
                     return new[]{
-                    n * sign,
-                    1
+                    new Reference(n * sign),
+                    new Reference(1)
                 };
                 }
-                else if (1 - epsi < d)
+                else if (1 - epsi < value)
                 {
                     return new[]{
-                    (n + 1) * sign,
-                    1
+                    new Reference((n + 1) * sign),
+                    new Reference(1)
                 };
                 }
                 BigDecimal lower_n = 0;
@@ -3622,12 +3739,12 @@ namespace Cantus.Core
                 {
                     middle_n = lower_n + upper_n;
                     middle_d = lower_d + upper_d;
-                    if (middle_d * (d + epsi) < middle_n)
+                    if (middle_d * (value + epsi) < middle_n)
                     {
                         upper_n = middle_n;
                         upper_d = middle_d;
                     }
-                    else if (middle_n < (d - epsi) * middle_d)
+                    else if (middle_n < (value - epsi) * middle_d)
                     {
                         lower_n = middle_n;
                         lower_d = middle_d;
@@ -3635,15 +3752,15 @@ namespace Cantus.Core
                     else
                     {
                         return new[]{
-                            (n * middle_d + middle_n) * sign,
-                            middle_d
+                            new Reference((n * middle_d + middle_n) * sign),
+                            new Reference(middle_d)
                         };
                     }
                     runtimes += 1;
                 }
                 return new[]{
-                    d * sign,
-                    1
+                    new Reference(value * sign),
+                    new Reference(1)
                 };
             }
 
@@ -3669,14 +3786,12 @@ namespace Cantus.Core
             public List<Reference> TriFact(BigDecimal a,BigDecimal b, BigDecimal c)
             {
                 IEnumerable<Reference> rlst = Quadratic(a, b, c);
-                List<BigDecimal[]> lst = new List<BigDecimal[]>();
+                List<Reference[]> lst = new List<Reference[]>();
                 foreach (Reference r in rlst)
                 {
                     if (r.ResolveObj() is Number)
                     {
-                        lst.Add(CFrac(-((Number)r.ResolveObj()).BigDecValue(),
-                        Min(1E-11 * (BigDecimal)Pow(10, Round((BigDecimal)Pow(
-                            (BigDecimal)Abs(((Number)r.ResolveObj()).BigDecValue()), 0.1))), 0.001)));
+                        lst.Add(ConvFrac(-((Number)r.ResolveObj()).BigDecValue()));
                     }
                 }
 
@@ -3686,19 +3801,19 @@ namespace Cantus.Core
                 }
                 else if (lst.Count() == 1)
                 {
-                    BigDecimal l = lst.ElementAt(0)[1];
-                    BigDecimal r = lst.ElementAt(0)[0];
-                    return new List<Reference> { new Reference(l), new Reference(r), new Reference(l), new Reference(r) };
+                    Reference l = lst.ElementAt(0)[1];
+                    Reference r = lst.ElementAt(0)[0];
+                    return new List<Reference> { l, r, l, r };
                 }
                 else
                 {
-                    BigDecimal l1 = lst.ElementAt(0)[1];
-                    BigDecimal r1 = lst.ElementAt(0)[0];
-                    BigDecimal l2 = lst.ElementAt(1)[1];
-                    BigDecimal r2 = lst.ElementAt(1)[0];
+                    Reference l1 = lst.ElementAt(0)[1];
+                    Reference r1 = lst.ElementAt(0)[0];
+                    Reference l2 = lst.ElementAt(1)[1];
+                    Reference r2 = lst.ElementAt(1)[0];
 
-                    return new List<Reference> { new Reference(l1), new Reference(r1),
-                        new Reference(l2), new Reference(r2) };
+                    return new List<Reference> { l1, r1,
+                        l2, r2 };
                 }
             }
 
@@ -3720,7 +3835,7 @@ namespace Cantus.Core
             /// <summary>
             /// Convert a value to scientific notation
             /// </summary>
-            private string Sci(BigDecimal value)
+            public string Sci(BigDecimal value)
             {
                 return value.ToScientific();
             }
@@ -3729,73 +3844,77 @@ namespace Cantus.Core
             /// <summary>
             /// Output as scientific notation
             /// </summary>
-            private string SciO(object value)
+            public string SciO(object any)
             {
-                if (value is double)
+                if (any is double)
                 {
-                    return Sci((double)(value));
+                    return Sci((double)(any));
                 }
-                else if (value is BigDecimal)
+                else if (any is BigDecimal)
                 {
-                    return Sci((BigDecimal)value);
+                    return Sci((BigDecimal)any);
                 }
                 else
                 {
-                    return value.ToString();
+                    return any.ToString();
                 }
             }
 
             /// <summary>
             /// Output directly
             /// </summary>
-            private string LineO(object value)
+            public string LineO(object any)
             {
                 // use this to see results in linear fashion when in mathio mode
-                if (value is double)
+                if (any is double)
                 {
-                    if (Math.Abs((double)(value)) < 0.0001 || Math.Abs((double)(value)) >= 1E+15)
+                    if (Math.Abs((double)(any)) < 0.0001 || Math.Abs((double)(any)) >= 1E+15)
                     {
                         // switch to scientific for extreme values
-                        return SciO(value);
+                        return SciO(any);
                     }
                     else
                     {
-                        return Convert.ToDecimal(value).ToString("F4");
+                        return Convert.ToDecimal(any).ToString("F4");
                     }
                 }
-                else if (value is BigDecimal)
+                else if (any is BigDecimal)
                 {
-                    return ((BigDecimal)value).ToString();
+                    BigDecimal bd = (BigDecimal)any;
+                    if (!_eval.SignificantMode) bd.SigFigs = int.MaxValue;
+                    return bd.ToString();
                 }
                 else
                 {
-                    return value.ToString();
+                    return any.ToString();
                 }
             }
 
             /// <summary>
             /// Output as mathematical notation
             /// </summary>
-            private string MathO(object o)
+           public string MathO(object any)
            {
                 // use this to see results in mathio fashion when in lineio mode
-                if (o is BigDecimal || o is double)
+                if (any is BigDecimal || any is double)
                 {
                     BigDecimal value = 0;
-                    if (o is BigDecimal)
+                    if (any is BigDecimal)
                     {
-                        if (((BigDecimal)o).IsOutsideDispRange())
+                        BigDecimal bd = ((BigDecimal)any);
+                        if (!_eval.SignificantMode) bd.SigFigs = int.MaxValue;
+                        if (bd.IsOutsideDispRange())
                         {
-                            return ((BigDecimal)o).ToString();
+                            return bd.ToString();
                         }
                         else
                         {
-                            value = (BigDecimal)o;
+                            value = bd;
                         }
                     }
                     else
                     {
-                        value = (BigDecimal)(double)(o);
+                        value = (BigDecimal)(double)(any);
                     }
                     value = value.Truncate(12);
 
@@ -3948,7 +4067,7 @@ namespace Cantus.Core
                 }
                 else
                 {
-                    return o.ToString();
+                    return any.ToString();
                     //not double, don't simplify
                 }
             }
@@ -4017,7 +4136,7 @@ namespace Cantus.Core
                 else if (value is string) // text: put quotes
                 {
                     return '\'' + Convert.ToString(value) + '\'';
-                    // put quotes around textings
+                    // put quotes around strings
 
                 }
                 else if (value is double || value is BigDecimal) // numbers: process (detect fractions, etc.)
@@ -4051,6 +4170,19 @@ namespace Cantus.Core
             public object Eval(object value)
             {
                 object ans = _eval.EvalExprRaw(value.ToString(), true);
+                return ans;
+            }
+
+            /// <summary>
+            /// Evaluate an expression silently (i.e. do not show output)
+            /// </summary>
+            public object Silent(object value)
+            {
+                CantusEvaluator evl = _eval.DeepCopy();
+                evl.WriteOutput -= WriteOutput;
+                evl.WriteOutput += new WriteOutputDelegate(
+                    (object a, IOEventArgs b) => { });
+                object ans = evl.EvalExprRaw(value.ToString(), true);
                 return ans;
             }
 
@@ -4415,7 +4547,11 @@ namespace Cantus.Core
             }
 
             public string InstanceId(ClassInstance instance) {
-                return instance.InnerScope;
+                if (instance.InnerScope.Contains(Scoping.SCOPE_SEP))
+                    return instance.InnerScope.Substring(
+                        instance.InnerScope.LastIndexOf(Scoping.SCOPE_SEP) + 1);
+                else
+                    return instance.InnerScope;
             }
 
             public string Text(object obj)
@@ -4425,12 +4561,22 @@ namespace Cantus.Core
                 return O(obj);
             }
 
+            public string ToText(object obj)
+            {
+                return Text(obj);
+            }
+
             public bool Boolean(object obj)
             {
                 return IsTrue(obj);
             }
 
-            public string Char(double id)
+            public bool ToBoolean(object obj)
+            {
+                return IsTrue(obj);
+            }
+
+            public string Char(BigDecimal id)
             {
                 return ((char)(Int(id))).ToString();
             }
@@ -4440,10 +4586,6 @@ namespace Cantus.Core
                 return (int)(c[0]);
             }
 
-            public string ToString(object obj)
-            {
-                return obj.ToString();
-            }
             public object Parse(string text)
             {
                 try
@@ -4456,9 +4598,9 @@ namespace Cantus.Core
                 }
             }
 
-            public double ParseNumber(string text)
+            public BigDecimal ParseNumber(string text)
             {
-                return (double)(new Number(text).GetValue());
+                return new Number(text).BigDecValue();
             }
 
             public object ParseDate(string text)
@@ -4466,7 +4608,7 @@ namespace Cantus.Core
                 return new ObjectTypes.DateTime(text).GetValue();
             }
 
-            // texting operations
+            // string operations
             /// <summary>
             /// Concatenate (join) two text objects
             /// </summary>
@@ -4484,7 +4626,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Convert the entire texting to lower case
+            /// Convert the entire string to lower case
             /// </summary>
             public string ToLower(string text)
             {
@@ -4492,7 +4634,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Convert the entire texting to upper case
+            /// Convert the entire string to upper case
             /// </summary>
             public string ToUpper(string text)
             {
@@ -4611,7 +4753,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the subtexting of the texting starting at the point specified with the length specified
+            /// Get the substring of the string starting at the point specified with the length specified
             /// </summary>
             public string Substring(string text, double fi, double len = -1)
             {
@@ -4626,7 +4768,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Get the subtexting of the texting starting at the point specified with the length specified (alias for Substring)
+            /// Get the substring of the string starting at the point specified with the length specified (alias for Substring)
             /// </summary>
             public string Subtext(string text, double fi, double len = -1)
             {
@@ -4634,7 +4776,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Returns true if the given texting is empty
+            /// Returns true if the given string is empty
             /// </summary>
             public bool IsEmpty(object obj)
             {
@@ -4661,7 +4803,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Returns true if the given texting is empty or white space
+            /// Returns true if the given string is empty or white space
             /// </summary>
             /// <param name="text"></param>
             /// <returns></returns>
@@ -4671,9 +4813,17 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Returns true if the given texting starts with the pattern (regex enabled)
+            /// Returns true if the given string starts with the pattern (regex disabled)
             /// </summary>
             public bool StartsWith(string text, string pattern)
+            {
+                return text.StartsWith(pattern);
+            }
+
+            /// <summary>
+            /// Returns true if the given string starts with the pattern (regex enabled)
+            /// </summary>
+            public bool RegexStartsWith(string text, string pattern)
             {
                 if (!pattern.StartsWith("^"))
                     pattern = "^" + pattern;
@@ -4681,9 +4831,17 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Returns true if the given texting ends with the pattern (regex enabled)
+            /// Returns true if the given string ends with the pattern (regex disabled)
             /// </summary>
             public bool EndsWith(string text, string pattern)
+            {
+                return text.EndsWith(pattern);
+            }
+
+            /// <summary>
+            /// Returns true if the given string ends with the pattern (regex enabled)
+            /// </summary>
+            public bool RegexEndsWith(string text, string pattern)
             {
                 if (!pattern.EndsWith("$"))
                     pattern += "$";
@@ -4755,7 +4913,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Find the first occurrence of the pattern in the texting using regex
+            /// Find the first occurrence of the pattern in the string using regex
             /// </summary>
             /// <param name="text"></param>
             /// <param name="pattern"></param>
@@ -4783,7 +4941,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Find all occurrences of the pattern in the texting using regex,
+            /// Find all occurrences of the pattern in the string using regex,
             /// returning a dictionary with capture group names and contents
             /// </summary>
             /// <param name="text"></param>
@@ -4820,7 +4978,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Find all occurrences of the pattern in the texting using regex, 
+            /// Find all occurrences of the pattern in the string using regex, 
             /// returning a list of matches
             /// </summary>
             /// <param name="text"></param>
@@ -5713,11 +5871,11 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Count the number of times the given value occurs within the matrix, set, or texting.
+            /// Count the number of times the given value occurs within the matrix, set, or string.
             /// Note: for sets, if the set is in setionary form (new[]{a:b,c:d}), 
             /// then this counts the number of times the value, not key occurs, in the set (i.e. b and d are checked)
             /// Otherwise, this simply returns one because elements of the set are unique.
-            /// Note2: Regex enabled for textings
+            /// Note2: Regex enabled for strings
             /// </summary>
             public double Count(object collection, object item)
             {
@@ -5796,9 +5954,10 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Returns true if the specified matrix, text, or set contains the value. (regex enabled for texting)
+            /// Returns true if the specified matrix, text, or set contains the value. 
+            /// (set regex to enable regex for strings)
             /// </summary>
-            public bool Contains(object collection, object val)
+            public bool Contains(object collection, object val, bool regex = false)
             {
                 if (collection is IEnumerable<Reference>)
                 {
@@ -5811,7 +5970,11 @@ namespace Cantus.Core
                 }
                 else if (collection is string)
                 {
-                    return !(RegexMatch(Convert.ToString(collection), val.ToString()).Count() == 0);
+                    if (regex)
+                        return !(RegexMatch(Convert.ToString(collection),
+                            val.ToString()).Count() == 0);
+                    else
+                        return collection.ToString().Contains(val.ToString());
                 }
                 else
                 {
@@ -5820,7 +5983,8 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// find the specified object or subtexting within the array or texting from the beginning (regex enabled for textings)
+            /// find the specified object or substring within the array or 
+            /// string from the beginning (regex enabled for strings)
             /// </summary>
             /// <param name="collection"></param>
             /// <param name="val"></param>
@@ -5859,7 +6023,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// find the specified object or subtexting within the array or texting from the end (regex enabled for textings)
+            /// find the specified object or substring within the array or string from the end (regex enabled for strings)
             /// </summary>
             /// <param name="collection"></param>
             /// <param name="val"></param>
@@ -5897,7 +6061,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// replace first instance of the value with in the texting with the new value
+            /// replace first instance of the value with in the string with the new value
             /// </summary>
             /// <returns></returns>
             public string ReplaceFirst(string text, string oldVal, string newVal)
@@ -5924,7 +6088,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// replace last instance of the value with in the texting with the new value
+            /// replace last instance of the value with in the string with the new value
             /// </summary>
             /// <returns></returns>
             public string ReplaceLast(string text, string oldVal, string newVal)
@@ -5982,7 +6146,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// replace all instances of the value with in the texting with the new value
+            /// replace all instances of the value with in the string with the new value
             /// repeats until the value no longer exists at all
             /// e.g. replace("1233333","123","312") will return 3123333 while this will return 33333`12
             /// </summary>
@@ -5997,7 +6161,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// add to the left side of the texting or matrix/list until it is at least the specified length.
+            /// add to the left side of the string or matrix/list until it is at least the specified length.
             /// </summary>
             /// <param name="collection"></param>
             /// <param name="length"></param>
@@ -6028,7 +6192,7 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// add to the right side of the texting or matrix/list until it is at least the specified length.
+            /// add to the right side of the string or matrix/list until it is at least the specified length.
             /// </summary>
             /// <param name="collection"></param>
             /// <param name="length"></param>
@@ -6491,15 +6655,16 @@ namespace Cantus.Core
             /// <summary>
             /// Get a new matrix, replacing all instances of val with the item with the same coordinates in B
             /// </summary>
-            public List<Reference> Mask(List<Reference> A, List<Reference> B, object value = null)
+            public List<Reference> Mask(List<Reference> front, List<Reference> back,
+                object frontRemoveValue = null)
             {
-                if (value == null) value = 0.0;
+                if (frontRemoveValue == null) frontRemoveValue = 0.0;
 
-                if (value is double)
-                    value = (BigDecimal)(double)(value);
+                if (frontRemoveValue is double)
+                    frontRemoveValue = (BigDecimal)(double)(frontRemoveValue);
 
-                Matrix matA = (Matrix)new Matrix(A).GetDeepCopy();
-                Matrix matB = new Matrix(B);
+                Matrix matA = (Matrix)new Matrix(front).GetDeepCopy();
+                Matrix matB = new Matrix(back);
                 for (int i = 0; i <= matA.Width - 1; i++)
                 {
                     for (int j = 0; j <= matA.Height - 1; j++)
@@ -6509,17 +6674,17 @@ namespace Cantus.Core
 
                         if (val is double)
                         {
-                            if (CmpDbl((double)(val), (double)((BigDecimal)value)) == 0)
+                            if (CmpDbl((double)(val), (double)((BigDecimal)frontRemoveValue)) == 0)
                                 match = true;
                         }
                         else if (val is BigDecimal)
                         {
-                            if (((BigDecimal)val).Truncate(10) == (BigDecimal)value)
+                            if (((BigDecimal)val).Truncate(10) == (BigDecimal)frontRemoveValue)
                                 match = true;
                         }
-                        else if (val is System.Numerics.Complex && value is System.Numerics.Complex)
+                        else if (val is System.Numerics.Complex && frontRemoveValue is System.Numerics.Complex)
                         {
-                            if (CmpDbl(((System.Numerics.Complex)val).Magnitude, ((System.Numerics.Complex)value).Magnitude) == 0)
+                            if (CmpDbl(((System.Numerics.Complex)val).Magnitude, ((System.Numerics.Complex)frontRemoveValue).Magnitude) == 0)
                                 match = true;
                         }
 
@@ -6638,17 +6803,56 @@ namespace Cantus.Core
                     Matrix mat = new Matrix(collection);
                     mat = mat.Rref();
 
-                    Matrix ker = new Matrix(mat.Width, mat.Width - mat.Height + 1);
-
-                    for (int i = 0; i < ker.Width; i++)
+                    int emptyRows = 0;
+                    for (int i = mat.Height - 1; i >= 0; i--)
                     {
-                        for (int j = 0; j < ker.Width; j++)
+                        for (int j = 0; j < mat.Width; j++)
                         {
-                            if (i >= mat.Height || j + ker.Width >= mat.Width) continue;
-                            object val = mat.GetCoord(i, j + ker.Width);
+                            object val = mat.GetCoord(i, j);
+                            if (val is BigDecimal && CmpDbl((BigDecimal) val, 0.0) != 0)
+                            {
+                                --emptyRows;
+                                break;
+                            }
+                        }
+                        ++emptyRows;
+                    }
+
+                    int freeCols = 0;
+                    for (int i = mat.Width-1; i >= 0; i--)
+                    {
+                        bool nonZero = false;
+                        bool free = false;
+                        for (int j = 0; j < mat.Height; j++)
+                        {
+                            object val = mat.GetCoord(j, i);
+                            if (val is BigDecimal && CmpDbl((BigDecimal) val, 0.0) != 0)
+                            {
+                                if (nonZero)
+                                {
+                                    free = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    nonZero = true;
+                                }
+                            }
+                        }
+                        if (free) freeCols++;
+                        else break;
+                    }
+
+                    Matrix ker = new Matrix(mat.Height - emptyRows + freeCols, freeCols);
+
+                    for (int i = 0; i < mat.Height - emptyRows; i++)
+                    {
+                        for (int j = 0; j < freeCols; j++)
+                        {
+                            object val = mat.GetCoord(i, mat.Width - freeCols + j);
                             if (val is double)
                             {
-                                ker.SetCoord(i, j, -(double)(val));
+                                ker.SetCoord(i, j, -(double)val);
                             }
                             else if (val is BigDecimal)
                             {
@@ -6661,9 +6865,9 @@ namespace Cantus.Core
                         }
                     }
 
-                    for (int i = 0; i < ker.Width - 1; i++)
+                    for (int i = 0; i < freeCols; ++i)
                     {
-                        ker.SetCoord(ker.Width + i, i, 1);
+                        ker.SetCoord(mat.Height - emptyRows + i, i, (BigDecimal)1.0);
                     }
 
                     return (List<Reference>)ker.GetValue();
@@ -7112,14 +7316,32 @@ namespace Cantus.Core
             }
 
             /// <summary>
-            /// Convert to a tuple; Alias for ToTuple(collection)
+            /// Alias for ToTuple(). So named because tuples can be used
+            /// as expanded parameter lists.
             /// </summary>
-            /// <returns></returns>
+            public Reference[] ToParams(object collection)
+            {
+                return ToTuple(collection);
+            }
+
+            /// <summary>
+            /// Convert to a tuple; Alias for ToTuple(collection) 
+            /// that additionally allows for the creation of empty tuples (no argument)
+            /// </summary>
             public Reference[] Tuple(object collection = null)
             {
                 if (collection == null)
                     return new Reference[] { };
                 return ToTuple(collection);
+            }
+
+            /// <summary>
+            /// Alias for Tuple(). So named because tuples can be used
+            /// as expanded parameter lists.
+            /// </summary>
+            public Reference[] Params(object collection = null)
+            {
+                return Tuple(collection);
             }
 
             // complex number stuff
@@ -7324,7 +7546,10 @@ namespace Cantus.Core
                 {
                     if (WriteOutput != null)
                     {
-                        WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString() + Environment.NewLine));
+                        if (text is string)
+                            WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString() + Environment.NewLine));
+                        else
+                            WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, O(text) + Environment.NewLine));
                     }
                 }
                 else
@@ -8055,20 +8280,25 @@ namespace Cantus.Core
             /// </summary>
             public string StartWait(string path, string args = "", bool background = false)
             {
-                if (!File.Exists(path))
-                    throw new EvaluatorException("Error: file does not exist");
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
-                si.UseShellExecute = true;
+                si.UseShellExecute = false;
                 si.RedirectStandardOutput = true;
                 si.CreateNoWindow = background;
                 p.StartInfo = si;
-                p.Start();
+                try
+                {
+                    p.Start();
 
-                string ret = null;
-                using (StreamReader oStreamReader = p.StandardOutput)
-                    ret = oStreamReader.ReadToEnd();
-                return ret;
+                    string ret = null;
+                    using (StreamReader oStreamReader = p.StandardOutput)
+                        ret = oStreamReader.ReadToEnd();
+                    return ret;
+                }
+                catch
+                {
+                    throw new EvaluatorException("Error: file does not exist or inaccessible");
+                }
             }
 
             /// <summary>
@@ -8076,15 +8306,20 @@ namespace Cantus.Core
             /// </summary>
             public void Start(string path, string args = "", bool background=false)
             {
-                if (!File.Exists(path))
-                    throw new EvaluatorException("Error: file does not exist");
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
                 si.UseShellExecute = false;
-                si.RedirectStandardOutput = true;
+                si.RedirectStandardOutput = false;
                 si.CreateNoWindow = background;
                 p.StartInfo = si;
-                p.Start();
+                try
+                {
+                    p.Start();
+                }
+                catch (Win32Exception)
+                {
+                    throw new EvaluatorException("Error: file does not exist or inaccessible");
+                }
             }
 
             /// <summary>
@@ -8092,14 +8327,19 @@ namespace Cantus.Core
             /// </summary>
             public void StartShell(string path, string args = "")
             {
-                if (!File.Exists(path) && !Directory.Exists(path))
-                    throw new EvaluatorException("Error: file does not exist");
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
                 si.UseShellExecute = true;
                 p.StartInfo = si;
-                
-                p.Start();
+
+                try
+                {
+                    p.Start();
+                }
+                catch
+                {
+                    throw new EvaluatorException("Error: file does not exist or inaccessible");
+                }
             }
 
             /// <summary>
@@ -8142,6 +8382,8 @@ namespace Cantus.Core
             {
                 using (WebClient wc = new WebClient())
                 {
+                    if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                        url = "http://" + url;
                     wc.DownloadFile(new Uri(url), path);
                 }
                 return System.IO.File.Exists(path);
@@ -8154,6 +8396,8 @@ namespace Cantus.Core
             {
                 using (WebClient wc = new WebClient())
                 {
+                    if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                        url = "http://" + url;
                     wc.DownloadFileAsync(new Uri(url), path);
                 }
             }
@@ -8162,6 +8406,8 @@ namespace Cantus.Core
             {
                 using (WebClient wc = new WebClient())
                 {
+                    if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                        url = "http://" + url;
                     wc.UploadFile(new Uri(url), path);
                 }
                 return true;
@@ -8171,21 +8417,25 @@ namespace Cantus.Core
             {
                 using (WebClient wc = new WebClient())
                 {
+                    if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                        url = "http://" + url;
                     wc.UploadFileAsync(new Uri(url), path);
-                }
-            }
-
-            public string DownloadText(string url)
-            {
-                using (WebClient wc = new WebClient())
-                {
-                    return wc.DownloadString(new Uri(url));
                 }
             }
 
             public string DownloadSource(string url)
             {
-                return DownloadText(url);
+                using (WebClient wc = new WebClient())
+                {
+                    if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                        url = "http://" + url;
+                    return wc.DownloadString(new Uri(url));
+                }
+            }
+
+            public string DownloadText(string url)
+            {
+                return DownloadSource(url);
             }
 
             public string HTTPGet(string url, IDictionary<Reference, Reference> @params = null)
@@ -8208,11 +8458,13 @@ namespace Cantus.Core
                         }
                     }
                 }
-                return DownloadText(url);
+                return DownloadSource(url);
             }
 
             public string HTTPPost(string url, IDictionary<Reference, Reference> @params = null)
             {
+                if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                    url = "http://" + url;
                 using (WebClient wc = new WebClient())
                 {
                     if (@params == null)

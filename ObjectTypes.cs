@@ -1808,7 +1808,7 @@ namespace Cantus.Core
                             if (obj is double) obj = (BigDecimal)(double)obj;
                             if (obj is BigDecimal)
                             {
-                                mat.SetCoord(i, j, ((BigDecimal)obj).Truncate(15));
+                                mat.SetCoord(i, j, ((BigDecimal)obj).Truncate(13));
                             }
                         }
                     }
@@ -3118,12 +3118,17 @@ namespace Cantus.Core
                     }
                 }
 
-                private string _value;
+                public string _value;
 
                 /// <summary>
                 /// True if this lambda expression is considered to be a function pointer
                 /// </summary>
                 internal bool IsFunctionPtr { get; set; } = false;
+
+                /// <summary>
+                /// True if this lambda expression is a flattened function pointer
+                /// </summary>
+                internal bool IsFlattened { get; set; } = false;
 
                 /// <summary>
                 /// The name of the function this is pointing to
@@ -3139,18 +3144,38 @@ namespace Cantus.Core
                     return this;
                 }
 
+                /// <summary>
+                /// Get the value of the lambda expression
+                /// </summary>
+                public string GetExpr()
+                {
+                    return _value;
+                }
+
                 public override void SetValue(object obj)
                 {
                     if (obj is Lambda)
                     {
-                        if (((Lambda)obj).IsFunctionPtr)
+                        Lambda lamb = (Lambda)obj;
+                        if (lamb.IsFunctionPtr)
                         {
-                            this.SetFunctionPtr(obj.ToString(), ((Lambda)obj).Args);
-                            this.FunctionName = ((Lambda)obj).FunctionName;
+                            if (lamb.IsFlattened)
+                            {
+                                this.SetLambdaExprRaw(lamb.GetExpr());
+                                this._args = lamb.Args;
+                                this.IsFlattened = true;
+                                this.IsFunctionPtr = true;
+                            }
+                            else
+                            {
+                                this.SetFunctionPtr(lamb.FunctionName, lamb.Args);
+                                this.FunctionName = lamb.FunctionName;
+                                this.IsFlattened = false;
+                            }
                         }
                         else
                         {
-                            this.SetLambdaExprRaw(obj.ToString());
+                            this.SetLambdaExprRaw(lamb.ToString(new CantusEvaluator(reloadDefault:false)));
                         }
                     }
                     else
@@ -3217,9 +3242,14 @@ namespace Cantus.Core
                             }
                             else
                             {
-                                args.Add(new ObjectTypes.Reference(resObj));
+                                args.Add(new Reference(resObj));
                             }
                         }
+                    }
+                    if(args.Count == 1 && kwargs.Count == 0 &&
+                        ((Reference)args[0]).ResolveObj() is Tuple)
+                    {
+                        args = ((object[])((Reference)args[0]).Resolve()).ToList(); 
                     }
                     return Execute(eval, args, kwargs, executingScope);
                 }
@@ -3248,7 +3278,7 @@ namespace Cantus.Core
                         }
                     }
 
-                    for (int i = 0; i <= args.Count() - 1; i++)
+                    for (int i = 0; i < Math.Min(_args.Count(), args.Count()); i++)
                     {
                         tmpEval.SetVariable(_args.ElementAt(i), args.ElementAt(i));
                     }
@@ -3269,9 +3299,9 @@ namespace Cantus.Core
 
                     object res = tmpEval.EvalRaw(_value, noSaveAns: true);
 
-
                     if (res is Reference && !(((Reference)res).GetRefObject() is Reference))
                     {
+
                         Reference @ref = (Reference)res;
                         return @ref.GetRefObject();
                     }
@@ -3342,6 +3372,7 @@ namespace Cantus.Core
                     if (uf.Contains("("))
                         uf = uf.Remove(uf.IndexOf("("));
                     this._args = args;
+
                     this._value = uf + "(";
                     foreach (string a in args)
                     {
@@ -3351,6 +3382,7 @@ namespace Cantus.Core
                     }
                     this._value += ")";
                     this.IsFunctionPtr = true;
+                    this.IsFlattened = false;
                     this.FunctionName = uf;
                 }
 
@@ -3362,6 +3394,7 @@ namespace Cantus.Core
                     this._args = args;
                     this._value = expr;
                     this.IsFunctionPtr = false;
+                    this.IsFlattened = false;
                     this.FunctionName = "";
                 }
 
@@ -3400,6 +3433,7 @@ namespace Cantus.Core
                             this.SetLambdaExpr(expr, args.Split(','));
                         }
                         this.IsFunctionPtr = false;
+                        this.IsFlattened = false;
                         this.FunctionName = "";
                     }
                     else
@@ -3433,7 +3467,7 @@ namespace Cantus.Core
                         }
                         else
                         {
-                            return "`" + string.Join(",", this.Args) + " => " + this._value + "`";
+                            return "`" + string.Join(",", this.Args) + " => " + this._value.TrimStart() + "`";
                         }
                     }
                 }
@@ -3449,11 +3483,23 @@ namespace Cantus.Core
                 /// <param name="expr">Either the lambda expression or the function name</param>
                 /// <param name="args">The list of argument names</param>
                 /// <param name="fnptr">If true, intreprets as function pointer</param>
-                public Lambda(string expr, IEnumerable<string> args, bool fnptr = false)
+                public Lambda(string expr, IEnumerable<string> args, 
+                    bool fnptr = false, bool flatten = false, string fnName = "")
                 {
                     if (fnptr)
                     {
-                        this.SetFunctionPtr(expr, args);
+                        if (flatten)
+                        {
+                            this.SetLambdaExpr(expr, args);
+                            this.IsFunctionPtr = true;
+                            this.IsFlattened = true;
+                            this.FunctionName = fnName;
+                        }
+                        else
+                        {
+                            this.SetFunctionPtr(expr, args);
+                            this.IsFlattened = false;
+                        }
                     }
                     else
                     {
@@ -3472,10 +3518,12 @@ namespace Cantus.Core
                     {
                         this.SetLambdaExpr(uf.Body, uf.Args);
                         this.IsFunctionPtr = true;
+                        this.IsFlattened = true;
                         this.FunctionName = uf.FullName;
                     }
                     else
                     {
+                        this.IsFlattened = false;
                         this.SetFunctionPtr(uf.FullName, uf.Args);
                     }
                 }
@@ -3502,7 +3550,8 @@ namespace Cantus.Core
 
                 protected override EvalObjectBase DeepCopy()
                 {
-                    return new Lambda(this._value, this.Args, this.IsFunctionPtr);
+                    return new Lambda(this._value, this.Args, this.IsFunctionPtr,
+                       this.IsFlattened, this.FunctionName);
                 }
             }
 
@@ -3521,7 +3570,7 @@ namespace Cantus.Core
                     get
                     {
                         return _userClass;
-                    }
+                    } 
                 }
 
                 private Dictionary<string, Reference> _fields = new Dictionary<string, Reference>();
@@ -3656,6 +3705,46 @@ namespace Cantus.Core
                         throw new Exception(fieldName + " is not a field of " + UserClass.Name);
                     }
                 }
+                /// <summary>
+                /// Cast safely to another type (allow narrowing)
+                /// </summary>
+                public void Cast(UserClass targetType)
+                {
+                    _userClass = targetType;
+                    Dictionary<string, Variable> allFlds = _userClass.AllFields;
+                    // do casting
+                    foreach (string k in _fields.Keys.ToArray())
+                    {
+                        if (!allFlds.ContainsKey(k))
+                            throw new EvaluatorException("Narrowing cast to " + _userClass.Name +
+                                " not allowed. Use unsafecast or (!as <type>) to force casting.");
+                    }
+                    foreach (string k in allFlds.Keys)
+                    {
+                        if (!_fields.ContainsKey(k))
+                            _fields[k] = allFlds[k].Reference;
+                    }
+                }
+
+                /// <summary>
+                /// Cast unsafely to another type (allow narrowing)
+                /// </summary>
+                public void UnsafeCast(UserClass targetType)
+                {
+                    _userClass = targetType;
+                    Dictionary<string, Variable> allFlds = _userClass.AllFields;
+                    // do casting
+                    foreach (string k in _fields.Keys.ToArray())
+                    {
+                        if (!allFlds.ContainsKey(k))
+                            _fields.Remove(k);
+                    }
+                    foreach (string k in allFlds.Keys)
+                    {
+                        if (!_fields.ContainsKey(k))
+                            _fields[k] = allFlds[k].Reference;
+                    }
+                }
 
                 /// <summary>
                 /// Get a random instance id
@@ -3698,7 +3787,7 @@ namespace Cantus.Core
                     else
                     {
                         // default instance info
-                        return "<instance of \"" + this.UserClass.Name + "\" with id " + this.InnerScope + ">";
+                        return "# instance of " + this.UserClass.Name + " with id " + new InternalFunctions(null).InstanceId(this);
                     }
                 }
 
@@ -3848,6 +3937,7 @@ namespace Cantus.Core.CommonTypes
                 case "BigDecimal":
                     return 0;
                 case "Double":
+                case "Integer":
                     return 1;
                 case "String":
                     return 2;
@@ -3903,7 +3993,8 @@ namespace Cantus.Core.CommonTypes
         /// <returns></returns>
         public static int CompareObjs(object x, object y)
         {
-            if (x.GetType().ToString().StartsWith("Cantus.Core.CantusEvaluator+ObjectTypes") &&
+            if (x.GetType().ToString().
+                StartsWith("Cantus.Core.CantusEvaluator+Obj") &&
                 !x.GetType().ToString().EndsWith("[]"))
             {
                 if (x.GetType() == typeof(Number))
@@ -3915,7 +4006,9 @@ namespace Cantus.Core.CommonTypes
                     x = ((EvalObjectBase)x).GetValue();
                 }
             }
-            if (y.GetType().ToString().StartsWith("Cantus.Core.CantusEvaluator+ObjectTypes") && !y.GetType().ToString().EndsWith("[]"))
+            if (y.GetType().ToString().StartsWith(
+                "Cantus.Core.CantusEvaluator+Obj") &&
+                !y.GetType().ToString().EndsWith("[]"))
             {
                 if (y.GetType() == typeof(Number))
                 {
@@ -3932,6 +4025,7 @@ namespace Cantus.Core.CommonTypes
                 return TypeToId(x) > TypeToId(y) ? 1 : -1;
 
             }
+
             else if (x is BigDecimal && y is BigDecimal)
             {
                 BigDecimal xd = (BigDecimal)x;
@@ -3945,11 +4039,12 @@ namespace Cantus.Core.CommonTypes
             }
             else if (x is int && y is int)
             {
-                return ((double)x).CompareTo((double)(y));
+                return ((int)x).CompareTo((int)(y));
             }
+
             else if (x is bool && y is bool)
             {
-                return Convert.ToBoolean(x).CompareTo(Convert.ToBoolean(y));
+                return ((bool)x).CompareTo((bool)y);
 
             }
             else if (x is string && y is string)
@@ -3960,6 +4055,7 @@ namespace Cantus.Core.CommonTypes
             {
                 return Convert.ToDateTime(x).CompareTo(Convert.ToDateTime(y));
             }
+
             else if (x is TimeSpan && y is TimeSpan)
             {
                 return ((TimeSpan)x).CompareTo((TimeSpan)y);
@@ -3970,21 +4066,25 @@ namespace Cantus.Core.CommonTypes
                 return CompareLists((IList<Reference>)x, (IList<Reference>)y);
 
             }
+
             else if (x is LinkedList<Reference> && y is LinkedList<Reference>)
             {
                 return CompareLinkedLists((LinkedList<Reference>)x, (LinkedList<Reference>)y);
 
             }
+
             else if (x is Reference[] && y is Reference[])
             {
                 return CompareLists((Reference[])x, (Reference[])y);
 
             }
+
             else if (x is ReadOnlyCollection<Reference> && y is ReadOnlyCollection<Reference>)
             {
                 return CompareLists((ReadOnlyCollection<Reference>)x, (ReadOnlyCollection<Reference>)y);
 
             }
+
             else if (x is KeyValuePair<object, object> && y is KeyValuePair<object, object>)
             {
                 int cmpKv = CompareObjs(((KeyValuePair<object, object>)x).Key, ((KeyValuePair<object, object>)y).Key);
@@ -3992,8 +4092,8 @@ namespace Cantus.Core.CommonTypes
                     return cmpKv;
                 return CompareObjs(((KeyValuePair<object, object>)x).Value, ((KeyValuePair<object, object>)y).Value);
 
-
             }
+
             else if (x is IDictionary<Reference, Reference> && y is IDictionary<Reference, Reference>)
             {
                 int cmpDict = CompareLists(((IDictionary<Reference, Reference>)x).Keys.ToList(), ((IDictionary<Reference, Reference>)y).Keys.ToList());
@@ -4009,6 +4109,7 @@ namespace Cantus.Core.CommonTypes
                     return 0;
                 }
             }
+
             else
             {
                 return 1;

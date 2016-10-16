@@ -296,6 +296,7 @@ namespace Cantus.Core
                 "continue",
                 false
             } }));
+            Register(new Statement(new[]{ "throw" }, StatementThrow, false));
 
             // use to declare local scoped variables or override global variable names
             Register(new Statement(new[]{ "let" }, StatementDeclare, false, declarative: true));
@@ -303,7 +304,8 @@ namespace Cantus.Core
             Register(new Statement(new[]{
                 "private",
                 "public",
-                "static"
+                "static",
+                "hidden"
             }, StatementDeclareModifier, true, declarative: true));
 
             // declare functions
@@ -384,8 +386,9 @@ namespace Cantus.Core
             expr = expr.Trim();
             for (int i = Math.Min(expr.Length, MaxStatementLength); i >= 1; i += -1)
             {
-                // only try to resolve if this takes up the whole expression or ends with a space
-                if (i != expr.Length && expr[i] != ' ')
+                // only try to resolve if this takes up the whole expression
+                // or ends with a space or colon
+                if (i != expr.Length && expr[i] != ' ' && expr[i] != ':')
                     continue;
                 string kwd = expr;
                 if (i < kwd.Length)
@@ -780,7 +783,7 @@ namespace Cantus.Core
                     {
                         catchBlock = block;
                         if (!string.IsNullOrWhiteSpace(block.Argument))
-                            catchVar = block.Argument;
+                            catchVar = block.Argument.Trim();
                     }
                 }
                 else if (block.Keyword == "finally")
@@ -869,6 +872,15 @@ namespace Cantus.Core
                 throw new SyntaxException("Continue statement is invalid ");
             return new StatementResult(double.NaN, ExecCode.@continue);
         }
+
+        private StatementResult StatementThrow(List<Block> blocks)
+        {
+            if (blocks.Count != 1)
+                throw new SyntaxException("Throw statement is invalid");
+            object res = _eval.EvalExprRaw(blocks[0].Argument);
+            throw new EvaluatorException(
+                res is string ? new Text(res.ToString()).Escape().GetValue().ToString() : _eval.Internals.O(res));
+        }
         #endregion
 
         #region "Variable/Function Declaration Statements"
@@ -937,7 +949,8 @@ namespace Cantus.Core
             string[] validKeywords = {
                 "public",
                 "private",
-                "static"
+                "static",
+                "hidden"
             };
             while (true)
             {
