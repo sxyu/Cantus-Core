@@ -3861,9 +3861,17 @@ namespace Cantus.Core
             }
 
             /// <summary>
+            /// Output the full number
+            /// </summary>
+            public string FullNumber(BigDecimal bd)
+            {
+                return bd.FullDecimalRepr();
+            }
+
+            /// <summary>
             /// Output directly
             /// </summary>
-            public string LineO(object any)
+            public string RawO(object any)
             {
                 // use this to see results in linear fashion when in mathio mode
                 if (any is double)
@@ -4152,7 +4160,7 @@ namespace Cantus.Core
                     }
                     else
                     {
-                        ret = LineO(value);
+                        ret = RawO(value);
                     }
                     return ret;
 

@@ -3242,14 +3242,14 @@ namespace Cantus.Core
                             }
                             else
                             {
-                                args.Add(new Reference(resObj));
+                                args.Add(DetectType(resObj));
                             }
                         }
                     }
                     if(args.Count == 1 && kwargs.Count == 0 &&
-                        ((Reference)args[0]).ResolveObj() is Tuple)
+                        args[0] is Tuple)
                     {
-                        args = ((object[])((Reference)args[0]).Resolve()).ToList(); 
+                        args = ((object[])((Tuple)args[0]).GetValue()).ToList(); 
                     }
                     return Execute(eval, args, kwargs, executingScope);
                 }

@@ -359,7 +359,7 @@ namespace Cantus.Core
         /// <summary>
         /// Condition mode: if on, the = operator is always seen as a comparison operator
         /// </summary>
-        public bool ConditionMode { get; set; }
+        public static bool ConditionMode { get; set; }
 
         /// <summary>
         /// The default operator to use when none is specified, normally *
@@ -377,10 +377,9 @@ namespace Cantus.Core
         /// <summary>
         /// Create a new Operator Registar for registering and accessing operators like if/else
         /// </summary>
-        public OperatorRegistar(CantusEvaluator parent, bool conditional = false)
+        public OperatorRegistar(CantusEvaluator parent)
         {
             this._eval = parent;
-            this.ConditionMode = conditional;
             RegisterOperators();
         }
 
@@ -1755,9 +1754,13 @@ namespace Cantus.Core
                 return left;
                 //ex As Exception
             }
-            catch(Exception ex)
+            catch(NullReferenceException)
             {
-                throw new EvaluatorException("Assignment operation failed " + ex.ToString());
+                throw new EvaluatorException("Empty assignment disallowed.");
+            }
+            catch(Exception)
+            {
+                throw new EvaluatorException("Assignment operation failed.");
             }
         }
 
@@ -1971,6 +1974,7 @@ namespace Cantus.Core
                         ObjectTypes.Tuple.IsType(right)) || ConditionMode)
             {
                 if (ObjectTypes.Reference.IsType(left)) left = ((ObjectTypes.Reference)left).ResolveObj();
+                if (ObjectTypes.Reference.IsType(right)) right = ((ObjectTypes.Reference)right).ResolveObj();
                 if (left is ObjectTypes.Lambda)
                     return new ObjectTypes.SystemMessage(ObjectTypes.SystemMessage.MessageType.defer);
                 return BinaryOperatorEqualTo(left, right);

@@ -2648,17 +2648,7 @@ namespace Cantus.Core
                             {
                                 curBlock.Content = curBlockInner.ToString().TrimEnd();
 
-                                // 'Then' chaining
-                                nextBlock = null;
-                                if (curBlock.Argument.ToLowerInvariant().Contains(" then "))
-                                {
-                                    string right = curBlock.Argument.Substring(curBlock.Argument.ToLowerInvariant().IndexOf(" then ") + 6);
-
-                                    curBlock.Argument = curBlock.Argument.Remove(curBlock.Argument.ToLowerInvariant().IndexOf(" then "));
-
-                                    string newKwd = StatementRegistar.KeywordFromExpr(ref right);
-                                    nextBlock = new Block(newKwd, right, "");
-                                }
+                                //nextBlock = null;
 
                                 // Add this block to the list of blocks for this statement
                                 curBlockLst.Add(curBlock);
@@ -2751,11 +2741,23 @@ namespace Cantus.Core
                                 curSM = StatementRegistar.StatementWithKeyword(kwd, true);
 
                                 // then chaining
-                                if ((nextBlock != null))
+                                if (nextBlock != null)
                                 {
                                     // set block and go back
                                     curBlock = nextBlock;
                                     curSM = StatementRegistar.StatementWithKeyword(curBlock.Keyword, true);
+
+                                    nextBlock = null;
+                                    if (curBlock.Argument.ToLowerInvariant().Contains(" then "))
+                                    {
+                                        string right = curBlock.Argument.Substring(curBlock.Argument.ToLowerInvariant().IndexOf(" then ") + 6);
+
+                                        curBlock.Argument = curBlock.Argument.Remove(curBlock.Argument.ToLowerInvariant().IndexOf(" then "));
+
+                                        string newKwd = StatementRegistar.KeywordFromExpr(ref right);
+                                        nextBlock = new Block(newKwd, right, curBlock.Content);
+                                    }
+
                                     lineNum = curBlockBegin;
                                     curBlockInner.Clear();
                                     continue;
@@ -2781,6 +2783,7 @@ namespace Cantus.Core
                                 throw new EvaluatorException("\"" + curSM.MainKeywords[0] + "\"" + " statement does not accept any arguments");
                             }
 
+                            nextBlock = null;
                             if (curSM.BlockLevel)
                             {
                                 bool inlineBlock = false;
@@ -2804,7 +2807,17 @@ namespace Cantus.Core
                                             if (string.IsNullOrWhiteSpace(content))
                                                 break;
                                             inlineBlock = true;
-                                            curBlockLst.Add(new Block(kwd, l.Remove(j), content));
+                                            curBlock = new Block(kwd, l.Remove(j), content);
+                                            if (curBlock.Argument.ToLowerInvariant().Contains(" then "))
+                                            {
+                                                string right = curBlock.Argument.Substring(curBlock.Argument.ToLowerInvariant().IndexOf(" then ") + 6);
+
+                                                curBlock.Argument = curBlock.Argument.Remove(curBlock.Argument.ToLowerInvariant().IndexOf(" then "));
+
+                                                string newKwd = StatementRegistar.KeywordFromExpr(ref right);
+                                                nextBlock = new Block(newKwd, right, content);
+                                            }
+                                            curBlockLst.Add(curBlock);
                                             curBlock = null;
                                             break;
                                         }
@@ -2816,10 +2829,20 @@ namespace Cantus.Core
                                     // make a new block object out of the keyword and the argument
                                     // if this is a block level statement, start a new block
                                     curBlockIndent = -1;
+                                    if (curBlock.Argument.ToLowerInvariant().Contains(" then "))
+                                    {
+                                        string right = curBlock.Argument.Substring(curBlock.Argument.ToLowerInvariant().IndexOf(" then ") + 6);
+
+                                        curBlock.Argument = curBlock.Argument.Remove(curBlock.Argument.ToLowerInvariant().IndexOf(" then "));
+
+                                        string newKwd = StatementRegistar.KeywordFromExpr(ref right);
+                                        nextBlock = new Block(newKwd, right, "");
+                                    }
 
                                     // expect a higher indentation level ( automatically set on next iteration )
                                     curBlockInner = new StringBuilder();
                                     curBlockBegin = lineNum;
+                                //if (nextBlock != null) curBlockLst.Add(nextBlock);
                                 }
                             }
                             else
@@ -2834,7 +2857,7 @@ namespace Cantus.Core
                             if (StatementRegistar.HasKeyword(kwd))
                             {
                                 string[] tmp = StatementRegistar.StatementWithKeyword(kwd).MainKeywords;
-                                throw new SyntaxException("The \"" + kwd + "\" statement must be paired with " +
+                                throw new SyntaxException("The " + kwd + " statement must be paired with " +
                                     (tmp.Length != 1 ? "one of: " + string.Join(",", tmp) : " the \"" + tmp[0] + "\" statement"));
                             }
 
@@ -4465,10 +4488,11 @@ namespace Cantus.Core
             {
                 string s = sc;
                 string temp = name;
+                
                 while (temp.Contains(SCOPE_SEP))
                 {
                     temp = temp.Remove(temp.LastIndexOf(SCOPE_SEP));
-                    if (HasVariable(s + SCOPE_SEP + temp))
+                    if (Variables.ContainsKey(s + SCOPE_SEP + temp) && !Variables[s + SCOPE_SEP + temp].Modifiers.Contains("private"))
                     {
                         Reference v = Variables[s + SCOPE_SEP + temp].Reference;
                         if (v.ResolveObj() is ClassInstance)
@@ -4665,7 +4689,7 @@ namespace Cantus.Core
                 return true;
             if (Variables.ContainsKey(name) &&
                 !(Variables[name].Modifiers.Contains("private")) && 
-                  !(Scoping.IsParentScopeOf(Variables[name].DeclaringScope, Scope)))
+                  !(IsParentScopeOf(Variables[name].DeclaringScope, Scope)))
                 return true;
             foreach (string scope in GetAllAccessibleScopes())
             {
