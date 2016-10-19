@@ -50,15 +50,16 @@ namespace Cantus.Core
             /// Raised when Cantus needs to read input input from the console. Handle to use I/O in GUI applications
             /// </summary>
             public event ReadInputDelegate ReadInput;
-            
+
             /// <summary>
             /// The event handler for the ReadInput event
             /// </summary>
             internal ReadInputDelegate ReadInputHandler
             {
-                    get{
-                        return this.ReadInput;
-                    }
+                get
+                {
+                    return this.ReadInput;
+                }
             }
 
             /// <summary>
@@ -75,7 +76,8 @@ namespace Cantus.Core
             /// </summary>
             internal WriteOutputDelegate WriteOutputHandler
             {
-                get{
+                get
+                {
                     return this.WriteOutput;
                 }
             }
@@ -97,9 +99,10 @@ namespace Cantus.Core
             /// </summary>
             internal ClearConsoleDelegate RequestClearConsoleHandler
             {
-                    get{
-                        return this.RequestClearConsole;
-                    }
+                get
+                {
+                    return this.RequestClearConsole;
+                }
             }
 
             // evaluator management
@@ -301,15 +304,16 @@ namespace Cantus.Core
                 {
                     return (_eval.UserFunctions[fullName].Args.Select(
                         new Func<string, Reference>((x) => new Reference(x)))).ToList();
-                } 
+                }
                 else if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
                 {
                     MethodInfo mi = typeof(InternalFunctions).GetMethod(
                         Scoping.RemoveRedundantScope(fullName, ROOT_NAMESPACE),
-                        BindingFlags.IgnoreCase | BindingFlags.Public | 
+                        BindingFlags.IgnoreCase | BindingFlags.Public |
                         BindingFlags.Instance | BindingFlags.DeclaredOnly);
-                    return (from x in mi.GetParameters() select
-                         new Reference(new Text(x.Name))).ToList();
+                    return (from x in mi.GetParameters()
+                            select
+new Reference(new Text(x.Name))).ToList();
                 }
                 else
                 {
@@ -327,15 +331,15 @@ namespace Cantus.Core
                 if (_eval.UserFunctions.ContainsKey(fullName))
                 {
                     return new Lambda(_eval.UserFunctions[fullName]);
-                } 
+                }
                 else if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
                 {
                     MethodInfo mi = typeof(InternalFunctions).GetMethod(
                         Scoping.RemoveRedundantScope(fullName, ROOT_NAMESPACE),
-                        BindingFlags.IgnoreCase | BindingFlags.Public | 
+                        BindingFlags.IgnoreCase | BindingFlags.Public |
                         BindingFlags.Instance | BindingFlags.DeclaredOnly);
                     return new Lambda(fullName,
-                        mi.GetParameters().Select(new Func<ParameterInfo, string>((x)=>x.Name)),  true);
+                        mi.GetParameters().Select(new Func<ParameterInfo, string>((x) => x.Name)), true);
                 }
                 else
                 {
@@ -346,8 +350,8 @@ namespace Cantus.Core
             /// <summary>
             /// Execute a function by full name
             /// </summary>
-            public object _FnExec(string fullName, IList<Reference> args=null,
-                IDictionary<Reference,Reference> kwargs = null)
+            public object _FnExec(string fullName, IList<Reference> args = null,
+                IDictionary<Reference, Reference> kwargs = null)
             {
                 if (args == null) args = new List<Reference>();
                 if (_eval.UserFunctions.ContainsKey(fullName))
@@ -369,11 +373,11 @@ namespace Cantus.Core
                         return _eval.ExecUserFunction(fullName,
                             args.Select(new Func<Reference, object>((x) => x.Resolve())));
                     }
-                } 
+                }
                 else if (fullName.StartsWith(ROOT_NAMESPACE + Scoping.SCOPE_SEP) && _eval.HasFunction(fullName))
                 {
-                   return _eval.ExecInternalFunction(fullName,
-                        args.Select(new Func<Reference, object>((x) => x.Resolve())).ToList());
+                    return _eval.ExecInternalFunction(fullName,
+                         args.Select(new Func<Reference, object>((x) => x.Resolve())).ToList());
                 }
                 else
                 {
@@ -401,7 +405,7 @@ namespace Cantus.Core
                 List<Reference> collection = new List<Reference>();
                 foreach (UserFunction fn in _eval.UserFunctions.Values)
                 {
-                    if (fn.FullName.StartsWith(scope) )
+                    if (fn.FullName.StartsWith(scope))
                     {
                         collection.Add(new Reference(fn.FullName));
                     }
@@ -409,7 +413,7 @@ namespace Cantus.Core
                 if (scope == ROOT_NAMESPACE)
                 {
                     MethodInfo[] infoset = typeof(InternalFunctions).GetMethods(
-                        BindingFlags.IgnoreCase | BindingFlags.Public | 
+                        BindingFlags.IgnoreCase | BindingFlags.Public |
                         BindingFlags.Instance | BindingFlags.DeclaredOnly);
                     foreach (MethodInfo mi in infoset)
                     {
@@ -448,7 +452,7 @@ namespace Cantus.Core
             /// <summary>
             /// Returns true if the variable with the given name is defined
             /// </summary>
-            public bool _VarDefined(string fullName) { return _eval.Variables.ContainsKey(fullName);  }
+            public bool _VarDefined(string fullName) { return _eval.Variables.ContainsKey(fullName); }
 
             /// <summary>
             /// List variables in the scope. By default, lists all in current scope.
@@ -478,24 +482,25 @@ namespace Cantus.Core
             /// <summary>
             /// Returns true if the class with the given name is defined
             /// </summary>
-            public bool _ClsDefined(string fullName) { return _eval.UserClasses.ContainsKey(fullName);  }
+            public bool _ClsDefined(string fullName) { return _eval.UserClasses.ContainsKey(fullName); }
 
             /// <summary>
             /// Returns true if the class with the given name is defined
             /// </summary>
-            public ClassInstance _ClsInit(string fullName, IList<Reference> args=null, IDictionary<Reference,Reference> kwargs=null) {
+            public ClassInstance _ClsInit(string fullName, IList<Reference> args = null, IDictionary<Reference, Reference> kwargs = null)
+            {
                 if (!_ClsDefined(fullName)) throw new EvaluatorException("Class " + fullName + " is undefined.");
-                    if (args == null) args = new List<Reference>();
-                    UserClass uc = _eval.UserClasses[fullName];
-                    if (uc.Constructor.Args.Count() > 0 && args.Count == 0)
-                    {
-                        return new ClassInstance(uc);
-                    }
-                    else
-                    {
-                        return new ClassInstance(uc, args);
-                    }
- 
+                if (args == null) args = new List<Reference>();
+                UserClass uc = _eval.UserClasses[fullName];
+                if (uc.Constructor.Args.Count() > 0 && args.Count == 0)
+                {
+                    return new ClassInstance(uc);
+                }
+                else
+                {
+                    return new ClassInstance(uc, args);
+                }
+
             }
 
             /// <summary>
@@ -1170,7 +1175,7 @@ namespace Cantus.Core
             {
                 BigDecimal total = value.TruncateInt();
                 total.Normalize();
-                for (BigDecimal i=value-1; i > 1; i = i - 1)
+                for (BigDecimal i = value - 1; i > 1; i = i - 1)
                 {
                     total = total * i;
                     total.Normalize();
@@ -1403,7 +1408,7 @@ namespace Cantus.Core
                 foreach (Reference r in lst)
                 {
                     BigDecimal bd = BigDecimal.Undefined;
-                    if (r.ResolveObj() is Matrix) 
+                    if (r.ResolveObj() is Matrix)
                     {
                         List<Reference> sublst = (List<Reference>)r.GetValue();
                         bd = GCDAll(sublst);
@@ -1442,7 +1447,8 @@ namespace Cantus.Core
             /// </summary>
             public BigDecimal Round(BigDecimal value, BigDecimal? digits = null)
             {
-                try {
+                try
+                {
                     int dgts;
                     if (digits == null) dgts = 0;
                     else dgts = Int((double)(BigDecimal)digits);
@@ -1661,7 +1667,8 @@ namespace Cantus.Core
             /// <summary>
             /// Get the natural logarithm of a number
             /// </summary>
-            public object Ln(object value) {
+            public object Ln(object value)
+            {
                 if (value is double)
                 {
                     return Math.Log((double)(value));
@@ -1919,7 +1926,8 @@ namespace Cantus.Core
                 return RecursiveComputeLst(new Reference[]{
                 new Reference(value1),
                 new Reference((BigDecimal)value2)
-            }, (BigDecimal a, BigDecimal b) => {
+            }, (BigDecimal a, BigDecimal b) =>
+            {
                 if (a.IsUndefined) return b;
                 if (b.IsUndefined) return a;
                 return a < b ? a : b;
@@ -1928,9 +1936,9 @@ namespace Cantus.Core
 
             public BigDecimal Max(object value1, BigDecimal? value2 = null)
             {
-                    if (value1 == null) value1 = BigDecimal.Undefined;
-                    if (value2 == null) value2 = BigDecimal.Undefined;
-                    return RecursiveComputeLst(new Reference[]{
+                if (value1 == null) value1 = BigDecimal.Undefined;
+                if (value2 == null) value2 = BigDecimal.Undefined;
+                return RecursiveComputeLst(new Reference[]{
                    new Reference( value1),
                    new Reference((BigDecimal)value2)
                 }, (BigDecimal a, BigDecimal b) =>
@@ -1939,12 +1947,13 @@ namespace Cantus.Core
                     if (b.IsUndefined) return a;
                     return a > b ? a : b;
                 }
-                );
+            );
             }
 
             private BigDecimal RecursiveComputeLst(Reference[] list, Func<BigDecimal, BigDecimal, BigDecimal> func)
             {
-                try {
+                try
+                {
                     if (list.Length == 0)
                         return double.NaN;
 
@@ -2741,7 +2750,7 @@ namespace Cantus.Core
                     return double.NaN;
                 }
             }
- 
+
             public double Year(object dt)
             {
                 if (dt is System.DateTime)
@@ -2767,7 +2776,7 @@ namespace Cantus.Core
             {
                 if (dt is System.DateTime)
                 {
-                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalDays / 30.0;
+                    return new TimeSpan(((System.DateTime)dt).Ticks).TotalDays / 30.0;
                 }
                 else if (dt is System.TimeSpan)
                 {
@@ -2803,7 +2812,7 @@ namespace Cantus.Core
             {
                 if (dt is System.DateTime)
                 {
-                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalDays;
+                    return new TimeSpan(((System.DateTime)dt).Ticks).TotalDays;
                 }
                 else if (dt is System.TimeSpan)
                 {
@@ -2855,7 +2864,7 @@ namespace Cantus.Core
             {
                 if (dt is System.DateTime)
                 {
-                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalHours;
+                    return new TimeSpan(((System.DateTime)dt).Ticks).TotalHours;
                 }
                 else if (dt is System.TimeSpan)
                 {
@@ -2891,7 +2900,7 @@ namespace Cantus.Core
             {
                 if (dt is System.DateTime)
                 {
-                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalMinutes;
+                    return new TimeSpan(((System.DateTime)dt).Ticks).TotalMinutes;
                 }
                 else if (dt is System.TimeSpan)
                 {
@@ -2947,7 +2956,7 @@ namespace Cantus.Core
             {
                 if (dt is System.DateTime)
                 {
-                    return  new TimeSpan(((System.DateTime)dt).Ticks).TotalSeconds;
+                    return new TimeSpan(((System.DateTime)dt).Ticks).TotalSeconds;
                 }
                 else if (dt is System.TimeSpan)
                 {
@@ -3233,8 +3242,8 @@ namespace Cantus.Core
             /// </summary>
             public double Size(object obj)
             {
-                if (obj is bool) return sizeof (bool);
-                if (obj is char) return sizeof (char);
+                if (obj is bool) return sizeof(bool);
+                if (obj is char) return sizeof(char);
                 if (obj is string) return ((string)obj).Length * sizeof(char);
                 else if (obj is IDictionary<Reference, Reference>)
                 {
@@ -3352,7 +3361,8 @@ namespace Cantus.Core
                 {
                     return BigDecimal.Undefined;
                 }
-                switch (type.ToLowerInvariant()) {
+                switch (type.ToLowerInvariant())
+                {
                     case "linkedlist":
                         return ToLinkedList(obj);
                     case "tuple":
@@ -3418,7 +3428,7 @@ namespace Cantus.Core
             /// </summary>
             public object Cast(object obj, string type)
             {
-                return CastBase(obj, type, 
+                return CastBase(obj, type,
                     (ClassInstance ci, UserClass uc) => { ci.Cast(uc); return ci; });
             }
 
@@ -3427,7 +3437,7 @@ namespace Cantus.Core
             /// </summary>
             public object UnsafeCast(object obj, string type)
             {
-                return CastBase(obj, type, 
+                return CastBase(obj, type,
                     (ClassInstance ci, UserClass uc) => { ci.UnsafeCast(uc); return ci; });
             }
 
@@ -3528,9 +3538,10 @@ namespace Cantus.Core
             /// <returns></returns>
             public string Format(string text, object formatPattern)
             {
-                if (formatPattern is IList<Reference>) {
+                if (formatPattern is IList<Reference>)
+                {
                     object[] arr = (from r in (IList<Reference>)formatPattern
-                                   select r.ResolveObj() is Text ? r.Resolve() : r.ResolveObj()).ToArray();
+                                    select r.ResolveObj() is Text ? r.Resolve() : r.ResolveObj()).ToArray();
                     return string.Format(text, arr);
                 }
                 else
@@ -3552,7 +3563,7 @@ namespace Cantus.Core
                 }
                 else
                 {
-                    return (from p in text.Split(new[] { pattern.ToString()[0]},
+                    return (from p in text.Split(new[] { pattern.ToString()[0] },
                         removeEmpty ? StringSplitOptions.RemoveEmptyEntries : StringSplitOptions.None)
                             select new Reference(p)).ToList();
                 }
@@ -3783,7 +3794,7 @@ namespace Cantus.Core
             /// <summary>
             /// Trinomial factoring Function
             /// </summary>
-            public List<Reference> TriFact(BigDecimal a,BigDecimal b, BigDecimal c)
+            public List<Reference> TriFact(BigDecimal a, BigDecimal b, BigDecimal c)
             {
                 IEnumerable<Reference> rlst = Quadratic(a, b, c);
                 List<Reference[]> lst = new List<Reference[]>();
@@ -3901,8 +3912,8 @@ namespace Cantus.Core
             /// <summary>
             /// Output as mathematical notation
             /// </summary>
-           public string MathO(object any)
-           {
+            public string MathO(object any)
+            {
                 // use this to see results in mathio fashion when in lineio mode
                 if (any is BigDecimal || any is double)
                 {
@@ -3961,7 +3972,7 @@ namespace Cantus.Core
                                 return SimpRadical(sq, i);
                             }
                         }
-                        
+
                         for (int i = 2; i <= 3; i++)
                         {
                             for (int j = 1; j <= 40; j++)
@@ -4016,7 +4027,7 @@ namespace Cantus.Core
                                         }
                                         else
                                         {
-                                            return ("(" + j + " + " + res ).Replace("+ -", "- ") + ")/" + k;
+                                            return ("(" + j + " + " + res).Replace("+ -", "- ") + ")/" + k;
                                         }
                                     }
                                     sq = (value * k + j);
@@ -4131,7 +4142,7 @@ namespace Cantus.Core
                 if (value is Reference)
                 {
                     return "&" + ((Reference)value).ToString(_eval);
-                    
+
                 }
                 else if (value is Lambda) // lambda: display ampersand if function pointer
                 {
@@ -4237,24 +4248,24 @@ namespace Cantus.Core
                 if (collection is IList<Reference>)
                 {
                     IList<Reference> list = ((IList<Reference>)collection).ToList();
-                    for (int i=0; i<list.Count(); i++)
+                    for (int i = 0; i < list.Count(); i++)
                     {
                         object x = list[i].ResolveObj();
                         _eval.SetDefaultVariable(new Reference(x));
                         object res;
                         if (x is ObjectTypes.Tuple)
                         {
-                             res = function.Execute(_eval,
-                                 ((Reference[])(((ObjectTypes.Tuple)x).GetValue())).
-                                 Select(new Func<Reference, object>(r => r.Resolve())));
+                            res = function.Execute(_eval,
+                                ((Reference[])(((ObjectTypes.Tuple)x).GetValue())).
+                                Select(new Func<Reference, object>(r => r.Resolve())));
                         }
                         else if (x is Matrix)
                         {
-                             res = Select(((Matrix)x).GetValue(), function);
+                            res = Select(((Matrix)x).GetValue(), function);
                         }
                         else
                         {
-                           res = function.Execute(_eval, new[] { x });
+                            res = function.Execute(_eval, new[] { x });
                         }
                         if (res is Reference)
                         {
@@ -4279,7 +4290,7 @@ namespace Cantus.Core
                         object res;
                         if (x is Reference[])
                         {
-                             res= function.Execute(_eval, (Reference[])x);
+                            res = function.Execute(_eval, (Reference[])x);
                         }
                         else if (x is Reference)
                         {
@@ -4287,7 +4298,7 @@ namespace Cantus.Core
                         }
                         else
                         {
-                           res = function.Execute(_eval, new[] { new Reference(x) });
+                            res = function.Execute(_eval, new[] { new Reference(x) });
                         }
                         if (res is Reference)
                         {
@@ -4313,7 +4324,7 @@ namespace Cantus.Core
             public List<Reference> Flatten(IList<Reference> collection)
             {
                 List<Reference> newLst = new List<Reference>();
-                for (int i=0; i < collection.Count; ++i)
+                for (int i = 0; i < collection.Count; ++i)
                 {
                     if (collection[i].GetRefObject() is Matrix)
                     {
@@ -4381,7 +4392,7 @@ namespace Cantus.Core
                 }
 
                 List<Reference> ret = new List<Reference>();
-                for (int i = 0; i< loopLst.Count; i++)
+                for (int i = 0; i < loopLst.Count; i++)
                 {
                     object x = loopLst[i].GetRefObject();
                     _eval.SetDefaultVariable(new Reference(x));
@@ -4475,7 +4486,7 @@ namespace Cantus.Core
             public object Every(List<Reference> collection, BigDecimal interval)
             {
                 List<Reference> newLst = new List<Reference>();
-                for (BigDecimal i=0; i<collection.Count; i+=interval)
+                for (BigDecimal i = 0; i < collection.Count; i += interval)
                 {
                     newLst.Add(collection[Int((double)i)]);
                 }
@@ -4554,7 +4565,8 @@ namespace Cantus.Core
                 }
             }
 
-            public string InstanceId(ClassInstance instance) {
+            public string InstanceId(ClassInstance instance)
+            {
                 if (instance.InnerScope.Contains(Scoping.SCOPE_SEP))
                     return instance.InnerScope.Substring(
                         instance.InnerScope.LastIndexOf(Scoping.SCOPE_SEP) + 1);
@@ -4598,7 +4610,7 @@ namespace Cantus.Core
             {
                 try
                 {
-                    return ObjectTypes.Parse(text, eval : _eval , identifierAsText : true, primitiveOnly : false).GetValue();
+                    return ObjectTypes.Parse(text, eval: _eval, identifierAsText: true, primitiveOnly: false).GetValue();
                 }
                 catch
                 {
@@ -6043,7 +6055,7 @@ namespace Cantus.Core
                 {
                     res = -1;
                     IList<Reference> lst = (IList<Reference>)collection;
-                    for (int i = lst.Count()-1; i>=0; --i)
+                    for (int i = lst.Count() - 1; i >= 0; --i)
                     {
                         if (ObjectComparer.CompareObjs(lst[i].Resolve(), val) == 0)
                         {
@@ -6447,7 +6459,8 @@ namespace Cantus.Core
                 }
                 catch (MathException ex)
                 {
-                    try {
+                    try
+                    {
                         return Dot(A, B);
                     }
                     catch
@@ -6490,7 +6503,7 @@ namespace Cantus.Core
             /// <returns></returns>
             public List<Reference> Proj(List<Reference> a, List<Reference> b)
             {
-                return Scale(b, (BigDecimal)Dot(a, b) / (BigDecimal)Pow(Magnitude(b),2));
+                return Scale(b, (BigDecimal)Dot(a, b) / (BigDecimal)Pow(Magnitude(b), 2));
             }
 
             /// <summary>
@@ -6807,83 +6820,77 @@ namespace Cantus.Core
             /// </summary>
             public List<Reference> NullSpace(List<Reference> collection)
             {
-                try {
-                    Matrix mat = new Matrix(collection);
-                    mat = mat.Rref();
+                Matrix mat = new Matrix(collection);
+                mat = mat.Rref();
 
-                    int emptyRows = 0;
-                    for (int i = mat.Height - 1; i >= 0; i--)
+                int emptyRows = 0;
+                for (int i = mat.Height - 1; i >= 0; i--)
+                {
+                    for (int j = 0; j < mat.Width; j++)
                     {
-                        for (int j = 0; j < mat.Width; j++)
+                        object val = mat.GetCoord(i, j);
+                        if (val is BigDecimal && CmpDbl((BigDecimal)val, 0.0) != 0)
                         {
-                            object val = mat.GetCoord(i, j);
-                            if (val is BigDecimal && CmpDbl((BigDecimal) val, 0.0) != 0)
+                            --emptyRows;
+                            break;
+                        }
+                    }
+                    ++emptyRows;
+                }
+
+                int freeCols = 0;
+                for (int i = mat.Width - 1; i >= 0; i--)
+                {
+                    bool nonZero = false;
+                    bool free = false;
+                    for (int j = 0; j < mat.Height; j++)
+                    {
+                        object val = mat.GetCoord(j, i);
+                        if (val is BigDecimal && CmpDbl((BigDecimal)val, 0.0) != 0)
+                        {
+                            if (nonZero)
                             {
-                                --emptyRows;
+                                free = true;
                                 break;
                             }
-                        }
-                        ++emptyRows;
-                    }
-
-                    int freeCols = 0;
-                    for (int i = mat.Width-1; i >= 0; i--)
-                    {
-                        bool nonZero = false;
-                        bool free = false;
-                        for (int j = 0; j < mat.Height; j++)
-                        {
-                            object val = mat.GetCoord(j, i);
-                            if (val is BigDecimal && CmpDbl((BigDecimal) val, 0.0) != 0)
+                            else
                             {
-                                if (nonZero)
-                                {
-                                    free = true;
-                                    break;
-                                }
-                                else
-                                {
-                                    nonZero = true;
-                                }
-                            }
-                        }
-                        if (free) freeCols++;
-                        else break;
-                    }
-
-                    Matrix ker = new Matrix(mat.Height - emptyRows + freeCols, freeCols);
-
-                    for (int i = 0; i < mat.Height - emptyRows; i++)
-                    {
-                        for (int j = 0; j < freeCols; j++)
-                        {
-                            object val = mat.GetCoord(i, mat.Width - freeCols + j);
-                            if (val is double)
-                            {
-                                ker.SetCoord(i, j, -(double)val);
-                            }
-                            else if (val is BigDecimal)
-                            {
-                                ker.SetCoord(i, j, -(BigDecimal)val);
-                            }
-                            else if (val is System.Numerics.Complex)
-                            {
-                                ker.SetCoord(i, j, -(System.Numerics.Complex)val);
+                                nonZero = true;
                             }
                         }
                     }
-
-                    for (int i = 0; i < freeCols; ++i)
-                    {
-                        ker.SetCoord(mat.Height - emptyRows + i, i, (BigDecimal)1.0);
-                    }
-
-                    return (List<Reference>)ker.GetValue();
+                    if (free) freeCols++;
+                    else break;
                 }
-                catch (Exception ex)
+
+                Matrix ker = new Matrix(mat.Height - emptyRows + freeCols, freeCols);
+
+                for (int i = 0; i < mat.Height - emptyRows; i++)
                 {
-                    return new List<Reference> { new Reference(ex.ToString()) };
+                    for (int j = 0; j < freeCols; j++)
+                    {
+                        object val = mat.GetCoord(i, mat.Width - freeCols + j);
+                        if (val is double)
+                        {
+                            ker.SetCoord(i, j, -(double)val);
+                        }
+                        else if (val is BigDecimal)
+                        {
+                            ker.SetCoord(i, j, -(BigDecimal)val);
+                        }
+                        else if (val is System.Numerics.Complex)
+                        {
+                            ker.SetCoord(i, j, -(System.Numerics.Complex)val);
+                        }
+                    }
                 }
+
+                for (int i = 0; i < freeCols; ++i)
+                {
+                    ker.SetCoord(mat.Height - emptyRows + i, i, (BigDecimal)1.0);
+                }
+
+                return (List<Reference>)ker.GetValue();
             }
 
             /// <summary>
@@ -7270,7 +7277,7 @@ namespace Cantus.Core
                 }
                 return collection;
             }
-            
+
             public List<Reference> Range(BigDecimal a, BigDecimal b, double step = 1.0)
             {
                 List<Reference> collection = new List<Reference>();
@@ -7533,10 +7540,10 @@ namespace Cantus.Core
                 if (text == null) text = "";
                 if (WriteOutput != null)
                 {
-                        if (text is string)
-                            WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString()));
-                        else
-                            WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, O(text)));
+                    if (text is string)
+                        WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, text.ToString()));
+                    else
+                        WriteOutput(_eval, new IOEventArgs(IOMessage.writeText, O(text)));
                 }
                 else
                 {
@@ -7714,7 +7721,7 @@ namespace Cantus.Core
             /// <summary>
             /// Ask the user for confirmation in the form of yes and no
             /// </summary>
-            public bool YesNo(object message  = null)
+            public bool YesNo(object message = null)
             {
                 return InternalConfirm(message, "yes", "no");
             }
@@ -7724,7 +7731,8 @@ namespace Cantus.Core
             /// </summary>
             public void ClearConsole()
             {
-                try {
+                try
+                {
                     if (RequestClearConsole != null)
                     {
                         RequestClearConsole(_eval, new EventArgs());
@@ -7734,7 +7742,7 @@ namespace Cantus.Core
                         Console.Clear();
                     }
                 }
-                catch 
+                catch
                 {
                     throw new EvaluatorException("No console available");
                 }
@@ -8176,7 +8184,7 @@ namespace Cantus.Core
             /// </summary>
             public string CantusDir()
             {
-                return Path.GetDirectoryName( Assembly.GetExecutingAssembly().Location);
+                return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             }
 
             /// <summary>
@@ -8204,7 +8212,7 @@ namespace Cantus.Core
                 {
                     if (args == null)
                         args = new List<Reference>();
-                    return func.ExecuteAsync(_eval, args, callBack:callback);
+                    return func.ExecuteAsync(_eval, args, callBack: callback);
                 }
                 catch
                 {
@@ -8312,7 +8320,7 @@ namespace Cantus.Core
             /// <summary>
             /// Start a process from the specified filesystem path without waiting for completion
             /// </summary>
-            public void Start(string path, string args = "", bool background=false)
+            public void Start(string path, string args = "", bool background = false)
             {
                 Process p = new Process();
                 ProcessStartInfo si = new ProcessStartInfo(path, args);
@@ -8361,7 +8369,8 @@ namespace Cantus.Core
                 tmp.EvalComplete += (object sender, AnswerEventArgs e) => { callback.Execute(_eval, new[] { e.Result }); };
                 string prevDir = _eval.ExecDir[Thread.CurrentThread.ManagedThreadId];
                 string prevPath = _eval.ExecPath[Thread.CurrentThread.ManagedThreadId];
-                try {
+                try
+                {
                     _eval.ExecPath[Thread.CurrentThread.ManagedThreadId] = path;
                     _eval.ExecDir[Thread.CurrentThread.ManagedThreadId] = Path.GetDirectoryName(path);
                     tmp.EvalAsync(File.ReadAllText(path));

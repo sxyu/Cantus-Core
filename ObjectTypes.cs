@@ -1610,7 +1610,7 @@ namespace Cantus.Core
                     Reference tmp = _value[a];
                     _value[a] = _value[b];
                     _value[b] = tmp;
-                    if ((aug != null))
+                    if (aug != null)
                         aug.SwapRows(a, b);
                     return this;
                 }
@@ -1646,7 +1646,7 @@ namespace Cantus.Core
                 public void ScaleRow(int row, object scale, Matrix aug = null)
                 {
                     if (scale is double) scale = (BigDecimal)(double)scale;
-                    for (int i = 0; i <= Width - 1; i++)
+                    for (int i = 0; i < Width; i++)
                     {
                         object orig = GetCoord(row, i);
                         if (scale is System.Numerics.Complex || orig is System.Numerics.Complex)
@@ -1659,11 +1659,11 @@ namespace Cantus.Core
                         }
                         else if (orig is double)
                         {
-                            SetCoord(row, i, new Reference((double)orig * (BigDecimal)scale));
+                            SetCoord(row, i, new Reference(((double)orig * (BigDecimal)scale * 1E15).Round()/1E15));
                         }
                         else if (orig is BigDecimal)
                         {
-                            SetCoord(row, i, new Reference(((BigDecimal)orig * (BigDecimal)scale)));
+                            SetCoord(row, i, new Reference(((BigDecimal)orig * (BigDecimal)scale * 1E15).Round()/1E15));
                         }
                     }
                     if ((aug != null))
@@ -1674,31 +1674,43 @@ namespace Cantus.Core
                 /// Subtract row b from row a and assign the values to row a
                 /// </summary>
                 /// <param name="aug">Right side of augmented matrix, if applicable</param>
-                public void SubtractRow(int a, int b, Matrix aug = null)
+                public void SubtractRow(int a, int b, object scale, Matrix aug = null)
                 {
-                    for (int i = 0; i <= Width - 1; i++)
+                    if (scale is double) scale = (BigDecimal)(double)scale;
+                    for (int i = 0; i < Width; i++)
                     {
                         object av = GetCoord(a, i);
                         object bv = GetCoord(b, i);
+                        if (av is double) av = (BigDecimal)(double)av;
+                        if (bv is double) bv = (BigDecimal)(double)bv;
+
                         if (av is System.Numerics.Complex || bv is System.Numerics.Complex)
                         {
                             if (!(av is System.Numerics.Complex))
-                                av = new System.Numerics.Complex((double)(av), 0);
+                                av = new System.Numerics.Complex((double)(BigDecimal)av, 0);
                             if (!(bv is System.Numerics.Complex))
-                                bv = new System.Numerics.Complex((double)(bv), 0);
+                                bv = new System.Numerics.Complex((double)(BigDecimal)bv, 0);
+                            if (!(scale is System.Numerics.Complex))
+                                scale = new System.Numerics.Complex((double)(BigDecimal)scale, 0);
+
+                            bv = ((System.Numerics.Complex)bv) * (System.Numerics.Complex)scale;
                             SetCoord(a, i, (System.Numerics.Complex)av - (System.Numerics.Complex)bv);
                         }
                         else if (av is double && bv is double)
                         {
+                            if (scale is System.Numerics.Complex) scale = (BigDecimal)((System.Numerics.Complex)scale).Real;
+                            bv = ((BigDecimal)bv) * (BigDecimal)scale;
                             SetCoord(a, i, new Reference((BigDecimal)(double)(av) - (double)(bv)));
                         }
                         else if (av is BigDecimal && bv is BigDecimal)
                         {
+                            if (scale is System.Numerics.Complex) scale = (BigDecimal)((System.Numerics.Complex)scale).Real;
+                            bv = ((BigDecimal)bv) * (BigDecimal)scale;
                             SetCoord(a, i, new Reference(((BigDecimal)av - (BigDecimal)bv)));
                         }
                     }
                     if ((aug != null))
-                        aug.SubtractRow(a, b);
+                        aug.SubtractRow(a, b, scale);
                 }
 
                 /// <summary>
@@ -1735,68 +1747,40 @@ namespace Cantus.Core
 
                     // deep copy everything before doing anything to avoid messing up due to references
                     Matrix mat = (Matrix)this.GetDeepCopy();
+                    mat.Normalize();
 
-                    Dictionary<int, int> pivot = new Dictionary<int, int>();
-                    int curRow = 0;
+                    int lead = 0;
 
-                    bool skip = false;
-
-                    for (int col = 0; col <= mat.Width - 1; col++)
+                    for (int r = 0; r < mat.Height; ++r)
                     {
-                        if (curRow >= mat.Height)
+                        if (lead >= mat.Width) break;
+                        int i = r;
+                        while (ObjectComparer.CompareObjs(mat.GetCoord(i, lead), (BigDecimal)0.0) == 0)
                         {
-                            skip = true;
-                            break;
-                        }
-                        bool success = true;
-
-                        for (int swapRow = curRow; swapRow <= mat.Height; swapRow++)
-                        {
-                            // reached end, failed to find an appropriate row
-                            if (swapRow == mat.Height)
+                            i++;
+                            if (i == mat.Height)
                             {
-                                success = false;
-                                break;
-                            }
-                            object val = mat.GetCoord(swapRow, col);
-                            if ((val is double && (double)(val) != 0.0) || (val is BigDecimal && (BigDecimal)val != 0.0) || val is System.Numerics.Complex && Math.Round(((System.Numerics.Complex)val).Magnitude, 12) != 0)
-                            {
-                                mat.SwapRows(curRow, swapRow, augmented);
-                                mat.ScaleRow(curRow, AutoReciprocal(val), augmented);
-                                pivot[curRow] = col;
-                                break;
-                            }
-                        }
-
-                        if (!success)
-                            continue;
-
-                        for (int zeroOutRow = 0; zeroOutRow <= Height - 1; zeroOutRow++)
-                        {
-                            if (zeroOutRow == curRow)
-                                continue;
-                            object val = mat.GetCoord(zeroOutRow, col);
-                            if ((val is double && (double)(val) != 0.0) || (val is BigDecimal && (BigDecimal)val != 0.0) || val is System.Numerics.Complex && Math.Round(((System.Numerics.Complex)val).Magnitude, 12) != 0)
-                            {
-                                mat.ScaleRow(zeroOutRow, AutoReciprocal(val), augmented);
-                                mat.SubtractRow(zeroOutRow, curRow, augmented);
-
-                                // if the row was already processed then we need to scale its pivot back to one
-                                if (zeroOutRow < curRow)
+                                i = r;
+                                lead++;
+                                if (mat.Width == lead)
                                 {
-                                    mat.ScaleRow(zeroOutRow, AutoReciprocal(mat.GetCoord(zeroOutRow, pivot[zeroOutRow])), augmented);
+                                    return mat;
                                 }
                             }
                         }
-                        curRow += 1;
-                    }
-
-                    if (!skip){
-                        while (curRow < mat.Height)
+                        mat.SwapRows(i, r, augmented);
+                        object div = mat.GetCoord(r, lead);
+                        mat.ScaleRow(r, AutoReciprocal(div), augmented);
+                        for (i = 0; i < mat.Height; i++)
                         {
-                            mat.ScaleRow(curRow, 0.0, augmented);
-                            curRow += 1;
+                            if (i != r)
+                            {
+                                object sub = mat.GetCoord(i, lead);
+                                mat.SubtractRow(i, r, sub, augmented);
+                            }
                         }
+                        lead++;
+
                     }
 
                     for (int i = 0; i < mat.Height; ++i)
@@ -1804,12 +1788,13 @@ namespace Cantus.Core
                         for (int j = 0; j < mat.Width; ++j)
                         {
                             object obj = mat.GetCoord(i, j);
+
                             if (obj is Reference) obj = ((Reference)obj).Resolve();
                             if (obj is double) obj = (BigDecimal)(double)obj;
+
                             if (obj is BigDecimal)
-                            {
-                                mat.SetCoord(i, j, ((BigDecimal)obj).Truncate(13));
-                            }
+                                mat.SetCoord(i, j,
+                                    ((((BigDecimal)obj).Truncate(19)) * 1E13).Round() / 1E13);
                         }
                     }
 
@@ -1888,19 +1873,23 @@ namespace Cantus.Core
                 /// <summary>
                 /// Get the maximum length of a subitem in the matrix, used for conversion to a human readable string
                 /// </summary>
-                private int MaxItemLen(Matrix m = null)
+                private int MaxItemLen(CantusEvaluator eval, Matrix m = null)
                 {
                     if (m == null) m = this;
 
-                    InternalFunctions ef = new InternalFunctions(new CantusEvaluator(reloadDefault: false));
+                    InternalFunctions ef = new InternalFunctions(eval);
                     int maxLen = 0;
 
+                    int ct = 0;
                     foreach (Reference k in m._value)
                     {
                         if (k.GetRefObject() is Matrix)
-                            maxLen = Math.Max(maxLen, MaxItemLen((Matrix)k.GetRefObject()));
+                        {
+                            maxLen = Math.Max(maxLen, MaxItemLen(eval, (Matrix)k.GetRefObject()));
+                        }
                         else
                             maxLen = Math.Max(maxLen, ef.O(k.GetValue()).Length);
+                        ++ct;
                     }
 
                     return maxLen;
@@ -1917,6 +1906,7 @@ namespace Cantus.Core
 
                     InternalFunctions ef = eval.Internals;
 
+                    int ct = 0;
                     foreach (Reference k in m._value)
                     {
                         if (str.Length != 1)
@@ -1939,16 +1929,25 @@ namespace Cantus.Core
                         {
                             tostr = ef.O(k.GetValue());
                         }
+
                         str.Append(tostr.PadRight(itemWid));
+                        ++ct;
                     }
                     str.Append("]");
 
                     return str.ToString();
                 }
 
+                public string Readable
+                {
+                    get
+                    {
+                        return ToString(new CantusEvaluator(reloadDefault:false));
+                    }
+                }
                 public override string ToString(CantusEvaluator eval)
                 {
-                    int maxLen = MaxItemLen();
+                    int maxLen = MaxItemLen(eval);
                     return StringRepr(maxLen, eval);
                 }
 
