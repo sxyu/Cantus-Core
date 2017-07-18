@@ -105,6 +105,23 @@ namespace Cantus.Core
                 }
             }
 
+            public delegate void RequestExitDelegate(object sender, EventArgs e);
+            /// <summary>
+            /// Raised when a request to exit is receivred
+            /// </summary>
+            public event RequestExitDelegate RequestExit;
+
+            /// <summary>
+            /// The event handler for the RequestClearConsole event
+            /// </summary>
+            internal RequestExitDelegate RequestExitHandler
+            {
+                get
+                {
+                    return this.RequestExit;
+                }
+            }
+
             // evaluator management
 
             /// <summary>
@@ -112,7 +129,7 @@ namespace Cantus.Core
             /// </summary>
             public void Exit()
             {
-                Environment.Exit(0);
+                RequestExit(this, new EventArgs());
             }
 
             /// <summary>
@@ -7315,8 +7332,13 @@ new Reference(new Text(x.Name))).ToList();
                 return collection;
             }
 
-            public List<Reference> Range(BigDecimal a, BigDecimal b, double step = 1.0)
+            public List<Reference> Range(BigDecimal a, double b = double.NaN, double step = 1.0)
             {
+                if (double.IsNaN(b))
+                {
+                    b = (double)a;
+                    a = 0;
+                }
                 List<Reference> collection = new List<Reference>();
                 for (BigDecimal d = a; d < b; d += step)
                 {

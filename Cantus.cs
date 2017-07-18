@@ -1897,6 +1897,7 @@ namespace Cantus.Core
             }
 
         }
+
         /// <summary>
         /// Raised when Cantus needs to clear the console
         /// </summary>
@@ -1911,6 +1912,21 @@ namespace Cantus.Core
                 Internals.RequestClearConsole -= value;
             }
             #endregion
+        }
+
+        /// <summary>
+        /// Raised when Cantus receives a request to exit
+        /// </summary>
+        public event InternalFunctions.RequestExitDelegate ExitRequested
+        {
+            add
+            {
+                Internals.RequestExit += value;
+            }
+            remove
+            {
+                Internals.RequestExit -= value;
+            }
         }
 
         #region "Evaluator Constants"
