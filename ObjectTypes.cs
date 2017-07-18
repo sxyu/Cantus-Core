@@ -1208,58 +1208,68 @@ namespace Cantus.Core
 
                 public object Determinant()
                 {
-                    // can only calculate det for square matrices
-                    if (Width != Height)
-                        throw new MathException("Can only calculate determinant for square matrices");
-
-                    // base cases
-                    if (Width == 0 && Height == 0)
-                        return 1.0;
-                    if (Width == 1 && Height == 1)
-                        return GetCoord(0, 0);
-
-                    object ans = 0;
-
-                    int coeff = 1;
-                    for (int i = 0; i <= this.Width - 1; i++)
+                    try
                     {
-                        Matrix newmat = new Matrix(Height - 1, Width - 1);
-                        for (int j = 1; j <= this.Height - 1; j++)
+                        // can only calculate det for square matrices
+                        if (Width != Height)
+                            throw new MathException("Can only calculate determinant for square matrices");
+
+                        // base cases
+                        if (Width == 0 && Height == 0)
+                            return 1.0;
+                        if (Width == 1 && Height == 1)
+                            return GetCoord(0, 0);
+
+                        object ans = 0.0;
+
+                        int coeff = 1;
+                        for (int i = 0; i <= this.Width - 1; i++)
                         {
-                            for (int k = 0; k <= this.Width - 1; k++)
+                            Matrix newmat = new Matrix(Height - 1, Width - 1);
+                            for (int j = 1; j <= this.Height - 1; j++)
                             {
-                                if (i == k)
-                                    continue;
-                                newmat.SetCoord(j - 1, k > i ? k - 1 : k, GetCoord(j, k));
+                                for (int k = 0; k <= this.Width - 1; k++)
+                                {
+                                    if (i == k)
+                                        continue;
+                                    newmat.SetCoord(j - 1, k > i ? k - 1 : k, GetCoord(j, k));
+                                }
                             }
+                            object i1 = GetCoord(0, i);
+                            object i2 = newmat.Determinant();
+
+                            if (ans is System.Numerics.Complex || i1 is System.Numerics.Complex || i2 is System.Numerics.Complex)
+                            {
+                                if (!(ans is System.Numerics.Complex))
+                                    ans = new System.Numerics.Complex((double)(ans), 0);
+                                if (!(i1 is System.Numerics.Complex))
+                                    i1 = new System.Numerics.Complex((double)(i1), 0);
+                                if (!(i2 is System.Numerics.Complex))
+                                    i2 = new System.Numerics.Complex((double)i2, 0);
+                                ans = (System.Numerics.Complex)ans + coeff * (System.Numerics.Complex)i1 * (System.Numerics.Complex)i2;
+                            }
+                            else if (i1 is double && i2 is double)
+                            {
+                                ans = (double)ans + coeff * (double)i1 * (double)i2;
+                            }
+                            else if (i1 is BigDecimal && i2 is BigDecimal)
+                            {
+                                if (ans is double) ans = (BigDecimal)(double)ans;
+                                ans = (BigDecimal)ans + coeff * (BigDecimal)i1 * (BigDecimal)i2;
+                            }
+                            else
+                            {
+                                return double.NaN;
+                            }
+                            coeff = -coeff;
                         }
-                        object i1 = GetCoord(0, i);
-                        object i2 = newmat.Determinant();
-                        if (ans is System.Numerics.Complex || i1 is System.Numerics.Complex || i2 is System.Numerics.Complex)
-                        {
-                            if (!(ans is System.Numerics.Complex))
-                                ans = new System.Numerics.Complex((double)(ans), 0);
-                            if (!(i1 is System.Numerics.Complex))
-                                i1 = new System.Numerics.Complex((double)(i1), 0);
-                            if (!(i2 is System.Numerics.Complex))
-                                i2 = new System.Numerics.Complex((double)i2, 0);
-                            ans = (System.Numerics.Complex)ans + coeff * (System.Numerics.Complex)i1 * (System.Numerics.Complex)i2;
-                        }
-                        else if (i1 is double && i2 is double)
-                        {
-                            ans = (double)ans + coeff * (double)i1 * (double)i2;
-                        }
-                        else if (i1 is BigDecimal && i2 is BigDecimal)
-                        {
-                            ans = (BigDecimal)ans + coeff * (BigDecimal)i1 * (BigDecimal)i2;
-                        }
-                        else
-                        {
-                            return double.NaN;
-                        }
-                        coeff = -coeff;
+                        return ans;
                     }
-                    return ans;
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                        throw new SyntaxException();
+                    }
                 }
 
                 /// <summary>
@@ -1771,6 +1781,7 @@ namespace Cantus.Core
                         mat.SwapRows(i, r, augmented);
                         object div = mat.GetCoord(r, lead);
                         mat.ScaleRow(r, AutoReciprocal(div), augmented);
+
                         for (i = 0; i < mat.Height; i++)
                         {
                             if (i != r)
@@ -1794,7 +1805,7 @@ namespace Cantus.Core
 
                             if (obj is BigDecimal)
                                 mat.SetCoord(i, j,
-                                    ((((BigDecimal)obj).Truncate(19)) * 1E13).Round() / 1E13);
+                                    ((((BigDecimal)obj).Truncate(19)) * 1E11).Round() / 1E11);
                         }
                     }
 
@@ -1809,9 +1820,11 @@ namespace Cantus.Core
                 {
                     Matrix r = Matrix.IdentityMatrix(Height, Width);
                     Matrix l = (Matrix)this.GetDeepCopy();
-                    l.Rref(r);
+                    l = l.Rref(r);
+
                     if (!l.IsIdentityMatrix())
                         return new Matrix(new object[] { double.NaN });
+
                     this._value = (List<Reference>)r.GetValue();
                     return this;
                 }
@@ -1825,6 +1838,7 @@ namespace Cantus.Core
                 {
                     if (p == -1)
                         return Inverse();
+
                     if (p < 0)
                         throw new MathException("Negative exponents of matrices not defined (except -1" + "which is interpreted as matrix inverse)");
                     if (Width != Height)
@@ -2051,12 +2065,16 @@ namespace Cantus.Core
                 /// </summary>
                 public bool IsIdentityMatrix()
                 {
+                    if (Height != Width) return false;
+
                     for (int i = 0; i <= Height - 1; i++)
                     {
                         for (int j = 0; j <= Width - 1; j++)
                         {
-                            int expected = i == j ? 1 : 0;
+                            int expected = ((i == j) ? 1 : 0);
+
                             object obj = GetCoord(i, j);
+
                             if (obj is System.Numerics.Complex)
                             {
                                 if (Math.Round(((System.Numerics.Complex)obj).Magnitude, 12) != expected)
@@ -2064,7 +2082,8 @@ namespace Cantus.Core
                             }
                             else if (obj is double || obj is BigDecimal)
                             {
-                                if (((BigDecimal)obj).Truncate(12) != expected)
+                                BigDecimal epsi = 1e-4;
+                                if (BigDecimal.Abs((((BigDecimal)obj).Truncate(12) - expected)) > epsi)
                                     return false;
                             }
                         }

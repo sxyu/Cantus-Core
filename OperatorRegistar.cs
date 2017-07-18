@@ -1455,6 +1455,7 @@ namespace Cantus.Core
         {
             if (left == null)
                 throw new SyntaxException("Invalid Exponent");
+
             try
             {
                 if (left is ObjectTypes.Number && right is ObjectTypes.Number)

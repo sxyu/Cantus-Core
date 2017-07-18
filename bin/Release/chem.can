@@ -1,0 +1,321 @@
+﻿public _NAME = 'Cantus Chemistry Tools'
+public _VERSION = '1.1.1'
+public _AUTHOR = 'Alex Yu'
+
+public NA = 6.02214085774 E 23
+public AVOGADRO = 6.02214085774 E 23
+public R = 8.314459848
+public IDEALGASCONST = 8.314459848
+public TORRSPERATM = 760
+public PASCALSPERATM = 101325
+public KPAPERATM = 101.325
+public VOLUMEPERMOLEGAS = 22.414
+public ELEMENTARYCHARGE = 1.602176620898 E -19
+public ELECTRONMASS = 9.10938356 E -31
+public PROTONMASS = 1.60217656535 E -27
+public NEUTRONMASS = 1.67492747121 E -27
+public SPEEDOFSOUND = 340.29
+public SPEEDOFLIGHT = 299792458
+
+# maximum supported atomic number
+public MAXATOMICNUM = elements.symbols.len()
+
+function elemmass(symbol)
+	# get the mass of the element with the symbol
+    return elements.masses[symbol]
+    
+function numbertosymbol(number)
+	# get the symbol of the element with the atomic number
+    return elements.symbols[number-1]
+    
+function elemat(number)
+	# alias for numbertosymbol
+    return numbertosymbol(number)
+    
+function numbertoname(number)
+	# get the name of the element with the atomic number
+    return elements.names[number-1]
+    
+function symboltonumber(symbol)
+	# get the atomic number of the element with the symbol
+    return elements.symbols.find(symbol)+1
+
+function nametonumber(name)
+	"""
+	Get the atomic number of the element 
+	with the name
+	"""
+    return elements.names.find(name)+1
+       
+function symboltoname(symbol)
+	# get the name of the element from the smbol
+    return numbertoname(symboltonumber(symbol))
+    
+function nametosymbol(name)
+	# get the symbol of the element from the name
+    return numbertosymbol(nametonumber(name))
+    
+function symbolexists(symbol)
+	# checks if an element with the specified symbol exists
+    return elements.masses.contains(symbol)
+    
+function nameexists(name)
+	# checks if an element with the specified name exists
+    return elements.names.contains(name.tolower())
+
+function elemexists(symbol)
+	# alias for symbolexists
+    return symbolexists(symbol)
+    
+function polyionname(formula)
+	# get the name of a polyatomic ion
+	if elements.polynames.contains(formula)
+        return elements.polynames[formula]
+    else
+    	print ('Polyatomic ion ' + \
+    	 formula + ' not found.')
+		 
+function ka(formula)
+	# get the ka of a Bronsted-Lowry acid. Formula should not include charge.
+	if elements.ka.contains(formula)
+		return elements.ka[formula]
+	else
+		print ('Acid ' + formula + ' not found')
+
+function kb(formula)
+	# get the kb of a Bronsted-Lowry base. Formula should not include charge.
+	if elements.kb.contains(formula)
+		return elements.kb[formula]
+	else
+		print ('Base ' + formula + ' not found')
+		
+function charges(symbol)
+	"""
+	Returns a list of common charges
+    for the element or polyatomic ion with 
+    the symbol or formula
+	"""
+	n = symboltonumber(symbol)-1
+	if n < 0 or isundefined(n)
+		# try polyatomics
+		if elements.polycharges.contains(symbol):
+			return [elements.polycharges[symbol]]
+		return 'Element or polyatomic ion "{0}" not found'.format(symbol)
+    return elements.charges[n]
+
+private function _splitelems(formula)
+	# split a formula into its constituent elements
+	formula += '(' # termination character
+
+	let result = []
+
+    let symbol = ''
+    
+    let bracket = false
+    let inbracket = ''
+    
+    let lastpart = []
+    let multiple = -1
+    
+    for c in formula
+        if bracket
+            if c=')'
+                lastpart = _splitelems(inbracket)
+                bracket = false
+            else
+                inbracket += c
+        else
+            if isletter(c) and isupper(c) or c='('
+                if symbol != '' or lastpart.len() > 0
+                    if lastpart.len() = 0
+                        if not elemexists(symbol):
+                            print("Warning: element '" + symbol + "' does not exist")
+                        else
+                            if multiple < 0
+                                multiple = 1
+                            lastpart = [symbol]
+                    
+                    if lastpart.len() > 0
+                        result.append(lastpart ** abs(multiple))
+                    
+                    lastpart = []
+                    multiple = -1
+                    symbol = ''
+                    
+                if c='('
+                    inbracket = ''
+                    bracket = true
+                else
+                    symbol = c
+            elif isletter(c)
+                    symbol += c
+                    
+            elif isdigit(c)
+                if multiple < 0
+                    multiple = 0
+                multiple = 10 * multiple + parsenumber(c)
+            
+    return result
+	
+
+function mass(formula)
+	# get the molar mass of a compound with the specified formula
+    SIGFIGS = true
+    OUTPUT = 'raw'
+    
+    let total = nosf(0)
+    let isfirst = true
+    
+    let elems = _splitelems(formula).sort()
+    let elemdict = {}
+    
+    for elem in elems
+    	if elemdict.contains(elem)
+    		elemdict[elem]++
+    	else
+    		elemdict[elem] = 1
+    		
+    for elem, coeff in elemdict
+    	if not isfirst
+    		print(' + ' + coeff + ' * ' + elemmass(elem))
+    	else
+    		isfirst = false
+    		print(coeff + ' * ' + elemmass(elem))
+            
+    	total += elemmass(elem) * nosf(coeff)
+            
+    printline('\n= ' + total)
+    return total
+       
+function soluble(cation, anion)
+	"""
+	Simple tool for checking the solubility of
+	a binary ionic compound
+	Input ions in format: [symbol][charge]
+	without any space in between
+	"""
+	# auto-select charge
+	if not (cation.endswith("+") or cation.endswith("-"))
+		let charge = charges(cation)[0]
+		cation += if(|charge| > 1, |charge|, '') + \
+                  if(charge >= 0, '+', '-')
+	if not (anion.endswith("+") or anion.endswith("-"))
+		let charge = charges(anion)[0]
+		anion += if(|charge| > 1, |charge|, '') + \
+                 if(charge >= 0, '+', '-')
+
+    # follow steps
+	if ['Li+', 'Na+', 'K+', 'Rb+', 'Cs+'].contains(cation)
+		return 'soluble'
+	elif anion == 'NO3-' or cation == 'NH4+'
+		return 'soluble'
+	elif anion == 'Cl-' or anion == 'Br-' or anion == 'I-'
+        if cation.startswith('Ag') or \
+            cation.startswith('Pb') or cation = 'Hg22+'
+        	return 'insoluble'
+        else
+        	return 'soluble'
+    elif cation = 'Ag+'
+    	return if(anion == 'C2H3O2-' or anion == 'CH3COO-', 'moderately soluble', 'insoluble')
+    elif anion = 'SO42-'
+    	return if(["Ca2+", "Ba2+", "Pb2+", "Ag+", "Sr2+", "Hg2+"].contains(cation),\
+    	          'insoluble', 'soluble')
+    elif anion = 'C2H3O2-' or anion = 'CH3COO-'
+    	return if(cation == 'Hg22+', 'insoluble', 'soluble')
+    elif anion = 'OH-'
+    	return if(["Ca2+", "Ba2+", "Sr2+", "Tl+"].contains(cation), \
+    	          'slightly soluble', 'insoluble')
+    elif anion = 'S2-'
+    	return 'insoluble'
+    elif cation == 'Mg2+' and (anion == 'CrO42-' or anion == 'SO32-')
+    	return if(anion == 'SO32-', 'slightly soluble', 'soluble')
+    elif ['BO32-','CO32-','CrO42-','PO43-','SO32-'].contains(anion)
+    	return 'insoluble'
+    else
+    	return 'unknown'
+    	
+function balance(left, right)
+	"""
+	Balance a chemical equation.
+	Usage: balance('AB+CD','AD+BC')
+	Outputs: vector containing coefficients, left to right
+	also prints out balanced equation in human-readable form.
+	
+	Implementation using matrix null space, lcm
+	"""
+	SIGFIGS = false;
+	let leftlist = left.split("+")
+	let rightlist = right.split("+")
+	let elems = []
+	let mat = matrix(1, leftlist.len() + rightlist.len())
+	
+	let ct = 0
+	
+    # build a matrix to represent the equation
+	for lc in leftlist
+        for elem in _splitelems(lc)
+        	let idx = elems.find(elem)
+        	if idx != undefined
+                mat[idx][ct] ++;
+        	else
+        		if mat.len() <= elems.len()
+        			mat.add([])
+        		elems.add(elem)
+        		mat[mat.len()-1][ct] ++;
+        ct++;
+    
+	for rc in rightlist
+        for elem in _splitelems(rc)
+        	let idx = elems.find(elem)
+        	if idx != undefined
+                mat[idx][ct] --;
+        	else
+        		if mat.len() <= elems.len()
+        			mat.add([])
+        		elems.add(elem)
+        		mat[mat.len()-1][ct] --;
+        ct++;
+    
+    # compute null space
+    let ker = mat.nullspace()
+    
+    let kervalid = false
+    # check if kernel is all zero. 
+    # if so, then there is no solution.
+    ker.select(`x=>kervalid=(kervalid or x!=0)`)
+    
+    if not kervalid
+    	print("Equation is impossible to balance.\nPlease check if you entered everything correctly.")
+    	return ker
+    
+    # convert to fractions 
+    let fracs = ker.select(`x=>convfrac(x)[1]`)
+    
+    # find least common multiple of denominators
+    let kerlcm = 1;
+    
+    for n in fracs: kerlcm = lcm(kerlcm, n)
+    """ 
+    now scale by the common multiple 
+    to make everything integral
+    """
+    ker.scale(kerlcm)
+    
+    # round everything to remove floating point error
+    ker = ker.select(`x=>round(x)`)
+    
+    # done, print results
+    for i = 0 to leftlist.length():
+    	if i > 0: print(" + ")
+    	print(ker[i] + " " + leftlist[i])
+    	
+    print(" = ")
+    
+    for i = 0 to rightlist.length():
+    	if i > 0: print(" + ")
+    	print(ker[i+leftlist.length()] + \
+              " " + rightlist[i])
+    printline()
+    
+    
+    return ker

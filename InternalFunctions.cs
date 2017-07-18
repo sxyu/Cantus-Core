@@ -1060,6 +1060,7 @@ new Reference(new Text(x.Name))).ToList();
                 if (@base is int) @base = (BigDecimal)(int)@base;
                 if (power is double) power = (BigDecimal)(double)power;
                 if (power is int) power = (BigDecimal)(int)power;
+
                 if (@base is BigDecimal && power is BigDecimal)
                 {
                     return BigDecimal.Pow((BigDecimal)@base, (BigDecimal)power);
@@ -1072,10 +1073,12 @@ new Reference(new Text(x.Name))).ToList();
                     return System.Numerics.Complex.Pow((System.Numerics.Complex)@base, (System.Numerics.Complex)power);
 
                 }
+
                 else if (@base is IEnumerable<Reference> && power is double || power is BigDecimal)
                 {
-                    return new Matrix((IEnumerable<Reference>)@base).Expo(Int((double)(power))).GetValue();
-
+                    Matrix mat = new Matrix((IEnumerable<Reference>)@base);
+                    int pwr = Int((double)(BigDecimal)power);
+                    return mat.Expo(pwr).GetValue();
                 }
                 else
                 {
@@ -2017,17 +2020,31 @@ new Reference(new Text(x.Name))).ToList();
             {
                 if (func.Args.Count() != 1)
                     throw new SyntaxException("Differentiated function must have one parameter");
+
                 if (double.IsNaN(x))
-                    x = (double)(_eval.GetVariableRef(
-                        func.Args.ElementAt(0)).Resolve());
+                {
+                    string argname = func.Args.ElementAt(0);
+                    try
+                    {
+                        x = (double)(BigDecimal)(_eval.GetVariableRef(argname).Resolve());
+                    }
+                    catch
+                    {
+                        throw new SyntaxException("Variable " + argname + " is not defined or is not a number. (try using 2 arg version of dydx function)");
+                    }
+                }
+
                 return Derivative(func, x);
             }
+
             public double DNydxN(Lambda func, double n, double x = double.NaN)
             {
                 if (func.Args.Count() != 1)
                     throw new SyntaxException("Differentiated function must have one parameter");
+
                 if (double.IsNaN(x))
-                    x = (double)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+                    x = (double)(BigDecimal)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+
                 if (n > 0)
                 {
                     if (CmpDbl(n, 1) > 0)
@@ -2061,8 +2078,10 @@ new Reference(new Text(x.Name))).ToList();
             {
                 if (func.Args.Count() != 1)
                     throw new SyntaxException("Differentiated function must have one parameter");
+
                 if (double.IsNaN(x))
-                    x = (double)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+                    x = (double)(BigDecimal)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+
                 BigDecimal l = (BigDecimal)func.Execute(_eval, new object[] { x - 0.0001 });
                 BigDecimal r = (BigDecimal)func.Execute(_eval, new object[] { x + 0.0001 });
                 return Math.Round((double)(r - l) / 0.0002, 5);
@@ -2087,17 +2106,29 @@ new Reference(new Text(x.Name))).ToList();
             {
                 if (func.Args.Count() != 1)
                     throw new SyntaxException("Integrated function must have one parameter");
+
                 if (double.IsNaN(b))
-                    b = (double)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+                {
+                    string argname = func.Args.ElementAt(0);
+                    try
+                    {
+                        b = (double)(BigDecimal)(_eval.GetVariableRef(argname).Resolve());
+                    }
+                    catch
+                    {
+                        throw new SyntaxException("Variable " + argname + " is not defined. (try using 3 arg version of integral function)");
+                    }
+                }
 
                 if (CmpDbl(a, b) == 0)
                     return 0;
                 decimal stepx = Convert.ToDecimal(b - a) / 2500;
                 decimal res = 0;
                 decimal sw = 1;
+
                 for (decimal cx = Convert.ToDecimal(a); cx <= Convert.ToDecimal(b) - stepx; cx += stepx)
                 {
-                    res += sw * Convert.ToDecimal(func.Execute(_eval, new object[] { cx }));
+                    res += sw * Convert.ToDecimal(func.Execute(_eval, new object[] { (double)cx }));
                     if (sw == 2 || sw == 1)
                     {
                         sw = 4;
@@ -2118,8 +2149,19 @@ new Reference(new Text(x.Name))).ToList();
             {
                 if (func.Args.Count() != 1)
                     throw new SyntaxException("Integrated function must have one parameter");
+
                 if (double.IsNaN(b))
-                    b = (double)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+                {
+                    string argname = func.Args.ElementAt(0);
+                    try
+                    {
+                        b = (double)(BigDecimal)(_eval.GetVariableRef(argname).Resolve());
+                    }
+                    catch
+                    {
+                        throw new SyntaxException("Variable " + argname + " is not defined. (try using 3 arg version of integral function)");
+                    }
+                }
 
                 if (CmpDbl(a, b) == 0)
                     return 0;
@@ -2128,7 +2170,7 @@ new Reference(new Text(x.Name))).ToList();
                 decimal py = Convert.ToDecimal(func.Execute(_eval, new object[] { a }));
                 for (decimal cx = Convert.ToDecimal(a) + stepx; cx <= Convert.ToDecimal(b); cx += stepx)
                 {
-                    decimal cy = Convert.ToDecimal(func.Execute(_eval, new object[] { cx }));
+                    decimal cy = Convert.ToDecimal(func.Execute(_eval, new object[] { (double)cx }));
                     res += (py + (cy - py) / 2) * stepx;
                     py = cy;
                 }
@@ -2165,7 +2207,19 @@ new Reference(new Text(x.Name))).ToList();
             private double IntegralRiemann(Lambda func, double a, double b, int offset, int intervals = 10000)
             {
                 if (double.IsNaN(b))
-                    b = (double)(_eval.GetVariableRef(func.Args.ElementAt(0)).Resolve());
+                {
+                    string argname = func.Args.ElementAt(0);
+                    try
+                    {
+                        b = (double)(BigDecimal)(_eval.GetVariableRef(argname).Resolve());
+                    }
+                    catch
+                    {
+                        throw new SyntaxException("Variable " + argname + " is not defined. (try using 3 arg version of integral function)");
+                    }
+                }
+
+
 
                 if (CmpDbl(a, b) == 0)
                     return 0;
@@ -2173,7 +2227,7 @@ new Reference(new Text(x.Name))).ToList();
                 decimal res = 0;
                 for (decimal cx = Convert.ToDecimal(a) + stepx / 2 * (offset + 1); cx <= Convert.ToDecimal(b) + stepx / 2 * (offset - 1); cx += stepx)
                 {
-                    res += stepx * Convert.ToDecimal(func.Execute(_eval, new object[] { cx }));
+                    res += stepx * Convert.ToDecimal(func.Execute(_eval, new object[] { (double)cx }));
                 }
                 return Math.Round((double)res, 5);
             }
@@ -3551,8 +3605,10 @@ new Reference(new Text(x.Name))).ToList();
             /// <summary>
             /// Split the string at the specified pattern
             /// </summary>
-            public List<Reference> Split(string text, object pattern, bool removeEmpty = false)
+            public List<Reference> Split(string text, object pattern = null, bool removeEmpty = false)
             {
+                if (pattern is null) pattern = " ";
+
                 if (pattern is IList<Reference>)
                 {
                     char[] arr = (from r in (IList<Reference>)pattern
@@ -3574,7 +3630,7 @@ new Reference(new Text(x.Name))).ToList();
             /// </summary>
             internal int Int(double value)
             {
-                return Convert.ToInt32(Math.Truncate(value));
+                return (int)(Math.Truncate(value));
             }
 
             /// <summary>
@@ -3709,68 +3765,30 @@ new Reference(new Text(x.Name))).ToList();
             /// <summary>
             /// Internal function for converting a double value to a fraction
             /// </summary>
-            public Reference[] ConvFrac(BigDecimal value)
+            public Reference[] ConvFrac(BigDecimal value, double maxdenom = 100000)
             {
-                BigDecimal epsi = Min(1E-11 * (BigDecimal)Pow(10, Round((BigDecimal)Pow(
-                            (BigDecimal)Abs(value), 0.1))), 0.001);
-                BigDecimal sign = 1.0;
-                if (value < 0)
-                {
-                    sign = -1;
-                    value = -value;
-                }
-                BigDecimal n = Floor(value);
-                value -= n;
-                if (value < epsi)
-                {
-                    return new[]{
-                    new Reference(n * sign),
-                    new Reference(1)
-                };
-                }
-                else if (1 - epsi < value)
-                {
-                    return new[]{
-                    new Reference((n + 1) * sign),
-                    new Reference(1)
-                };
-                }
-                BigDecimal lower_n = 0;
-                BigDecimal lower_d = 1;
+                double epsi = 1e-10 * Math.Pow(10, value.HighestDigit());
+                double v = (double)value;
 
-                BigDecimal upper_n = 1;
-                BigDecimal upper_d = 1;
-
-                BigDecimal middle_n = 0;
-                BigDecimal middle_d = 0;
-
-                int runtimes = 0;
-                const int MAX_RUNS = 1000000;
-                while (runtimes < MAX_RUNS)
+                for (int i=1; i<maxdenom; ++i)
                 {
-                    middle_n = lower_n + upper_n;
-                    middle_d = lower_d + upper_d;
-                    if (middle_d * (value + epsi) < middle_n)
-                    {
-                        upper_n = middle_n;
-                        upper_d = middle_d;
-                    }
-                    else if (middle_n < (value - epsi) * middle_d)
-                    {
-                        lower_n = middle_n;
-                        lower_d = middle_d;
-                    }
-                    else
+                    double mul = v * i;
+                    double flr = Math.Round(mul);
+
+                    if ((i & (i - 1)) == 0) // power of 2
+                        epsi *= 4;
+
+                    if (Math.Abs(mul - flr) < epsi)
                     {
                         return new[]{
-                            new Reference((n * middle_d + middle_n) * sign),
-                            new Reference(middle_d)
+                            new Reference(flr),
+                            new Reference(i)
                         };
                     }
-                    runtimes += 1;
                 }
+
                 return new[]{
-                    new Reference(value * sign),
+                    new Reference(value),
                     new Reference(1)
                 };
             }
@@ -3944,10 +3962,10 @@ new Reference(new Text(x.Name))).ToList();
                     }
 
                     // multiples of PI
-                    for (int j = -50; j <= 50; j++)
+                    for (int j = -40; j <= 40; j++)
                     {
                         if (j == 0) continue;
-                        for (int k = -20; k <= 20; k++)
+                        for (int k = -10; k <= 10; k++)
                         {
                             string s = SimpStr(value, Math.PI, j, "π", "+", k);
                             if (!string.IsNullOrEmpty(s))
@@ -3958,40 +3976,40 @@ new Reference(new Text(x.Name))).ToList();
                     try
                     {
                         // radicals
-                        for (int i = 2; i <= 3; i++)
+                        for (int i = 2; i <= 2; i++)
                         {
-                            BigDecimal sq = (BigDecimal)Pow(value, (BigDecimal)i);
+                            double sq = Math.Pow((double)value, i);
 
                             // ignore excessively large roots
                             if (sq > 10000)
                                 break;
                             if (i % 2 == 0)
-                                sq *= Sgn(value);
+                                sq *= Math.Sign((double)value);
                             if (IsInteger(sq))
                             {
                                 return SimpRadical(sq, i);
                             }
                         }
 
-                        for (int i = 2; i <= 3; i++)
+                        for (int i = 2; i <= 2; i++)
                         {
-                            for (int j = 1; j <= 40; j++)
+                            for (int j = 1; j <= 20; j++)
                             {
-                                BigDecimal sq = (BigDecimal)Pow((value - j), i);
-                                if (sq > 15000 || (BigDecimal)Abs(sq) < 0.0001) break;
+                                double sq = Math.Pow(((double)value - j), i);
+                                if (sq > 15000 || Math.Abs(sq) < 0.0001) break;
                                 // ignore excessively large roots
                                 if (i % 2 == 0)
-                                    sq *= Sgn(value - j);
+                                    sq *= Math.Sign((double)value - j);
                                 if (IsInteger(sq))
                                 {
                                     return (j + " + " + SimpRadical(sq, i)).Replace("+ -", "- ");
                                 }
-                                sq = (BigDecimal)Pow((value + j), i);
+                                sq = Math.Pow(((double)value + j), i);
                                 if (sq > 15000)
                                     break;
                                 // ignore excessively large roots
                                 if (i % 2 == 0)
-                                    sq *= Sgn(value + j);
+                                    sq *= Math.Sign((double)value + j);
                                 if (IsInteger(sq))
                                 {
                                     return SimpRadical(sq, i) + " - " + j;
@@ -3999,21 +4017,21 @@ new Reference(new Text(x.Name))).ToList();
                             }
                         }
 
-                        for (int i = 2; i <= 3; i++)
+                        for (int i = 2; i <= 2; i++)
                         {
-                            for (int j = 0; j <= 40; j++)
+                            for (int j = 0; j <= 20; j++)
                             {
-                                for (int k = 2; k <= 40; k++)
+                                for (int k = 2; k <= 20; k++)
                                 {
-                                    BigDecimal ba = (value * k - j);
+                                    double ba = ((double)value * k - j);
                                     if (IsInteger(ba))
                                         continue;
-                                    BigDecimal sq = (BigDecimal)Pow(ba, i);
+                                    double sq = Math.Pow(ba, i);
                                     if (sq > 15000)
                                         break;
                                     // ignore excessively large roots
                                     if (i % 2 == 0)
-                                        sq *= Sgn(ba);
+                                        sq *= Math.Sign(ba);
                                     if (IsInteger(sq))
                                     {
                                         string res = SimpRadical(sq, i);
@@ -4030,16 +4048,16 @@ new Reference(new Text(x.Name))).ToList();
                                             return ("(" + j + " + " + res).Replace("+ -", "- ") + ")/" + k;
                                         }
                                     }
-                                    sq = (value * k + j);
+                                    sq = ((double)value * k + j);
                                     if (IsInteger(sq))
                                         continue;
                                     //ignore integer base 
-                                    sq = (BigDecimal)Pow(sq, i);
+                                    sq = Math.Pow(sq, i);
                                     if (sq > 15000)
                                         break;
                                     // ignore excessively large roots
                                     if (i % 2 == 0)
-                                        sq *= Sgn(value + j);
+                                        sq *= Math.Sign((double)value + j);
                                     if (IsInteger(sq))
                                     {
                                         string res = SimpRadical(sq, i);
@@ -4064,9 +4082,9 @@ new Reference(new Text(x.Name))).ToList();
                     catch (Exception) { }
 
                     // fractions of PI
-                    for (int j = 1; j <= 100; ++j)
+                    for (int j = 1; j <= 20; ++j)
                     {
-                        for (int k = -20; k <= 20; ++k)
+                        for (int k = -10; k <= 10; ++k)
                         {
                             string s = SimpStr(value, Math.PI, 1 / j, "π", "+", k);
                             if (!string.IsNullOrEmpty(s))
@@ -4252,6 +4270,7 @@ new Reference(new Text(x.Name))).ToList();
                     {
                         object x = list[i].ResolveObj();
                         _eval.SetDefaultVariable(new Reference(x));
+
                         object res;
                         if (x is ObjectTypes.Tuple)
                         {
@@ -4267,6 +4286,7 @@ new Reference(new Text(x.Name))).ToList();
                         {
                             res = function.Execute(_eval, new[] { x });
                         }
+
                         if (res is Reference)
                         {
                             list[i] = (Reference)res;
@@ -4317,6 +4337,13 @@ new Reference(new Text(x.Name))).ToList();
                 }
             }
 
+            /// <summary>
+            /// Alternate notation for select
+            /// </summary>
+            public object Map( Lambda function , object collection)
+            {
+                return Select(collection, function);
+            }
 
             /// <summary>
             /// Flatten the matrix to a list
@@ -6600,7 +6627,17 @@ new Reference(new Text(x.Name))).ToList();
             /// <returns></returns>
             public IEnumerable<Reference> Transpose(IEnumerable<Reference> A)
             {
+
                 return (IEnumerable<Reference>)new Matrix(A).Transpose().GetValue();
+            }
+
+            /// <summary>
+            /// Find the transpose of a matrix, alias for transpose
+            /// </summary>
+            /// <returns></returns>
+            public IEnumerable<Reference> Tr(IEnumerable<Reference> A)
+            {
+                return Transpose(A);
             }
 
             /// <summary>
@@ -6626,7 +6663,7 @@ new Reference(new Text(x.Name))).ToList();
             /// Checks if the given matrix is an identity matrix
             /// </summary>
             /// <returns></returns>
-            public bool IsIdentityMatrix(List<object> A)
+            public bool IsIdentityMatrix(IEnumerable<Reference> A)
             {
                 return new Matrix(A).IsIdentityMatrix();
             }

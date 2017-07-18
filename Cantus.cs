@@ -3454,7 +3454,7 @@ namespace Cantus.Core
                                             {
                                                 varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
                                             }
-                                            else if (HasFunction(fn))
+                                            else if (HasFunction(fn) && !HasVariable(fn))
                                             {
                                                 varlist.Clear();
                                                 if (fn.StartsWith(ROOT_NAMESPACE))
@@ -3645,7 +3645,7 @@ namespace Cantus.Core
                     {
                         varlist.Add(new Lambda(fn, GetUserFunction(fn).Args, true));
                     }
-                    else if (HasFunction(fn))
+                    else if (HasFunction(fn) && (!HasVariable(fn) || Internals.IsUndefined(GetVariableObj(fn))))
                     {
                         varlist.Clear();
                         if (fn.StartsWith(ROOT_NAMESPACE))
@@ -3965,10 +3965,26 @@ namespace Cantus.Core
                     }
                 }
                 catch { }
-                // user class constructors
-                if (HasUserClass(fn))
-                {
 
+                if (HasVariable(fn) && Lambda.IsType(GetVariableRef(fn).ResolveObj()))
+                {
+                    // lambda expression/function pointer
+
+                    Lambda lambda = (Lambda)GetVariableRef(fn).ResolveObj();
+                    if (lambda.Args.Count() + optDict.Count() < argLst.Count())
+                    {
+                        throw new EvaluatorException(fn + ": " + lambda.Args.Count() + " parameter(s) expected" + ((baseObj != null) ? "(self-referring resolution on)" : ""));
+                    }
+                    else
+                    {
+                        lst.Add(DetectType(lambda.Execute(this, argLst, optDict), true));
+                    }
+                    return lst;
+                }
+
+                else if (HasUserClass(fn))
+                {
+                    // user class constructors
                     UserClass uc = GetUserClass(fn);
                     if (uc.Constructor.Args.Count() > 0 && argLst.Count == 0 && optDict.Count == 0)
                     {
@@ -3991,25 +4007,9 @@ namespace Cantus.Core
                     return lst;
 
                 }
-                else if (HasVariable(fn) && Lambda.IsType(GetVariableRef(fn).ResolveObj()))
-                {
-                    // lambda expression/function pointer
-
-                    Lambda lambda = (Lambda)GetVariableRef(fn).ResolveObj();
-                    if (lambda.Args.Count() + optDict.Count() < argLst.Count())
-                    {
-                        throw new EvaluatorException(fn + ": " + lambda.Args.Count() + " parameter(s) expected" + ((baseObj != null) ? "(self-referring resolution on)" : ""));
-                    }
-                    else
-                    {
-                        lst.Add(DetectType(lambda.Execute(this, argLst, optDict), true));
-                    }
-                    return lst;
-
-                    // internal functions defined in EvalFunctions
-                }
                 else if (HasFunction(fn))
                 {
+                    // internal functions defined in EvalFunctions
                     lst.Add(DetectType(ExecInternalFunction(fn, argLst), true));
                     return lst;
                 }
@@ -4046,13 +4046,13 @@ namespace Cantus.Core
                     }
                     else
                     {
-                        try
+                        if (HasVariable(cur))
                         {
-                            ret.Add(GetVariableRef(cur, true));
+                            ret.Add(GetVariableRef(cur, false));
                             i += j - 1;
                             break;
                         }
-                        catch (Exception)
+                        else
                         {
                             // really can't find anything
                             if (j == 1)
@@ -4478,6 +4478,7 @@ namespace Cantus.Core
             if (name == "prevans")
                 return new Variable(this, "prevans",
                     new Reference(new ObjectTypes.Tuple(PrevAns)), ROOT_NAMESPACE, new[] { "hidden" });
+
             string scope = _scope;
             name = RemoveRedundantScope(name, scope);
 
@@ -5082,7 +5083,7 @@ namespace Cantus.Core
                             if (paramTypeName.Contains("`"))
                                 paramTypeName = paramTypeName.Remove(paramTypeName.IndexOf("`"));
 
-                            throw new EvaluatorException("In " + name.ToLowerInvariant() + ": Parameter " + (maxParamCt + 1) + " \"" + paramTypeName + "\" Type Expected");
+                            throw new EvaluatorException("In " + name.ToLowerInvariant() + ": Parameter " + (maxParamCt + 1) + " Expects Type \"" + paramTypeName + "\"");
                         }
                     }
                     maxParamCt += 1;
